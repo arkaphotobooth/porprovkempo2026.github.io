@@ -4,13 +4,13 @@
 
 // 1. Konfigurasi Rahasia Firebase Anda
 const firebaseConfig = {
-    apiKey: "AIzaSyA63UtPlhEdC9qKmmHVpDjGv_4RqWjK47k",
-    authDomain: "mass-pro-turnamen.firebaseapp.com",
-    projectId: "mass-pro-turnamen",
-    databaseURL: "https://mass-pro-turnamen-default-rtdb.asia-southeast1.firebasedatabase.app/",
-    storageBucket: "mass-pro-turnamen.firebasestorage.app",
-    messagingSenderId: "268290671498",
-    appId: "1:268290671498:web:d55e4960e392f7dfc8fe73"
+  apiKey: "AIzaSyDvFfjuXH3WWK0bP99HFcAKCHDPZrljwzw",
+  authDomain: "porprovkempo2026.firebaseapp.com",
+  databaseURL: "https://porprovkempo2026-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "porprovkempo2026",
+  storageBucket: "porprovkempo2026.firebasestorage.app",
+  messagingSenderId: "270547963995",
+  appId: "1:270547963995:web:5db6d6e557b0e854f92f7e"
 };
 
 // 2. Inisialisasi Firebase
