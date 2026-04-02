@@ -1889,3 +1889,113 @@ function handleEmbuSwap(participantId) {
     saveToLocalStorage();
     checkExistingDrawing(); // <--- MEMANGGIL FUNGSI YANG BENAR
 }
+
+// ==========================================
+// TOMBOL SIMPAN & SAHKAN (EMBU H2H)
+// ==========================================
+
+function saveEmbuH2HScore() {
+    const matchId = parseInt(document.getElementById('select-peserta').value);
+    const sudut = document.getElementById('select-sudut-embu').value; // 'merah' atau 'putih'
+    if(!matchId) return alert('Pilih partai terlebih dahulu!');
+
+    // Cek apakah semua wasit sudah diisi
+    for(let i=1; i<=STATE.settings.numJudges; i++) {
+        let sEl = document.getElementById(`score-${i}`);
+        if(sEl && sEl.value === "") return alert(`TOTAL NILAI Wasit ${i} masih kosong!`);
+    }
+
+    const calc = calculateLive(); 
+    const matchIndex = STATE.matches.findIndex(m => m.id === matchId);
+    if (matchIndex === -1) return alert("Error: Partai tidak ditemukan di memori!");
+    const match = STATE.matches[matchIndex];
+
+    // Simpan ke Kantong Rahasia & Nilai Total untuk diadu nanti
+    if (sudut === 'merah') {
+        match.detailMerah = { raw: calc.raw, techRaw: calc.techRaw, tech: calc.tieBreaker, penalty: calc.penalty, waktu: UI.timerSeconds };
+        match.skorMerah = calc.final;
+    } else {
+        match.detailPutih = { raw: calc.raw, techRaw: calc.techRaw, tech: calc.tieBreaker, penalty: calc.penalty, waktu: UI.timerSeconds };
+        match.skorPutih = calc.final;
+    }
+
+    // Tembak data khusus match ini ke Firebase
+    let updates = {};
+    updates[`turnamen_data/matches/${matchIndex}`] = match;
+
+    database.ref().update(updates).then(() => {
+        alert(`✅ SKOR SUDUT ${sudut.toUpperCase()} TERSIMPAN!\n(Nilai Bersih: ${calc.final})`);
+        
+        // Fitur Cerdas: Otomatis pindah dropdown ke sudut putih jika merah sudah di-save
+        if (sudut === 'merah' && (!match.skorPutih || match.skorPutih === 0)) {
+            document.getElementById('select-sudut-embu').value = 'putih';
+        }
+        
+        loadExistingScores(); // Muat ulang layar & munculkan tombol hijau (Sahkan) jika kedua sudut sudah lengkap
+    }).catch(err => alert("Gagal Simpan ke Server: " + err));
+}
+
+function sahkanPemenangH2H() {
+    const matchId = parseInt(document.getElementById('select-peserta').value);
+    const match = STATE.matches.find(m => m.id === matchId);
+    if(!match) return;
+
+    if (!match.skorMerah || !match.skorPutih || match.skorMerah === 0 || match.skorPutih === 0) {
+        return alert("Belum semua sudut dinilai secara final!");
+    }
+
+    let sMerah = match.skorMerah;
+    let sPutih = match.skorPutih;
+
+    // LOGIKA TIE-BREAKER CERDAS
+    if (sMerah === sPutih) {
+        let tM = match.detailMerah ? match.detailMerah.tech : 0;
+        let tP = match.detailPutih ? match.detailPutih.tech : 0;
+        
+        // Menambah desimal gaib (0.001) agar mesin bagan Randori tahu siapa yang menang 
+        // tanpa merusak nilai 260.0 yang tampil di layar
+        if (tM > tP) sMerah += 0.001; 
+        else if (tP > tM) sPutih += 0.001;
+        else return alert("Skor Total DAN Nilai Tie-Break seimbang! Mohon panitia mengubah salah satu nilai secara manual untuk menentukan pemenang.");
+    }
+
+    let winnerId = sMerah > sPutih ? match.merahId : match.putihId;
+    let loserId = sMerah > sPutih ? match.putihId : match.merahId;
+    let winnerName = sMerah > sPutih ? "PITA MERAH" : "PITA PUTIH";
+
+    if(confirm(`🌟 KONFIRMASI PEMENANG: ${winnerName} 🌟\n\nSkor Merah: ${match.skorMerah}\nSkor Putih: ${match.skorPutih}\n\nLanjutkan dan majukan pemenang ke Babak Selanjutnya?`)) {
+        match.winnerId = winnerId;
+        match.loserId = loserId;
+        match.status = 'done';
+
+        // --- MEMAJUKAN ATLET KE BAGAN SELANJUTNYA ---
+        recalculateAllLosses(match.kategori);
+        let isGrandFinal = match.nextW === 'WINNER' && match.babak !== "SUDDEN DEATH";
+        let winnerP = STATE.participants.find(p => p.id === winnerId);
+        let isChallenger = winnerP && winnerP.losses > 0;
+        let mode = (STATE.settings && STATE.settings.tournamentMode) ? STATE.settings.tournamentMode : 'double';
+
+        // Tie-breaker untuk mode Perkemi
+        if(mode === 'double' && isGrandFinal && isChallenger) {
+            alert("TIE BREAKER GRAND FINAL!\nSistem membuka Partai Sudden Death!");
+            STATE.matches = STATE.matches.filter(m => !(m.kategori === match.kategori && m.pool === match.pool && m.babak === "SUDDEN DEATH"));
+            STATE.matches.push({ id: Date.now(), kategori: match.kategori, pool: match.pool, matchNum: match.matchNum + 1, babak: "SUDDEN DEATH", col: match.col + 1, nextW: 'WINNER', nextL: 'SECOND', merahId: match.putihId, putihId: match.merahId, winnerId: null, status: 'pending', skorMerah: 0, skorPutih: 0 });
+        } else {
+            forwardParticipant(match.nextW, winnerId, match.kategori, match.pool, match.nextWSlot);
+            if(match.nextL) forwardParticipant(match.nextL, loserId, match.kategori, match.pool, match.nextLSlot);
+        }
+
+        processAutoWins(match.kategori);
+
+        // Update seluruh bagan secara masif ke Firebase
+        let updates = {};
+        updates['turnamen_data/matches'] = STATE.matches;
+        updates['turnamen_data/participants'] = STATE.participants;
+
+        database.ref().update(updates).then(() => {
+            alert("✅ Partai Selesai! Bagan otomatis diperbarui.");
+            filterPesertaScoring(); // Lompat ke partai selanjutnya
+            checkExistingDrawing(); // Perbarui tampilan bagan visual
+        }).catch(err => alert("Gagal Simpan: " + err));
+    }
+}
