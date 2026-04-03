@@ -1220,7 +1220,19 @@ document.getElementById('select-peserta').addEventListener('change', (e) => {
 });
 document.getElementById('select-kategori').addEventListener('change', filterPesertaScoring);
 
-function setJudges(n) { STATE.settings.numJudges = n; document.getElementById('btn-j3').className = n === 3 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; document.getElementById('btn-j5').className = n === 5 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; const container = document.getElementById('judge-inputs'); container.innerHTML = ''; for(let i=1; i<=n; i++) { container.innerHTML += `<div class="bg-slate-900 p-3 rounded-lg border border-slate-600 focus-within:border-blue-500 transition-colors"><div class="text-center mb-2 pb-2 border-b border-slate-700"><label class="block text-[10px] text-slate-400 uppercase font-bold">Wasit ${i}</label></div><div class="space-y-2"><div><label class="block text-[9px] text-slate-500 mb-1">TOTAL NILAI</label><input type="number" step="0.5" id="score-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-2xl font-black outline-none text-center text-white placeholder-slate-700" placeholder="0"></div><div><label class="block text-[9px] text-slate-500 mb-1 flex justify-between"><span>TEKNIK</span> ${i===1?'<span class="text-yellow-500 font-bold">TIE-BREAK</span>':''}</label><input type="number" step="0.5" id="tech-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-sm font-bold outline-none text-center ${i===1?'text-yellow-400':'text-blue-300'} placeholder-slate-700" placeholder="Opsional"></div></div></div>`; } calculateLive(); }
+function setJudges(n) { 
+    STATE.settings.numJudges = n; 
+    
+    // --- FIX PENTING: Simpan memori tombol 3 Juri ke Firebase ---
+    saveToLocalStorage(); 
+    
+    document.getElementById('btn-j3').className = n === 3 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; 
+    document.getElementById('btn-j5').className = n === 5 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; 
+    
+    const container = document.getElementById('judge-inputs'); 
+    container.innerHTML = ''; 
+    for(let i=1; i<=n; i++) {container.innerHTML += `<div class="bg-slate-900 p-3 rounded-lg border border-slate-600 focus-within:border-blue-500 transition-colors"><div class="text-center mb-2 pb-2 border-b border-slate-700"><label class="block text-[10px] text-slate-400 uppercase font-bold">Wasit ${i}</label></div><div class="space-y-2"><div><label class="block text-[9px] text-slate-500 mb-1">TOTAL NILAI</label><input type="number" step="0.5" id="score-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-2xl font-black outline-none text-center text-white placeholder-slate-700" placeholder="0"></div><div><label class="block text-[9px] text-slate-500 mb-1 flex justify-between"><span>TEKNIK</span> ${i===1?'<span class="text-yellow-500 font-bold">TIE-BREAK</span>':''}</label><input type="number" step="0.5" id="tech-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-sm font-bold outline-none text-center ${i===1?'text-yellow-400':'text-blue-300'} placeholder-slate-700" placeholder="Opsional"></div></div></div>`; } calculateLive(); }
+
 // ==========================================
 // FUNGSI LOAD UI SCORING HYBRID
 // ==========================================
@@ -1277,14 +1289,18 @@ function loadExistingScores() {
 function calculateLive() {
     let raw = [];
     let techRaw = [];
-    // Deteksi apakah sedang mode 3 juri atau 5 juri
-    let numJ = (STATE.settings && STATE.settings.numJudges) ? STATE.settings.numJudges : 5;
 
-    // 1. Ambil nilai HANYA dari kotak wasit yang aktif (3 atau 5)
-    for(let i=1; i<=numJ; i++) {
+    // FIX: Deteksi jumlah wasit berdasarkan KOTAK FISIK di layar, BUKAN dari database
+    let actualJudges = 0;
+    for(let i=1; i<=5; i++) {
+        if(document.getElementById(`score-${i}`)) actualJudges++;
+    }
+
+    // 1. Ambil nilai HANYA dari kotak wasit yang aktif 
+    for(let i=1; i<=actualJudges; i++) {
         let sEl = document.getElementById(`score-${i}`);
         let tEl = document.getElementById(`tech-${i}`);
-        
+
         // Jika kotak tidak kosong, ambil angkanya. Jika kosong, anggap 0.
         raw.push(sEl && sEl.value !== '' ? parseFloat(sEl.value) : 0);
         techRaw.push(tEl && tEl.value !== '' ? parseFloat(tEl.value) : 0);
@@ -1293,15 +1309,15 @@ function calculateLive() {
     let validScores = [...raw];
     let validTechs = [...techRaw];
 
-    // 2. LOGIKA PEMOTONGAN CERDAS: HANYA potong jika mode 5 Juri!
-    if (numJ === 5 && validScores.length === 5) {
+    // 2. LOGIKA PEMOTONGAN CERDAS: HANYA potong jika kotak fisiknya ada 5!
+    if (actualJudges === 5 && validScores.length === 5) {
         let minVal = Math.min(...validScores);
         let maxVal = Math.max(...validScores);
-        
+
         // Hapus 1 nilai terendah dan 1 nilai tertinggi
         validScores.splice(validScores.indexOf(minVal), 1);
         validScores.splice(validScores.indexOf(maxVal), 1);
-        
+
         // Potong nilai tie-break teknik juga (jika juri mengisi)
         if(validTechs.length === 5) {
             let minT = Math.min(...validTechs);
@@ -1310,26 +1326,21 @@ function calculateLive() {
             validTechs.splice(validTechs.indexOf(maxT), 1);
         }
     }
-    // CATATAN: Jika mode 3 Juri (numJ === 3), sistem akan MENGABAIKAN blok pemotongan di atas 
-    // dan langsung menjumlahkan ketiga nilainya secara utuh!
 
     // 3. Jumlahkan Total Nilai Bersih
     let totalRaw = validScores.reduce((a,b) => a+b, 0);
     let totalTech = validTechs.reduce((a,b) => a+b, 0);
 
-    // 4. Kalkulasi Penalti Waktu (Sesuai Batas Minimal & Maksimal UI)
+    // 4. Kalkulasi Penalti Waktu
     let penalty = 0;
-    // Mengambil nilai dari input kotak Batas Waktu
     let minTimeInputs = document.querySelectorAll('input[type="number"]');
     let minTime = minTimeInputs.length > 0 ? parseFloat(minTimeInputs[0].value) : 90;
     let maxTime = minTimeInputs.length > 1 ? parseFloat(minTimeInputs[1].value) : 120;
     
     if (minTime > 0 && maxTime > 0 && UI.timerSeconds > 0) {
         if (UI.timerSeconds < minTime) {
-            // Kurang waktu: Penalti 5 poin tiap kelipatan 5 detik
             penalty = Math.ceil((minTime - UI.timerSeconds) / 5) * 5;
         } else if (UI.timerSeconds > maxTime) {
-            // Lebih waktu: Penalti 5 poin tiap kelipatan 5 detik
             penalty = Math.ceil((UI.timerSeconds - maxTime) / 5) * 5;
         }
     }
