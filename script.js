@@ -290,52 +290,44 @@ function renderParticipantTable(resetPage = false) {
     // POTONG DATA UNTUK HALAMAN INI SAJA (MAX 50)
     let paginatedList = sortedList.slice(startIndex, endIndex);
 
-    // --- STRATEGI A: MEMOIZATION (BUKU CONTEKAN) ---
-    let cachedRandoriResults = {};
-    let cachedRandoriDrawn = {};
+    // --- STRATEGI A: MEMOIZATION (DIET VERSI SAPU JAGAT) ---
+    let cachedResults = {};
+    let cachedDrawn = {};
     let uniqueCategories = [...new Set(paginatedList.map(p => p.kategori))];
     
     uniqueCategories.forEach(catName => {
-        let catObj = STATE.categories.find(c => c.name === catName);
-        if (catObj && catObj.discipline === 'randori') {
-            let isDrawn = STATE.matches.some(m => m.kategori === catName);
-            cachedRandoriDrawn[catName] = isDrawn;
-            if (isDrawn) {
-                cachedRandoriResults[catName] = calculateRandoriFinalists(catName);
-            }
+        // Karena H2H, SEMUA kategori dianggap punya Bagan
+        let isDrawn = STATE.matches.some(m => m.kategori === catName);
+        cachedDrawn[catName] = isDrawn;
+        if (isDrawn) {
+            cachedResults[catName] = calculateRandoriFinalists(catName);
         }
     });
     // -----------------------------------------------
 
     body.innerHTML = paginatedList.map(p => { 
-        let catObj = STATE.categories.find(c => c.name === p.kategori);
-        let isRandori = catObj && catObj.discipline === 'randori';
-        let isRandoriDrawn = isRandori ? cachedRandoriDrawn[p.kategori] : false;
+        let isDrawn = cachedDrawn[p.kategori] || false;
         
         let baseStatus = '';
         let resultBadge = '';
 
-        // 1. TENTUKAN STATUS UNDIAN (Dasar)
-        if (isRandori) {
-            if (isRandoriDrawn) {
-                baseStatus = p.pool !== '-' ? `POOL ${p.pool}` : 'Bagan Utama';
+        // 1. TENTUKAN STATUS UNDIAN (Berlaku untuk Randori & Embu H2H)
+        if (isDrawn) {
+            let matchData = STATE.matches.find(m => m.merahId === p.id || m.putihId === p.id);
+            if(matchData) {
+                baseStatus = matchData.pool !== '-' ? `POOL ${matchData.pool}` : 'Bagan Utama';
             } else {
-                baseStatus = `<span class="text-red-400 italic">Belum Undian</span>`;
+                baseStatus = `<span class="text-red-400 italic">Belum Masuk Bagan</span>`;
             }
         } else {
-            if (p.urut > 0) {
-                let poolLabel = p.pool !== '-' && p.pool !== 'SINGLE' ? ` | POOL ${p.pool}` : '';
-                baseStatus = `No.${p.urut}${poolLabel}`;
-            } else {
-                baseStatus = `<span class="text-red-400 italic">Belum Undian</span>`;
-            }
+            baseStatus = `<span class="text-red-400 italic">Belum Undian</span>`;
         }
 
-        // 2. TENTUKAN STATUS JUARA / GUGUR (Lencana)
+        // 2. TENTUKAN STATUS JUARA / GUGUR
         let isJuara = false;
 
-        if (isRandori && isRandoriDrawn) {
-            const poolResults = cachedRandoriResults[p.kategori];
+        if (isDrawn) {
+            const poolResults = cachedResults[p.kategori];
             if (poolResults) {
                 poolResults.forEach(res => {
                     if (res.emas === p.nama) {
@@ -347,33 +339,18 @@ function renderParticipantTable(resetPage = false) {
                     }
                 });
             }
-        } else if (!isRandori && p.urut > 0) {
-            if (p.isFinalist && p.scores.b2.final > 0) {
-                let catParts = STATE.participants.filter(x => x.kategori === p.kategori && x.isFinalist && x.scores.b2.final > 0).sort((a,b) => b.scores.b2.final - a.scores.b2.final || b.scores.b2.tech - a.scores.b2.tech);
-                let rank = catParts.findIndex(x => x.id === p.id);
-                if (rank === 0) { isJuara = true; resultBadge = `<span class="bg-yellow-500 text-black text-[10px] px-2 py-0.5 rounded ml-2 font-bold shadow-sm">Juara 1</span>`; }
-                else if (rank === 1) { isJuara = true; resultBadge = `<span class="bg-slate-300 text-black text-[10px] px-2 py-0.5 rounded ml-2 font-bold shadow-sm">Juara 2</span>`; }
-                else if (rank === 2) { isJuara = true; resultBadge = `<span class="bg-amber-600 text-white text-[10px] px-2 py-0.5 rounded ml-2 font-bold shadow-sm">Juara 3</span>`; }
-            } else if (!p.isFinalist && p.scores.b1.final > 0 && !STATE.participants.some(x => x.kategori === p.kategori && x.isFinalist)) {
-                let catParts = STATE.participants.filter(x => x.kategori === p.kategori && x.pool === p.pool && x.scores.b1.final > 0).sort((a,b) => b.scores.b1.final - a.scores.b1.final || b.scores.b1.tech - a.scores.b1.tech);
-                let rank = catParts.findIndex(x => x.id === p.id);
-                if (rank === 0) { isJuara = true; resultBadge = `<span class="bg-yellow-500 text-black text-[10px] px-2 py-0.5 rounded ml-2 font-bold shadow-sm">Juara 1</span>`; }
-                else if (rank === 1) { isJuara = true; resultBadge = `<span class="bg-slate-300 text-black text-[10px] px-2 py-0.5 rounded ml-2 font-bold shadow-sm">Juara 2</span>`; }
-                else if (rank === 2) { isJuara = true; resultBadge = `<span class="bg-amber-600 text-white text-[10px] px-2 py-0.5 rounded ml-2 font-bold shadow-sm">Juara 3</span>`; }
-            }
-        }
+        } 
 
-        if (!isJuara) {
-            let isDrawn = isRandori ? isRandoriDrawn : p.urut > 0;
-            if (p.losses === 1 && isDrawn) resultBadge = `<span class="bg-orange-600 text-white text-[10px] px-1.5 py-0.5 rounded ml-2 font-bold shadow-sm">Loser Bracket</span>`;
-            else if (p.losses >= 2 && isDrawn) resultBadge = `<span class="bg-red-800 text-white text-[10px] px-1.5 py-0.5 rounded ml-2 font-bold shadow-sm">Gugur</span>`;
+        if (!isJuara && isDrawn) {
+            if (p.losses === 1) resultBadge = `<span class="bg-orange-600 text-white text-[10px] px-1.5 py-0.5 rounded ml-2 font-bold shadow-sm">Loser Bracket</span>`;
+            else if (p.losses >= 2) resultBadge = `<span class="bg-red-800 text-white text-[10px] px-1.5 py-0.5 rounded ml-2 font-bold shadow-sm">Gugur</span>`;
         }
         
         let statusHTML = `<div class="text-xs text-blue-300 font-semibold mt-1 flex items-center">${baseStatus} ${resultBadge}</div>`;
         
         return `<tr class="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
             <td class="p-3 align-top font-bold text-blue-300 w-[35%] whitespace-normal break-words leading-tight">
-                ${p.nama} ${p.isFinalist ? '<br><span class="text-[10px] text-yellow-500 font-bold mt-1">FINALIS</span>' : ''}
+                ${p.nama}
             </td>
             <td class="p-3 align-top w-[25%] whitespace-normal break-words text-sm text-slate-200">
                 ${p.kontingen}
