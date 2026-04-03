@@ -1297,27 +1297,75 @@ function loadExistingScores() {
     }
 }
 
-function calculateLive() { 
-    let raw = []; let techRaw = []; 
-    for(let i=1; i<=STATE.settings.numJudges; i++) { 
-        let sEl = document.getElementById(`score-${i}`); let tEl = document.getElementById(`tech-${i}`);
-        raw.push(sEl ? (parseFloat(sEl.value) || 0) : 0); techRaw.push(tEl ? (parseFloat(tEl.value) || 0) : 0); 
-    } 
-    let sum = 0; 
-    if(STATE.settings.numJudges === 5) { let sorted = [...raw].sort((a,b) => a-b); sorted.pop(); sorted.shift(); sum = sorted.reduce((a,b) => a+b, 0); } 
-    else { sum = raw.reduce((a,b) => a+b, 0); } 
+function calculateLive() {
+    let raw = [];
+    let techRaw = [];
+    // Deteksi apakah sedang mode 3 juri atau 5 juri
+    let numJ = (STATE.settings && STATE.settings.numJudges) ? STATE.settings.numJudges : 5;
+
+    // 1. Ambil nilai HANYA dari kotak wasit yang aktif (3 atau 5)
+    for(let i=1; i<=numJ; i++) {
+        let sEl = document.getElementById(`score-${i}`);
+        let tEl = document.getElementById(`tech-${i}`);
+        
+        // Jika kotak tidak kosong, ambil angkanya. Jika kosong, anggap 0.
+        raw.push(sEl && sEl.value !== '' ? parseFloat(sEl.value) : 0);
+        techRaw.push(tEl && tEl.value !== '' ? parseFloat(tEl.value) : 0);
+    }
+
+    let validScores = [...raw];
+    let validTechs = [...techRaw];
+
+    // 2. LOGIKA PEMOTONGAN CERDAS: HANYA potong jika mode 5 Juri!
+    if (numJ === 5 && validScores.length === 5) {
+        let minVal = Math.min(...validScores);
+        let maxVal = Math.max(...validScores);
+        
+        // Hapus 1 nilai terendah dan 1 nilai tertinggi
+        validScores.splice(validScores.indexOf(minVal), 1);
+        validScores.splice(validScores.indexOf(maxVal), 1);
+        
+        // Potong nilai tie-break teknik juga (jika juri mengisi)
+        if(validTechs.length === 5) {
+            let minT = Math.min(...validTechs);
+            let maxT = Math.max(...validTechs);
+            validTechs.splice(validTechs.indexOf(minT), 1);
+            validTechs.splice(validTechs.indexOf(maxT), 1);
+        }
+    }
+    // CATATAN: Jika mode 3 Juri (numJ === 3), sistem akan MENGABAIKAN blok pemotongan di atas 
+    // dan langsung menjumlahkan ketiga nilainya secara utuh!
+
+    // 3. Jumlahkan Total Nilai Bersih
+    let totalRaw = validScores.reduce((a,b) => a+b, 0);
+    let totalTech = validTechs.reduce((a,b) => a+b, 0);
+
+    // 4. Kalkulasi Penalti Waktu (Sesuai Batas Minimal & Maksimal UI)
+    let penalty = 0;
+    // Mengambil nilai dari input kotak Batas Waktu
+    let minTimeInputs = document.querySelectorAll('input[type="number"]');
+    let minTime = minTimeInputs.length > 0 ? parseFloat(minTimeInputs[0].value) : 90;
+    let maxTime = minTimeInputs.length > 1 ? parseFloat(minTimeInputs[1].value) : 120;
     
-    let minEl = document.getElementById('min-time'); let maxEl = document.getElementById('max-time');
-    const minT = minEl ? (parseInt(minEl.value) || 0) : 0; const maxT = maxEl ? (parseInt(maxEl.value) || 0) : 0; 
-    
-    let penalty = 0; 
-    if(UI.timerSeconds > 0 && minT > 0 && UI.timerSeconds < minT) { penalty = Math.ceil((minT - UI.timerSeconds) / 5) * 5; } 
-    else if (maxT > 0 && UI.timerSeconds > maxT) { penalty = Math.ceil((UI.timerSeconds - maxT) / 5) * 5; }
-    
-    const final = Math.max(0, sum - penalty); 
-    let finalEl = document.getElementById('live-final-score'); if(finalEl) finalEl.innerText = final.toFixed(1); 
-    let penEl = document.getElementById('live-penalty'); if(penEl) penEl.innerText = penalty > 0 ? `Penalti Waktu: -${penalty}` : `Penalti Waktu: 0`; 
-    return { final, penalty, raw, techRaw, tieBreaker: techRaw[0] }; 
+    if (minTime > 0 && maxTime > 0 && UI.timerSeconds > 0) {
+        if (UI.timerSeconds < minTime) {
+            // Kurang waktu: Penalti 5 poin tiap kelipatan 5 detik
+            penalty = Math.ceil((minTime - UI.timerSeconds) / 5) * 5;
+        } else if (UI.timerSeconds > maxTime) {
+            // Lebih waktu: Penalti 5 poin tiap kelipatan 5 detik
+            penalty = Math.ceil((UI.timerSeconds - maxTime) / 5) * 5;
+        }
+    }
+
+    let finalScore = totalRaw - penalty;
+
+    // 5. Lempar Angka ke Layar Visual
+    let scoreEl = document.getElementById('live-final-score');
+    let penEl = document.getElementById('live-penalty');
+    if(scoreEl) scoreEl.innerText = finalScore.toFixed(1);
+    if(penEl) penEl.innerText = `Penalti Waktu: ${penalty}`;
+
+    return { raw: raw, techRaw: techRaw, penalty: penalty, final: finalScore, tieBreaker: totalTech };
 }
 
 function saveScore(babakOverride) { 
