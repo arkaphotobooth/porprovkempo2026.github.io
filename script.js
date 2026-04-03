@@ -1218,9 +1218,59 @@ document.getElementById('select-peserta').addEventListener('change', (e) => {
 });
 document.getElementById('select-kategori').addEventListener('change', filterPesertaScoring);
 
-function updateScoringButtonsUI() { const pId = parseInt(document.getElementById('select-peserta').value); const selectBabak = document.getElementById('select-babak'); const btnB1 = document.getElementById('btn-save-b1'); const btnB2 = document.getElementById('btn-save-b2'); const btnPen = document.getElementById('btn-save-penyisihan'); const btnFin = document.getElementById('btn-save-final'); if(!pId || !selectBabak || !btnB1) return; const p = STATE.participants.find(i => i.id === pId); selectBabak.innerHTML = ''; const isFinalMode = STATE.participants.some(x => x.kategori === p.kategori && x.isFinalist); if(isFinalMode && p.isFinalist) selectBabak.innerHTML = `<option value="b2">Babak Final</option>`; else if(p.pool === 'A' || p.pool === 'B') selectBabak.innerHTML = `<option value="b1">Babak Penyisihan</option>`; else selectBabak.innerHTML = `<option value="b1">Babak 1</option><option value="b2">Babak 2</option>`; btnB1.classList.add('hidden'); btnB2.classList.add('hidden'); btnPen.classList.add('hidden'); btnFin.classList.add('hidden'); if(isFinalMode && p.isFinalist) btnFin.classList.remove('hidden'); else if(p.pool === 'A' || p.pool === 'B') btnPen.classList.remove('hidden'); else { btnB1.classList.remove('hidden'); btnB2.classList.remove('hidden'); } loadExistingScores(); }
 function setJudges(n) { STATE.settings.numJudges = n; document.getElementById('btn-j3').className = n === 3 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; document.getElementById('btn-j5').className = n === 5 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; const container = document.getElementById('judge-inputs'); container.innerHTML = ''; for(let i=1; i<=n; i++) { container.innerHTML += `<div class="bg-slate-900 p-3 rounded-lg border border-slate-600 focus-within:border-blue-500 transition-colors"><div class="text-center mb-2 pb-2 border-b border-slate-700"><label class="block text-[10px] text-slate-400 uppercase font-bold">Wasit ${i}</label></div><div class="space-y-2"><div><label class="block text-[9px] text-slate-500 mb-1">TOTAL NILAI</label><input type="number" step="0.5" id="score-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-2xl font-black outline-none text-center text-white placeholder-slate-700" placeholder="0"></div><div><label class="block text-[9px] text-slate-500 mb-1 flex justify-between"><span>TEKNIK</span> ${i===1?'<span class="text-yellow-500 font-bold">TIE-BREAK</span>':''}</label><input type="number" step="0.5" id="tech-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-sm font-bold outline-none text-center ${i===1?'text-yellow-400':'text-blue-300'} placeholder-slate-700" placeholder="Opsional"></div></div></div>`; } calculateLive(); }
-function loadExistingScores() { const pId = parseInt(document.getElementById('select-peserta').value); const babak = document.getElementById('select-babak').value; if(!pId || !babak) return; const p = STATE.participants.find(i => i.id === pId); const scoreData = p.scores[babak]; if(scoreData && scoreData.raw && scoreData.raw.length > 0) { const nJudges = scoreData.raw.length; if(STATE.settings.numJudges !== nJudges) setJudges(nJudges); for(let i=1; i<=nJudges; i++) { let sEl = document.getElementById(`score-${i}`); let tEl = document.getElementById(`tech-${i}`); if(sEl) sEl.value = scoreData.raw[i-1] || ''; if(tEl) tEl.value = (scoreData.techRaw && scoreData.techRaw[i-1]) ? scoreData.techRaw[i-1] : ''; } UI.timerSeconds = scoreData.time || 0; updateTimerUI(); } else { for(let i=1; i<=STATE.settings.numJudges; i++) { let sEl = document.getElementById(`score-${i}`); let tEl = document.getElementById(`tech-${i}`); if(sEl) sEl.value = ''; if(tEl) tEl.value = ''; } UI.timerSeconds = 0; updateTimerUI(); } calculateLive(); }
+// ==========================================
+// FUNGSI LOAD UI SCORING HYBRID
+// ==========================================
+function loadExistingScores() {
+    const matchId = parseInt(document.getElementById('select-peserta').value);
+    const sudutEl = document.getElementById('select-sudut-embu');
+    
+    // Cegah error jika elemen tidak ditemukan
+    if(!matchId || !sudutEl) return; 
+
+    const sudut = sudutEl.value; // Membaca: 'merah' atau 'putih'
+    const match = STATE.matches.find(m => m.id === matchId);
+    if(!match) return;
+
+    // 1. Ubah Judul Nama Atlet sesuai Pita/Sudut yang dipilih
+    const mrh = STATE.participants.find(p => p.id === match.merahId) || { nama: "", kontingen: "" };
+    const pth = STATE.participants.find(p => p.id === match.putihId) || { nama: "", kontingen: "" };
+    let atletName = sudut === 'merah' ? `🔴 Merah: ${mrh.nama} (${mrh.kontingen})` : `⚪ Putih: ${pth.nama} (${pth.kontingen})`;
+    document.getElementById('scoring-athlete-name').innerText = atletName;
+
+    // 2. Tarik nilai dari Kantong Rahasia (jika sebelumnya sudah disimpan lalu keluar/refresh)
+    let detail = sudut === 'merah' ? match.detailMerah : match.detailPutih;
+    
+    if (detail && detail.raw && detail.raw.length > 0) {
+        for(let i=1; i<=STATE.settings.numJudges; i++) {
+            let sEl = document.getElementById(`score-${i}`);
+            let tEl = document.getElementById(`tech-${i}`);
+            if(sEl) sEl.value = detail.raw[i-1] || '';
+            if(tEl) tEl.value = detail.techRaw ? (detail.techRaw[i-1] || '') : '';
+        }
+        UI.timerSeconds = detail.waktu || 0;
+    } else {
+        // Kosongkan form jika sudut ini belum pernah dinilai
+        for(let i=1; i<=STATE.settings.numJudges; i++) {
+            let sEl = document.getElementById(`score-${i}`);
+            let tEl = document.getElementById(`tech-${i}`);
+            if(sEl) sEl.value = '';
+            if(tEl) tEl.value = '';
+        }
+        UI.timerSeconds = 0;
+    }
+    
+    updateTimerUI();
+    calculateLive();
+
+    // 3. Tampilkan Tombol "Sahkan Pemenang" HANYA JIKA kedua sudut sudah punya nilai akhir
+    let btnSahkan = document.getElementById('btn-sahkan-pemenang');
+    if (btnSahkan) {
+        if (match.skorMerah > 0 && match.skorPutih > 0) btnSahkan.classList.remove('hidden');
+        else btnSahkan.classList.add('hidden');
+    }
+}
 
 function calculateLive() { 
     let raw = []; let techRaw = []; 
