@@ -840,10 +840,14 @@ function renderVisualBracket(catName) {
                 
                 colMatches.forEach(m => {
                     let displayNum = m.matchNum % 50 === 0 ? 50 : m.matchNum % 50; 
+                    
                     let pMerah = STATE.participants.find(p => p.id === m.merahId);
-                    let nMerahRaw = m.merahId === -1 ? "BYE" : (pMerah ? pMerah.nama : (m.merahId ? "Hantu" : "Menunggu..."));
+                    // --- UBAH: Gunakan p.kontingen sebagai gantinya p.nama ---
+                    let nMerahRaw = m.merahId === -1 ? "BYE" : (pMerah ? pMerah.kontingen : (m.merahId ? "Hantu" : "Menunggu..."));
+                    
                     let pPutih = STATE.participants.find(p => p.id === m.putihId);
-                    let nPutihRaw = m.putihId === -1 ? "BYE" : (pPutih ? pPutih.nama : (m.putihId ? "Hantu" : "Menunggu..."));
+                    // --- UBAH: Gunakan p.kontingen sebagai gantinya p.nama ---
+                    let nPutihRaw = m.putihId === -1 ? "BYE" : (pPutih ? pPutih.kontingen : (m.putihId ? "Hantu" : "Menunggu..."));
                     
                     let bgStyle = m.status === 'done' ? 'border-green-500 bg-slate-800' : m.status === 'auto-win' ? 'border-slate-600 bg-slate-900 opacity-50' : 'border-blue-500 bg-slate-800';
                     let wMerah = m.winnerId === m.merahId ? 'text-green-400' : m.winnerId && m.winnerId !== m.merahId ? 'text-slate-500 line-through' : 'text-red-400';
@@ -855,9 +859,13 @@ function renderVisualBracket(catName) {
                     let cursorM = isInteractive ? `cursor-pointer hover:text-yellow-400 border-b border-dashed border-slate-500 ${activeM}` : '';
                     let cursorP = isInteractive ? `cursor-pointer hover:text-yellow-400 border-b border-dashed border-slate-500 ${activeP}` : '';
                     
-                    let nMerahHTML = `<span class="${wMerah} truncate w-32 ${cursorM}" ${isInteractive ? `onclick="handleSwap(${m.id}, 'merah', ${m.merahId}, event)" title="Klik untuk Tukar"` : ''}>${nMerahRaw}</span>`;
-                    let nPutihHTML = `<span class="${wPutih} truncate w-32 ${cursorP}" ${isInteractive ? `onclick="handleSwap(${m.id}, 'putih', ${m.putihId}, event)" title="Klik untuk Tukar"` : ''}>${nPutihRaw}</span>`;
+                    // --- BONUS UX: Siapkan nama asli atlet untuk Tooltip (muncul saat di-hover) ---
+                    let hoverM = pMerah ? pMerah.nama.replace(/"/g, '&quot;') : "";
+                    let hoverP = pPutih ? pPutih.nama.replace(/"/g, '&quot;') : "";
 
+                    // --- UBAH: Tambahkan title="${hover}" ---
+                    let nMerahHTML = `<span class="${wMerah} truncate w-32 ${cursorM}" title="ATLET: ${hoverM} ${isInteractive ? '(Klik Tukar)' : ''}" ${isInteractive ? `onclick="handleSwap(${m.id}, 'merah', ${m.merahId}, event)"` : ''}>${nMerahRaw}</span>`;
+                    let nPutihHTML = `<span class="${wPutih} truncate w-32 ${cursorP}" title="ATLET: ${hoverP} ${isInteractive ? '(Klik Tukar)' : ''}" ${isInteractive ? `onclick="handleSwap(${m.id}, 'putih', ${m.putihId}, event)"` : ''}>${nPutihRaw}</span>`;
                     let undoBtn = m.status === 'done' ? `<button onclick="undoMatchResult(${m.id})" class="absolute -bottom-2 -right-2 bg-red-600 hover:bg-red-500 text-white text-[10px] w-7 h-7 rounded-full shadow-lg border border-slate-800 z-10 flex items-center justify-center transition-transform hover:scale-110" title="Batalkan Hasil Partai Ini"><i class="fas fa-undo"></i></button>` : '';
 
                     colHTML += `
