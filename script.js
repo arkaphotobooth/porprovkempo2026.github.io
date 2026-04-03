@@ -151,34 +151,42 @@ function renderCategoryList() { const container = document.getElementById('list-
 function deleteCategory(id) { if(confirm("Hapus kategori ini?")) { STATE.categories = STATE.categories.filter(c => c.id !== id); saveToLocalStorage(); refreshAllData(); } }
 
 function updateAllDropdowns() { 
-    // 1. Simpan memori pilihan user saat ini sebelum di-reset
-    const valP = document.getElementById('p-kategori').value;
-    const valEdit = document.getElementById('edit-kategori').value;
-    const valDraw = document.getElementById('draw-select-kategori').value;
-    const valSelect = document.getElementById('select-kategori').value;
-    const valRank = document.getElementById('rank-filter-kategori').value;
-    const valFilterAtlet = document.getElementById('filter-atlet-kategori').value;
+    // Pengaman Anti-Crash (Mencegah TypeError membaca 'value' dari null)
+    const elP = document.getElementById('p-kategori');
+    const elEdit = document.getElementById('edit-kategori');
+    const elDraw = document.getElementById('draw-select-kategori');
+    const elSelect = document.getElementById('select-kategori');
+    const elRank = document.getElementById('rank-filter-kategori');
+    const elFilterAtlet = document.getElementById('filter-atlet-kategori');
 
-    // 2. Buat ulang daftar `<option>`
+    // 1. Simpan memori dengan aman
+    const valP = elP ? elP.value : null;
+    const valEdit = elEdit ? elEdit.value : null;
+    const valDraw = elDraw ? elDraw.value : null;
+    const valSelect = elSelect ? elSelect.value : null;
+    const valRank = elRank ? elRank.value : null;
+    const valFilterAtlet = elFilterAtlet ? elFilterAtlet.value : null;
+
+    // 2. Buat ulang daftar <option>
     const options = STATE.categories.map(c => `<option value="${c.name}">${c.name}</option>`).join(''); 
     const emptyOpt = `<option value="">-- Pilih Kategori --</option>`; 
     const allOpt = '<option value="all">Semua Kategori</option>'; 
     
-    // 3. Masukkan daftar baru ke dalam HTML
-    document.getElementById('p-kategori').innerHTML = emptyOpt + options; 
-    document.getElementById('edit-kategori').innerHTML = emptyOpt + options; 
-    document.getElementById('draw-select-kategori').innerHTML = emptyOpt + options; 
-    document.getElementById('select-kategori').innerHTML = emptyOpt + options; 
-    document.getElementById('rank-filter-kategori').innerHTML = emptyOpt + options; 
-    document.getElementById('filter-atlet-kategori').innerHTML = allOpt + options; 
+    // 3. Masukkan daftar baru (HANYA jika elemennya ada di layar)
+    if(elP) elP.innerHTML = emptyOpt + options; 
+    if(elEdit) elEdit.innerHTML = emptyOpt + options; 
+    if(elDraw) elDraw.innerHTML = emptyOpt + options; 
+    if(elSelect) elSelect.innerHTML = emptyOpt + options; 
+    if(elRank) elRank.innerHTML = emptyOpt + options; 
+    if(elFilterAtlet) elFilterAtlet.innerHTML = allOpt + options; 
 
-    // 4. Kembalikan pilihan user yang tadi disimpan (jika ada)
-    if (valP) document.getElementById('p-kategori').value = valP;
-    if (valEdit) document.getElementById('edit-kategori').value = valEdit;
-    if (valDraw) document.getElementById('draw-select-kategori').value = valDraw;
-    if (valSelect) document.getElementById('select-kategori').value = valSelect;
-    if (valRank) document.getElementById('rank-filter-kategori').value = valRank;
-    if (valFilterAtlet) document.getElementById('filter-atlet-kategori').value = valFilterAtlet;
+    // 4. Kembalikan pilihan user
+    if (valP && elP) elP.value = valP;
+    if (valEdit && elEdit) elEdit.value = valEdit;
+    if (valDraw && elDraw) elDraw.value = valDraw;
+    if (valSelect && elSelect) elSelect.value = valSelect;
+    if (valRank && elRank) elRank.value = valRank;
+    if (valFilterAtlet && elFilterAtlet) elFilterAtlet.value = valFilterAtlet;
 }
 
 function handleCSVUpload(event) { 
@@ -340,19 +348,23 @@ function renderParticipantTable(resetPage = false) {
                     else if (res.perunggu.some(br => br.nama === p.nama)) { isJuara = true; resultBadge = `<span class="bg-amber-600 text-white text-[10px] px-2 py-0.5 rounded ml-2 font-bold shadow-sm">Juara 3</span>`; }
                 });
             }
-        } else if (!isRandori && p.urut > 0) {
+       } else if (!isRandori && p.urut > 0) {
+            // Pengaman data korup (Jika data p.scores tidak ada dari database lama)
+            let s = p.scores || { b1: { final: 0, tech: 0 }, b2: { final: 0, tech: 0 } };
+            let sb1 = s.b1 || { final: 0, tech: 0 };
+            let sb2 = s.b2 || { final: 0, tech: 0 };
+
             // Logika lencana juara untuk Embu Biasa
-            if (p.isFinalist && p.scores.b2 && p.scores.b2.final > 0) {
-                let rank = STATE.participants.filter(x => x.kategori === p.kategori && x.isFinalist && x.scores.b2.final > 0).sort((a,b) => b.scores.b2.final - a.scores.b2.final || b.scores.b2.tech - a.scores.b2.tech).findIndex(x => x.id === p.id);
+            if (p.isFinalist && sb2.final > 0) {
+                let rank = STATE.participants.filter(x => x.kategori === p.kategori && x.isFinalist && (x.scores && x.scores.b2 ? x.scores.b2.final : 0) > 0).sort((a,b) => (b.scores.b2.final - a.scores.b2.final) || (b.scores.b2.tech - a.scores.b2.tech)).findIndex(x => x.id === p.id);
                 if (rank === 0) { isJuara = true; resultBadge = `<span class="bg-yellow-500 text-black text-[10px] px-2 py-0.5 rounded ml-2 font-bold shadow-sm">Juara 1</span>`; }
                 else if (rank === 1) { isJuara = true; resultBadge = `<span class="bg-slate-300 text-black text-[10px] px-2 py-0.5 rounded ml-2 font-bold shadow-sm">Juara 2</span>`; }
                 else if (rank === 2) { isJuara = true; resultBadge = `<span class="bg-amber-600 text-white text-[10px] px-2 py-0.5 rounded ml-2 font-bold shadow-sm">Juara 3</span>`; }
-            } else if (!p.isFinalist && p.scores.b1 && p.scores.b1.final > 0 && !STATE.participants.some(x => x.kategori === p.kategori && x.isFinalist)) {
-                let rank = STATE.participants.filter(x => x.kategori === p.kategori && x.pool === p.pool && x.scores.b1.final > 0).sort((a,b) => b.scores.b1.final - a.scores.b1.final || b.scores.b1.tech - a.scores.b1.tech).findIndex(x => x.id === p.id);
+            } else if (!p.isFinalist && sb1.final > 0 && !STATE.participants.some(x => x.kategori === p.kategori && x.isFinalist)) {
+                let rank = STATE.participants.filter(x => x.kategori === p.kategori && x.pool === p.pool && (x.scores && x.scores.b1 ? x.scores.b1.final : 0) > 0).sort((a,b) => (b.scores.b1.final - a.scores.b1.final) || (b.scores.b1.tech - a.scores.b1.tech)).findIndex(x => x.id === p.id);
                 if (rank === 0) { isJuara = true; resultBadge = `<span class="bg-yellow-500 text-black text-[10px] px-2 py-0.5 rounded ml-2 font-bold shadow-sm">Juara 1</span>`; }
             }
         }
-
         if (!isJuara) {
             let checkDrawn = isUsingBracket ? true : p.urut > 0;
             if (p.losses === 1 && checkDrawn) resultBadge = `<span class="bg-orange-600 text-white text-[10px] px-1.5 py-0.5 rounded ml-2 font-bold shadow-sm">Loser Bracket</span>`;
@@ -1236,12 +1248,16 @@ document.getElementById('select-kategori').addEventListener('change', filterPese
 function setJudges(n) { 
     STATE.settings.numJudges = n; 
     
-    // Warnai tombol aktif
-    document.getElementById('btn-j3').className = n === 3 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; 
-    document.getElementById('btn-j5').className = n === 5 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; 
+    // Pengaman Anti-Crash untuk tombol
+    let btnJ3 = document.getElementById('btn-j3');
+    let btnJ5 = document.getElementById('btn-j5');
+    if(btnJ3) btnJ3.className = n === 3 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; 
+    if(btnJ5) btnJ5.className = n === 5 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; 
     
-    // Gambar ulang kotak wasit di layar
+    // Pengaman jika sedang tidak berada di Tab Scoring
     const container = document.getElementById('judge-inputs'); 
+    if(!container) return; 
+
     container.innerHTML = ''; 
     for(let i=1; i<=n; i++) { 
         container.innerHTML += `<div class="bg-slate-900 p-3 rounded-lg border border-slate-600 focus-within:border-blue-500 transition-colors"><div class="text-center mb-2 pb-2 border-b border-slate-700"><label class="block text-[10px] text-slate-400 uppercase font-bold">Wasit ${i}</label></div><div class="space-y-2"><div><label class="block text-[9px] text-slate-500 mb-1">TOTAL NILAI</label><input type="number" step="0.5" id="score-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-2xl font-black outline-none text-center text-white placeholder-slate-700" placeholder="0"></div><div><label class="block text-[9px] text-slate-500 mb-1 flex justify-between"><span>TEKNIK</span> ${i===1?'<span class="text-yellow-500 font-bold">TIE-BREAK</span>':''}</label><input type="number" step="0.5" id="tech-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-sm font-bold outline-none text-center ${i===1?'text-yellow-400':'text-blue-300'} placeholder-slate-700" placeholder="Opsional"></div></div></div>`; 
