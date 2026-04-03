@@ -255,10 +255,13 @@ let currentAthletePage = 1;
 const ATHLETES_PER_PAGE = 50;
 
 function renderParticipantTable(resetPage = false) { 
-    if (resetPage) currentAthletePage = 1; // Reset ke halaman 1 jika filter berubah
+    if (resetPage) currentAthletePage = 1;
 
     const body = document.getElementById('table-peserta-body'); 
-    const filter = document.getElementById('filter-atlet-kategori').value; 
+    const filterEl = document.getElementById('filter-atlet-kategori'); 
+    if(!body) return; // Mencegah crash jika layar belum siap
+    
+    const filter = filterEl ? filterEl.value : 'all';
     let list = filter && filter !== 'all' ? STATE.participants.filter(p => p.kategori === filter) : STATE.participants; 
     
     // --- UPDATE UI PAGINATION ---
@@ -274,7 +277,7 @@ function renderParticipantTable(resetPage = false) {
         if(infoEl) infoEl.innerText = `Menampilkan 0 atlet`;
         if(btnPrev) btnPrev.disabled = true;
         if(btnNext) btnNext.disabled = true;
-        return body.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-500">Tidak ada data.</td></tr>`;
+        return body.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-500">Tidak ada data peserta di kategori ini.</td></tr>`;
     }
 
     const startIndex = (currentAthletePage - 1) * ATHLETES_PER_PAGE;
@@ -283,36 +286,32 @@ function renderParticipantTable(resetPage = false) {
     if(infoEl) infoEl.innerText = `Menampilkan ${startIndex + 1} - ${endIndex} dari ${totalItems} Atlet`;
     if(btnPrev) btnPrev.disabled = currentAthletePage === 1;
     if(btnNext) btnNext.disabled = currentAthletePage === totalPages;
-    // ----------------------------
 
     let sortedList = [...list].sort((a,b) => a.kategori === b.kategori ? a.urut - b.urut : a.kategori.localeCompare(b.kategori)); 
-    
-    // POTONG DATA UNTUK HALAMAN INI SAJA (MAX 50)
     let paginatedList = sortedList.slice(startIndex, endIndex);
 
-    // --- STRATEGI A: MEMOIZATION (DIET VERSI SAPU JAGAT) ---
+    // --- DETEKTOR BAGAN ---
     let cachedResults = {};
     let cachedDrawn = {};
     let uniqueCategories = [...new Set(paginatedList.map(p => p.kategori))];
     
     uniqueCategories.forEach(catName => {
-        // Karena H2H, SEMUA kategori dianggap punya Bagan
         let isDrawn = STATE.matches.some(m => m.kategori === catName);
         cachedDrawn[catName] = isDrawn;
-        if (isDrawn) {
-            cachedResults[catName] = calculateRandoriFinalists(catName);
-        }
+        if (isDrawn) cachedResults[catName] = calculateRandoriFinalists(catName);
     });
-    // -----------------------------------------------
 
+    // --- MENGGAMBAR TABEL ---
     body.innerHTML = paginatedList.map(p => { 
-        let isDrawn = cachedDrawn[p.kategori] || false;
+        let catObj = STATE.categories.find(c => c.name === p.kategori);
+        let isRandori = catObj && catObj.discipline === 'randori';
+        let isUsingBracket = cachedDrawn[p.kategori] || false;
         
         let baseStatus = '';
         let resultBadge = '';
 
-        // 1. TENTUKAN STATUS UNDIAN (Berlaku untuk Randori & Embu H2H)
-        if (isDrawn) {
+        // 1. TENTUKAN STATUS UNDIAN (Berlaku untuk Randori, Embu H2H, dan Embu Biasa)
+        if (isUsingBracket) {
             let matchData = STATE.matches.find(m => m.merahId === p.id || m.putihId === p.id);
             if(matchData) {
                 baseStatus = matchData.pool !== '-' ? `POOL ${matchData.pool}` : 'Bagan Utama';
@@ -320,37 +319,51 @@ function renderParticipantTable(resetPage = false) {
                 baseStatus = `<span class="text-red-400 italic">Belum Masuk Bagan</span>`;
             }
         } else {
-            baseStatus = `<span class="text-red-400 italic">Belum Undian</span>`;
+            // JALUR EMBU BIASA
+            if (p.urut > 0) {
+                let poolLabel = p.pool !== '-' && p.pool !== 'SINGLE' ? ` | POOL ${p.pool}` : '';
+                baseStatus = `No.${p.urut}${poolLabel}`;
+            } else {
+                baseStatus = `<span class="text-red-400 italic">Belum Undian</span>`;
+            }
         }
 
-        // 2. TENTUKAN STATUS JUARA / GUGUR
+        // 2. TENTUKAN LENCANA JUARA / GUGUR
         let isJuara = false;
 
-        if (isDrawn) {
+        if (isUsingBracket) {
             const poolResults = cachedResults[p.kategori];
             if (poolResults) {
                 poolResults.forEach(res => {
-                    if (res.emas === p.nama) {
-                        isJuara = true; resultBadge = `<span class="bg-yellow-500 text-black text-[10px] px-2 py-0.5 rounded ml-2 font-bold shadow-sm">Juara 1</span>`;
-                    } else if (res.perak === p.nama) {
-                        isJuara = true; resultBadge = `<span class="bg-slate-300 text-black text-[10px] px-2 py-0.5 rounded ml-2 font-bold shadow-sm">Juara 2</span>`;
-                    } else if (res.perunggu.some(br => br.nama === p.nama)) {
-                        isJuara = true; resultBadge = `<span class="bg-amber-600 text-white text-[10px] px-2 py-0.5 rounded ml-2 font-bold shadow-sm">Juara 3</span>`;
-                    }
+                    if (res.emas === p.nama) { isJuara = true; resultBadge = `<span class="bg-yellow-500 text-black text-[10px] px-2 py-0.5 rounded ml-2 font-bold shadow-sm">Juara 1</span>`; } 
+                    else if (res.perak === p.nama) { isJuara = true; resultBadge = `<span class="bg-slate-300 text-black text-[10px] px-2 py-0.5 rounded ml-2 font-bold shadow-sm">Juara 2</span>`; } 
+                    else if (res.perunggu.some(br => br.nama === p.nama)) { isJuara = true; resultBadge = `<span class="bg-amber-600 text-white text-[10px] px-2 py-0.5 rounded ml-2 font-bold shadow-sm">Juara 3</span>`; }
                 });
             }
-        } 
+        } else if (!isRandori && p.urut > 0) {
+            // Logika lencana juara untuk Embu Biasa
+            if (p.isFinalist && p.scores.b2 && p.scores.b2.final > 0) {
+                let rank = STATE.participants.filter(x => x.kategori === p.kategori && x.isFinalist && x.scores.b2.final > 0).sort((a,b) => b.scores.b2.final - a.scores.b2.final || b.scores.b2.tech - a.scores.b2.tech).findIndex(x => x.id === p.id);
+                if (rank === 0) { isJuara = true; resultBadge = `<span class="bg-yellow-500 text-black text-[10px] px-2 py-0.5 rounded ml-2 font-bold shadow-sm">Juara 1</span>`; }
+                else if (rank === 1) { isJuara = true; resultBadge = `<span class="bg-slate-300 text-black text-[10px] px-2 py-0.5 rounded ml-2 font-bold shadow-sm">Juara 2</span>`; }
+                else if (rank === 2) { isJuara = true; resultBadge = `<span class="bg-amber-600 text-white text-[10px] px-2 py-0.5 rounded ml-2 font-bold shadow-sm">Juara 3</span>`; }
+            } else if (!p.isFinalist && p.scores.b1 && p.scores.b1.final > 0 && !STATE.participants.some(x => x.kategori === p.kategori && x.isFinalist)) {
+                let rank = STATE.participants.filter(x => x.kategori === p.kategori && x.pool === p.pool && x.scores.b1.final > 0).sort((a,b) => b.scores.b1.final - a.scores.b1.final || b.scores.b1.tech - a.scores.b1.tech).findIndex(x => x.id === p.id);
+                if (rank === 0) { isJuara = true; resultBadge = `<span class="bg-yellow-500 text-black text-[10px] px-2 py-0.5 rounded ml-2 font-bold shadow-sm">Juara 1</span>`; }
+            }
+        }
 
-        if (!isJuara && isDrawn) {
-            if (p.losses === 1) resultBadge = `<span class="bg-orange-600 text-white text-[10px] px-1.5 py-0.5 rounded ml-2 font-bold shadow-sm">Loser Bracket</span>`;
-            else if (p.losses >= 2) resultBadge = `<span class="bg-red-800 text-white text-[10px] px-1.5 py-0.5 rounded ml-2 font-bold shadow-sm">Gugur</span>`;
+        if (!isJuara) {
+            let checkDrawn = isUsingBracket ? true : p.urut > 0;
+            if (p.losses === 1 && checkDrawn) resultBadge = `<span class="bg-orange-600 text-white text-[10px] px-1.5 py-0.5 rounded ml-2 font-bold shadow-sm">Loser Bracket</span>`;
+            else if (p.losses >= 2 && checkDrawn) resultBadge = `<span class="bg-red-800 text-white text-[10px] px-1.5 py-0.5 rounded ml-2 font-bold shadow-sm">Gugur</span>`;
         }
         
         let statusHTML = `<div class="text-xs text-blue-300 font-semibold mt-1 flex items-center">${baseStatus} ${resultBadge}</div>`;
         
         return `<tr class="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
             <td class="p-3 align-top font-bold text-blue-300 w-[35%] whitespace-normal break-words leading-tight">
-                ${p.nama}
+                ${p.nama} ${p.isFinalist ? '<br><span class="text-[10px] text-yellow-500 font-bold mt-1">FINALIS</span>' : ''}
             </td>
             <td class="p-3 align-top w-[25%] whitespace-normal break-words text-sm text-slate-200">
                 ${p.kontingen}
