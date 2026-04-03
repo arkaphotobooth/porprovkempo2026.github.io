@@ -1236,15 +1236,18 @@ document.getElementById('select-kategori').addEventListener('change', filterPese
 function setJudges(n) { 
     STATE.settings.numJudges = n; 
     
-    // --- FIX PENTING: Simpan memori tombol 3 Juri ke Firebase ---
-    saveToLocalStorage(); 
-    
+    // Warnai tombol aktif
     document.getElementById('btn-j3').className = n === 3 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; 
     document.getElementById('btn-j5').className = n === 5 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; 
     
+    // Gambar ulang kotak wasit di layar
     const container = document.getElementById('judge-inputs'); 
     container.innerHTML = ''; 
-    for(let i=1; i<=n; i++) {container.innerHTML += `<div class="bg-slate-900 p-3 rounded-lg border border-slate-600 focus-within:border-blue-500 transition-colors"><div class="text-center mb-2 pb-2 border-b border-slate-700"><label class="block text-[10px] text-slate-400 uppercase font-bold">Wasit ${i}</label></div><div class="space-y-2"><div><label class="block text-[9px] text-slate-500 mb-1">TOTAL NILAI</label><input type="number" step="0.5" id="score-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-2xl font-black outline-none text-center text-white placeholder-slate-700" placeholder="0"></div><div><label class="block text-[9px] text-slate-500 mb-1 flex justify-between"><span>TEKNIK</span> ${i===1?'<span class="text-yellow-500 font-bold">TIE-BREAK</span>':''}</label><input type="number" step="0.5" id="tech-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-sm font-bold outline-none text-center ${i===1?'text-yellow-400':'text-blue-300'} placeholder-slate-700" placeholder="Opsional"></div></div></div>`; } calculateLive(); }
+    for(let i=1; i<=n; i++) { 
+        container.innerHTML += `<div class="bg-slate-900 p-3 rounded-lg border border-slate-600 focus-within:border-blue-500 transition-colors"><div class="text-center mb-2 pb-2 border-b border-slate-700"><label class="block text-[10px] text-slate-400 uppercase font-bold">Wasit ${i}</label></div><div class="space-y-2"><div><label class="block text-[9px] text-slate-500 mb-1">TOTAL NILAI</label><input type="number" step="0.5" id="score-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-2xl font-black outline-none text-center text-white placeholder-slate-700" placeholder="0"></div><div><label class="block text-[9px] text-slate-500 mb-1 flex justify-between"><span>TEKNIK</span> ${i===1?'<span class="text-yellow-500 font-bold">TIE-BREAK</span>':''}</label><input type="number" step="0.5" id="tech-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-sm font-bold outline-none text-center ${i===1?'text-yellow-400':'text-blue-300'} placeholder-slate-700" placeholder="Opsional"></div></div></div>`; 
+    } 
+    calculateLive(); 
+}
 
 // ==========================================
 // FUNGSI LOAD UI SCORING HYBRID
@@ -1302,19 +1305,17 @@ function loadExistingScores() {
 function calculateLive() {
     let raw = [];
     let techRaw = [];
-
-    // FIX: Deteksi jumlah wasit berdasarkan KOTAK FISIK di layar, BUKAN dari database
     let actualJudges = 0;
+
+    // 1. Hitung berapa kotak yang BENAR-BENAR tampil di layar saat ini
     for(let i=1; i<=5; i++) {
         if(document.getElementById(`score-${i}`)) actualJudges++;
     }
 
-    // 1. Ambil nilai HANYA dari kotak wasit yang aktif 
+    // 2. Ambil angkanya
     for(let i=1; i<=actualJudges; i++) {
         let sEl = document.getElementById(`score-${i}`);
         let tEl = document.getElementById(`tech-${i}`);
-
-        // Jika kotak tidak kosong, ambil angkanya. Jika kosong, anggap 0.
         raw.push(sEl && sEl.value !== '' ? parseFloat(sEl.value) : 0);
         techRaw.push(tEl && tEl.value !== '' ? parseFloat(tEl.value) : 0);
     }
@@ -1322,16 +1323,14 @@ function calculateLive() {
     let validScores = [...raw];
     let validTechs = [...techRaw];
 
-    // 2. LOGIKA PEMOTONGAN CERDAS: HANYA potong jika kotak fisiknya ada 5!
+    // 3. LOGIKA PEMOTONGAN: Hanya potong nilai JIKA wasitnya benar-benar ada 5
     if (actualJudges === 5 && validScores.length === 5) {
         let minVal = Math.min(...validScores);
         let maxVal = Math.max(...validScores);
 
-        // Hapus 1 nilai terendah dan 1 nilai tertinggi
         validScores.splice(validScores.indexOf(minVal), 1);
         validScores.splice(validScores.indexOf(maxVal), 1);
 
-        // Potong nilai tie-break teknik juga (jika juri mengisi)
         if(validTechs.length === 5) {
             let minT = Math.min(...validTechs);
             let maxT = Math.max(...validTechs);
@@ -1340,15 +1339,17 @@ function calculateLive() {
         }
     }
 
-    // 3. Jumlahkan Total Nilai Bersih
     let totalRaw = validScores.reduce((a,b) => a+b, 0);
     let totalTech = validTechs.reduce((a,b) => a+b, 0);
 
-    // 4. Kalkulasi Penalti Waktu
+    // 4. Deteksi Waktu Penalti (Anti-Crash)
     let penalty = 0;
-    let minTimeInputs = document.querySelectorAll('input[type="number"]');
-    let minTime = minTimeInputs.length > 0 ? parseFloat(minTimeInputs[0].value) : 90;
-    let maxTime = minTimeInputs.length > 1 ? parseFloat(minTimeInputs[1].value) : 120;
+    let allNums = document.querySelectorAll('input[type="number"]');
+    // Memfilter agar sistem tidak salah mengira kotak nilai sebagai kotak waktu
+    let timeInputs = Array.from(allNums).filter(inp => !inp.id.startsWith('score') && !inp.id.startsWith('tech'));
+    
+    let minTime = timeInputs.length > 0 ? parseFloat(timeInputs[0].value) || 90 : 90;
+    let maxTime = timeInputs.length > 1 ? parseFloat(timeInputs[1].value) || 120 : 120;
     
     if (minTime > 0 && maxTime > 0 && UI.timerSeconds > 0) {
         if (UI.timerSeconds < minTime) {
@@ -1360,12 +1361,13 @@ function calculateLive() {
 
     let finalScore = totalRaw - penalty;
 
-    // 5. Lempar Angka ke Layar Visual
+    // 5. Lempar ke Layar
     let scoreEl = document.getElementById('live-final-score');
     let penEl = document.getElementById('live-penalty');
     if(scoreEl) scoreEl.innerText = finalScore.toFixed(1);
     if(penEl) penEl.innerText = `Penalti Waktu: ${penalty}`;
 
+    // Kembalikan 'raw' utuh (bukan validScores) agar kantong rahasia Excel tetap menyimpan semua nilai asli!
     return { raw: raw, techRaw: techRaw, penalty: penalty, final: finalScore, tieBreaker: totalTech };
 }
 
