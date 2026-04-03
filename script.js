@@ -1124,28 +1124,45 @@ document.getElementById('select-peserta').addEventListener('change', (e) => {
     }
 });
 
-function loadRandoriMatch() {
-    const val = document.getElementById('select-peserta').value; 
-    if(!val) return; // <-- Hapus pengecekan startsWith('match-')
-    
-    // Langsung jadikan angka (Integer), tidak perlu lagi me-replace kata 'match-'
-    const newMatchId = parseInt(val); 
-    
-    // KUNCI PENGAMAN: Cegah reset skor jika match yang dimuat masih sama!
-    if (currentRandoriMatchId === newMatchId) return;
+// Pastikan variabel memori ini dideklarasikan (bisa ditaruh di atas fungsi ini)
+let currentRandoriMatchId = null;
 
+function loadRandoriMatch() {
+    const val = document.getElementById('select-peserta').value;
+    if(!val) return;
+    
+    // Langsung konversi ke angka murni
+    const newMatchId = parseInt(val);
+    
+    // KUNCI PENGAMAN: Cegah macet jika partai yang dimuat masih sama, 
+    // TAPI paksa muat ulang jika namanya masih kosong ("-")
+    if (currentRandoriMatchId === newMatchId && document.getElementById('randori-nama-merah').innerText !== "-") return;
+    
+    // SIMPAN MEMORI partai yang sedang aktif (Penting agar tombol Simpan bisa bekerja!)
     currentRandoriMatchId = newMatchId; 
-    const match = STATE.matches.find(m => m.id === currentRandoriMatchId); 
+    
+    // Cari data partai di dalam bagan
+    const match = STATE.matches.find(m => m.id === newMatchId);
     if(!match) return;
 
-    const merah = STATE.participants.find(p => p.id === match.merahId); 
-    const putih = STATE.participants.find(p => p.id === match.putihId);
-    document.getElementById('randori-nama-merah').innerText = merah ? merah.nama : "-"; 
-    document.getElementById('randori-kont-merah').innerText = merah ? merah.kontingen : "-";
-    document.getElementById('randori-nama-putih').innerText = putih ? putih.nama : "-"; 
-    document.getElementById('randori-kont-putih').innerText = putih ? putih.kontingen : "-";
+    // Cari data atlet berdasarkan ID dari partai tersebut
+    const mrh = STATE.participants.find(p => p.id === match.merahId);
+    const pth = STATE.participants.find(p => p.id === match.putihId);
+
+    // 1. TAMPILKAN NAMA & KONTINGEN KE LAYAR
+    document.getElementById('randori-nama-merah').innerText = mrh ? mrh.nama : "Menunggu...";
+    document.getElementById('randori-kont-merah').innerText = mrh ? mrh.kontingen : "-";
+    document.getElementById('randori-nama-putih').innerText = pth ? pth.nama : "Menunggu...";
+    document.getElementById('randori-kont-putih').innerText = pth ? pth.kontingen : "-";
+
+    // 2. RESET ATAU MUAT ULANG SKOR
+    RANDORI_STATE = {
+        merah: { score: match.skorMerah || 0, warn1: false, warn2: false },
+        putih: { score: match.skorPutih || 0, warn1: false, warn2: false }
+    };
     
-    resetRandoriBoard(); 
+    // Perbarui angka besar di tengah layar
+    updateRandoriUI();
 }
 
 function resetRandoriBoard() { RANDORI_STATE = { merah: { score: 0 }, putih: { score: 0 } }; updateRandoriUI(); }
