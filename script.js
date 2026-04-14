@@ -2230,10 +2230,11 @@ function handleEmbuSwap(participantId, poolType) {
 let currentEmbuMatchId = null;
 let activeEmbuCorner = null; 
 
-// FIX MEMORI: Tambahkan raw array & waktu agar data tidak hilang saat pindah tab
+// MEMORI BARU: Menyimpan Nilai Teknik Wasit 1 dan Total 5 Nilai Teknik secara terpisah
 let tempEmbuScores = { 
     merah: 0, putih: 0, 
-    merahTech: 0, putihTech: 0,
+    merahTechW1: 0, putihTechW1: 0,
+    merahTechAll: 0, putihTechAll: 0,
     merahRaw: [], putihRaw: [],
     merahTechRaw: [], putihTechRaw: [],
     merahTime: 0, putihTime: 0
@@ -2266,10 +2267,10 @@ function loadEmbuMatch() {
     document.getElementById('embu-nama-merah').innerText = merah ? merah.nama : "-";
     document.getElementById('embu-nama-putih').innerText = putih ? putih.nama : "-";
 
-    // Reset dan siapkan keranjang memori untuk partai baru
     tempEmbuScores = { 
         merah: match.skorMerah || 0, putih: match.skorPutih || 0, 
-        merahTech: 0, putihTech: 0,
+        merahTechW1: 0, putihTechW1: 0,
+        merahTechAll: 0, putihTechAll: 0,
         merahRaw: [], putihRaw: [],
         merahTechRaw: [], putihTechRaw: [],
         merahTime: 0, putihTime: 0
@@ -2278,12 +2279,11 @@ function loadEmbuMatch() {
     document.getElementById('embu-skor-merah').innerText = tempEmbuScores.merah.toFixed(1);
     document.getElementById('embu-skor-putih').innerText = tempEmbuScores.putih.toFixed(1);
 
-    activeEmbuCorner = null; // Cegah bug penumpukan memori awal
+    activeEmbuCorner = null; 
     setEmbuCorner('merah'); 
 }
 
 function setEmbuCorner(corner) {
-    // 1. AUTO-SAVE MEMORI: Simpan data layar saat ini ke dalam variabel sebelum pindah tab
     if (activeEmbuCorner) {
         let calc = calculateLive();
         if (activeEmbuCorner === 'merah') {
@@ -2304,24 +2304,20 @@ function setEmbuCorner(corner) {
     const skorPutih = document.getElementById('embu-skor-putih');
     const labelPutih = document.querySelector('#embu-tab-putih .text-xs');
 
-    // Kosmetik UI Tab Aktif
     if(corner === 'merah') {
         tabMerah.className = "flex-1 bg-red-900/50 border-2 border-red-500 p-3 rounded-lg mr-2 text-center cursor-pointer shadow-[0_0_10px_rgba(239,68,68,0.3)] transition-all";
         tabPutih.className = "flex-1 bg-slate-800 border border-slate-600 p-3 rounded-lg ml-2 text-center cursor-pointer opacity-50 hover:opacity-100 transition-all";
-        
         namaPutih.classList.remove('text-slate-900'); namaPutih.classList.add('text-white');
         skorPutih.classList.remove('text-slate-900'); skorPutih.classList.add('text-white');
         labelPutih.classList.remove('text-slate-600'); labelPutih.classList.add('text-slate-400');
     } else {
         tabPutih.className = "flex-1 bg-slate-200 border-2 border-white p-3 rounded-lg ml-2 text-center cursor-pointer shadow-[0_0_10px_rgba(255,255,255,0.3)] transition-all";
         tabMerah.className = "flex-1 bg-red-900/30 border border-red-800 p-3 rounded-lg mr-2 text-center cursor-pointer opacity-50 hover:opacity-100 transition-all";
-        
         namaPutih.classList.remove('text-white'); namaPutih.classList.add('text-slate-900');
         skorPutih.classList.remove('text-white'); skorPutih.classList.add('text-slate-900');
         labelPutih.classList.remove('text-slate-400'); labelPutih.classList.add('text-slate-600');
     }
 
-    // 2. LOAD MEMORI: Tarik kembali data lama yang tersimpan ke dalam kotak juri
     let rawData = corner === 'merah' ? tempEmbuScores.merahRaw : tempEmbuScores.putihRaw;
     let techRawData = corner === 'merah' ? tempEmbuScores.merahTechRaw : tempEmbuScores.putihTechRaw;
     let savedTime = corner === 'merah' ? tempEmbuScores.merahTime : tempEmbuScores.putihTime;
@@ -2329,8 +2325,6 @@ function setEmbuCorner(corner) {
     for(let i=1; i<=STATE.settings.numJudges; i++) {
         let sEl = document.getElementById(`score-${i}`);
         let tEl = document.getElementById(`tech-${i}`);
-        
-        // Jika angka 0, anggap kosong agar UI terlihat bersih
         if(sEl) sEl.value = (rawData && rawData[i-1] > 0) ? rawData[i-1] : '';
         if(tEl) tEl.value = (techRawData && techRawData[i-1] > 0) ? techRawData[i-1] : '';
     }
@@ -2338,6 +2332,93 @@ function setEmbuCorner(corner) {
     UI.timerSeconds = savedTime || 0; 
     updateTimerUI();
     calculateLive();
+}
+
+function setJudges(n) { 
+    STATE.settings.numJudges = n; 
+    let btnJ3 = document.getElementById('btn-j3');
+    let btnJ5 = document.getElementById('btn-j5');
+    if(btnJ3) btnJ3.className = n === 3 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; 
+    if(btnJ5) btnJ5.className = n === 5 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; 
+    
+    const container = document.getElementById('judge-inputs'); 
+    if(!container) return;
+
+    let tempScores = [];
+    let tempTechs = [];
+    for(let i=1; i<=5; i++) {
+        let sEl = document.getElementById(`score-${i}`);
+        let tEl = document.getElementById(`tech-${i}`);
+        tempScores.push(sEl ? sEl.value : '');
+        tempTechs.push(tEl ? tEl.value : '');
+    }
+
+    container.innerHTML = ''; 
+    for(let i=1; i<=n; i++) { 
+        // UI UPDATE: Mengembalikan label kuning khusus Wasit 1 (Sebagai Wasit Utama)
+        container.innerHTML += `<div class="bg-slate-900 p-3 rounded-lg border border-slate-600 focus-within:border-blue-500 transition-colors"><div class="text-center mb-2 pb-2 border-b border-slate-700"><label class="block text-[10px] text-slate-400 uppercase font-bold">Wasit ${i}</label></div><div class="space-y-2"><div><label class="block text-[9px] text-slate-500 mb-1">TOTAL NILAI</label><input type="number" step="0.5" id="score-${i}" value="${tempScores[i-1] || ''}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-2xl font-black outline-none text-center text-white placeholder-slate-700" placeholder="0"></div><div><label class="block text-[9px] text-slate-500 mb-1 flex justify-between"><span>NILAI TEKNIK</span> ${i===1?'<span class="text-yellow-500 font-bold">UTAMA</span>':''}</label><input type="number" step="0.5" id="tech-${i}" value="${tempTechs[i-1] || ''}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-sm font-bold outline-none text-center ${i===1?'text-yellow-400':'text-blue-300'} placeholder-slate-700" placeholder="Opsional"></div></div></div>`; 
+    } 
+    calculateLive(); 
+}
+
+function calculateLive() {
+    let raw = [];
+    let techRaw = [];
+    let actualJudges = 0;
+    for(let i=1; i<=5; i++) {
+        if(document.getElementById(`score-${i}`)) actualJudges++;
+    }
+
+    for(let i=1; i<=actualJudges; i++) {
+        let sEl = document.getElementById(`score-${i}`);
+        let tEl = document.getElementById(`tech-${i}`);
+        raw.push(sEl && sEl.value !== '' ? parseFloat(sEl.value) : 0);
+        techRaw.push(tEl && tEl.value !== '' ? parseFloat(tEl.value) : 0);
+    }
+
+    let validScores = [...raw];
+    
+    // PEMOTONGAN TERTINGGI & TERENDAH: HANYA BERLAKU UNTUK TOTAL NILAI (Raw)
+    if (actualJudges === 5 && validScores.length === 5) {
+        let minVal = Math.min(...validScores);
+        let maxVal = Math.max(...validScores);
+        validScores.splice(validScores.indexOf(minVal), 1);
+        validScores.splice(validScores.indexOf(maxVal), 1);
+    }
+
+    let totalRaw = validScores.reduce((a,b) => a+b, 0);
+
+    // KALKULASI TIE-BREAKER (TEKNIK) SESUAI ATURAN BARU
+    let techWasit1 = techRaw.length > 0 ? techRaw[0] : 0;     // TIE-BREAK 1: Nilai Teknik Wasit 1
+    let totalTechAll = techRaw.reduce((a,b) => a+b, 0);       // TIE-BREAK 2: Total 5 Nilai Teknik (Tanpa dipotong)
+
+    let penalty = 0;
+    let minTimeEl = document.getElementById('min-time');
+    let maxTimeEl = document.getElementById('max-time');
+    let minTime = (minTimeEl && minTimeEl.value !== '') ? parseFloat(minTimeEl.value) : 0;
+    let maxTime = (maxTimeEl && maxTimeEl.value !== '') ? parseFloat(maxTimeEl.value) : 0;
+        if (minTime > 0 && maxTime > 0 && UI.timerSeconds > 0) {
+        if (UI.timerSeconds < minTime) {
+            penalty = Math.ceil((minTime - UI.timerSeconds) / 5) * 5;
+        } else if (UI.timerSeconds > maxTime) {
+            penalty = Math.ceil((UI.timerSeconds - maxTime) / 5) * 5;
+        }
+    }
+    let finalScore = totalRaw - penalty;
+
+    let scoreEl = document.getElementById('live-final-score');
+    let penEl = document.getElementById('live-penalty');
+    if(scoreEl) scoreEl.innerText = finalScore.toFixed(1);
+    if(penEl) penEl.innerText = `Penalti Waktu: ${penalty}`;
+
+    return { 
+        raw: raw, 
+        techRaw: techRaw, 
+        penalty: penalty, 
+        final: finalScore, 
+        techWasit1: techWasit1, 
+        techAll: totalTechAll 
+    };
 }
 
 function saveEmbuCornerScore() {
@@ -2351,7 +2432,8 @@ function saveEmbuCornerScore() {
     const calc = calculateLive();
     if(activeEmbuCorner === 'merah') {
         tempEmbuScores.merah = calc.final;
-        tempEmbuScores.merahTech = calc.tieBreaker;
+        tempEmbuScores.merahTechW1 = calc.techWasit1;
+        tempEmbuScores.merahTechAll = calc.techAll;
         tempEmbuScores.merahRaw = calc.raw;
         tempEmbuScores.merahTechRaw = calc.techRaw;
         tempEmbuScores.merahTime = UI.timerSeconds;
@@ -2361,7 +2443,8 @@ function saveEmbuCornerScore() {
         setEmbuCorner('putih'); 
     } else {
         tempEmbuScores.putih = calc.final;
-        tempEmbuScores.putihTech = calc.tieBreaker;
+        tempEmbuScores.putihTechW1 = calc.techWasit1;
+        tempEmbuScores.putihTechAll = calc.techAll;
         tempEmbuScores.putihRaw = calc.raw;
         tempEmbuScores.putihTechRaw = calc.techRaw;
         tempEmbuScores.putihTime = UI.timerSeconds;
@@ -2388,15 +2471,24 @@ function finalizeEmbuMatch() {
     } else if (sPutih > sMerah) {
         winnerId = match.putihId; loserId = match.merahId;
     } else {
-        // TIE BREAKER: Bandingkan Nilai Teknik
-        if (tempEmbuScores.merahTech > tempEmbuScores.putihTech) {
+        // TIE BREAKER 1: Nilai Teknik Wasit Utama (Wasit 1)
+        if (tempEmbuScores.merahTechW1 > tempEmbuScores.putihTechW1) {
             winnerId = match.merahId; loserId = match.putihId;
-            alert("NILAI TOTAL SERI!\nKemenangan ditentukan oleh Nilai TEKNIK tertinggi (PITA MERAH).");
-        } else if (tempEmbuScores.putihTech > tempEmbuScores.merahTech) {
+            alert("NILAI TOTAL SERI!\nKemenangan ditentukan oleh Nilai TEKNIK WASIT UTAMA (PITA MERAH).");
+        } else if (tempEmbuScores.putihTechW1 > tempEmbuScores.merahTechW1) {
             winnerId = match.putihId; loserId = match.merahId;
-            alert("NILAI TOTAL SERI!\nKemenangan ditentukan oleh Nilai TEKNIK tertinggi (PITA PUTIH).");
+            alert("NILAI TOTAL SERI!\nKemenangan ditentukan oleh Nilai TEKNIK WASIT UTAMA (PITA PUTIH).");
         } else {
-            return alert("NILAI TOTAL & TEKNIK SERI KUAT!\nPanitia harus memutuskan tanding ulang / Hantei. Silakan ubah salah satu nilai Teknik sebagai penentu.");
+            // TIE BREAKER 2: Jumlah 5 Nilai Teknik (Tanpa dibuang)
+            if (tempEmbuScores.merahTechAll > tempEmbuScores.putihTechAll) {
+                winnerId = match.merahId; loserId = match.putihId;
+                alert("NILAI TOTAL & TEKNIK WASIT UTAMA SERI!\nKemenangan ditentukan oleh JUMLAH 5 NILAI TEKNIK (PITA MERAH).");
+            } else if (tempEmbuScores.putihTechAll > tempEmbuScores.merahTechAll) {
+                winnerId = match.putihId; loserId = match.merahId;
+                alert("NILAI TOTAL & TEKNIK WASIT UTAMA SERI!\nKemenangan ditentukan oleh JUMLAH 5 NILAI TEKNIK (PITA PUTIH).");
+            } else {
+                return alert("SEMUA NILAI SERI KUAT!\nPanitia harus memutuskan tanding ulang / Hantei. Silakan ubah salah satu nilai Teknik sebagai penentu.");
+            }
         }
     }
 
