@@ -1,5 +1,5 @@
 /**
- * MASS - Martial Arts Scoring System (FIREBASE ONLINE VERSION)
+ * MASS - Martial Arts Scoring System (PORPROV 2026 Version)
  */
 
 // 1. Konfigurasi Rahasia Firebase Anda
@@ -982,58 +982,6 @@ function renderVisualBracket(catName) {
     } catch (err) { console.error(err); }
 }
 
-function renderEmbuLayout(catName, container, poolsConfig) {
-    let gridCols = poolsConfig.length > 1 ? 'md:grid-cols-2' : 'grid-cols-1';
-    let html = `
-    <div class="col-span-full w-full shadow-lg rounded-xl overflow-hidden border border-slate-700">
-        <div class="flex justify-between items-center bg-slate-800 p-4 border-b border-slate-700">
-            <div class="flex items-center gap-3">
-                <span class="bg-blue-600 text-white text-[10px] px-2 py-1 rounded font-black tracking-wider">DRAWING EMBU</span>
-                <span class="text-sm font-bold text-yellow-400 truncate">${catName}</span>
-            </div>
-            <span class="text-[10px] text-slate-400 font-mono hidden md:block">Swap: Klik Nama ke Nama Lain</span>
-            <button onclick="resetNilaiKategoriLokal()" class="bg-red-900/50 border border-red-700 text-red-400 hover:bg-red-500 hover:text-white w-8 h-8 rounded flex items-center justify-center transition-colors shadow-sm" title="Kosongkan Nilai (Urutan Tetap)"><i class="fas fa-eraser text-sm"></i></button>
-        </div>
-        <div class="grid grid-cols-1 ${gridCols} gap-6 bg-slate-900 p-5">`;
-
-    poolsConfig.forEach(pool => {
-        let borderColor = pool.isFinal || pool.isB2 ? 'border-yellow-600' : 'border-slate-600'; 
-        let titleColor = pool.isFinal || pool.isB2 ? 'text-yellow-500' : 'text-purple-400'; 
-        
-        let poolType = pool.isFinal ? 'final' : (pool.isB2 ? 'b2' : 'b1');
-
-        html += `<div class="bg-slate-800 p-4 md:p-5 rounded-xl border ${borderColor} shadow-sm w-full h-full flex flex-col">
-            <h3 class="font-black text-center ${titleColor} mb-4 border-b border-slate-700 pb-3">${pool.title}</h3>
-            <div class="space-y-3 flex-1">`; 
-            
-        // FIX: Tambahkan parameter 'index' di sini untuk menghitung baris
-        pool.data.forEach((p, index) => { 
-            let noUrut = pool.isFinal ? p.urutFinal : (pool.isB2 ? p.urutB2 : p.urut); 
-            
-            // FIX "UNDEFINED": Jika noUrut kosong/undefined, gunakan nomor baris (index + 1)
-            if (!noUrut) noUrut = index + 1;
-            
-            let isSelected = (EMBU_SWAP_SELECTION && EMBU_SWAP_SELECTION.id === p.id && EMBU_SWAP_SELECTION.type === poolType);
-            let activeClass = isSelected 
-                ? 'bg-yellow-600/40 border-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.3)]' 
-                : 'bg-slate-900/50 border-slate-700/50 hover:bg-slate-700/40';
-
-            html += `<div onclick="handleEmbuSwap(${p.id}, '${poolType}')" class="cursor-pointer flex flex-col xl:flex-row items-start xl:items-center justify-between text-sm p-3 rounded-lg border gap-3 transition-all duration-200 ${activeClass}">
-                <div class="flex gap-3 items-start w-full">
-                    <span class="font-mono ${isSelected ? 'text-yellow-400' : 'text-slate-500'} w-5 text-right flex-shrink-0 pt-0.5">${noUrut}.</span>
-                    <span class="font-bold ${isSelected ? 'text-yellow-400' : 'text-white'} whitespace-normal break-words leading-snug">${p.nama}</span>
-                </div>
-                <div class="flex justify-start xl:justify-end w-full xl:w-auto pl-8 xl:pl-0">
-                    <span class="text-[10px] ${isSelected ? 'text-yellow-200 bg-yellow-900/50 border-yellow-600' : 'text-slate-400 bg-slate-800 border-slate-700'} px-2 py-1 rounded border whitespace-nowrap shadow-sm">${p.kontingen}</span>
-                </div>
-            </div>`; 
-        }); 
-        html += `</div></div>`;
-    });
-    html += `</div></div>`;
-    container.innerHTML = html;
-}
-
 // INJEKSI DOM UNTUK TOMBOL UNDUH JADWAL (MIKRO)
 function checkExistingDrawing() {
     const catName = document.getElementById('draw-select-kategori').value; 
@@ -1132,26 +1080,6 @@ function checkExistingDrawing() {
             resultDiv.innerHTML = `<div class="col-span-full text-center text-slate-500 py-10 border-2 border-dashed border-slate-700 rounded-xl">Belum diundi.</div>`; 
         } 
     }
-}
-
-// MESIN PENGACAK KHUSUS BABAK 2
-function startDrawingB2() {
-    const catName = document.getElementById('draw-select-kategori').value;
-    if(!catName) return alert("Pilih kategori!");
-    let list = STATE.participants.filter(p => p.kategori === catName && p.urut > 0);
-    if(list.length === 0) return alert("Undi Babak 1 terlebih dahulu!");
-    
-    if (list.some(p => p.urutB2 > 0)) { if (!confirm("⚠️ Babak 2 SUDAH DIUNDI.\nYakin ingin mengacak ulang Babak 2?")) return; }
-    
-    let ids = list.map(p => p.id);
-    shuffleArray(ids); // Gunakan mesin kocok yang sudah ada
-    
-    ids.forEach((id, index) => {
-        const found = STATE.participants.find(item => item.id === id);
-        if(found) found.urutB2 = index + 1;
-    });
-    
-    saveToLocalStorage(); checkExistingDrawing(); filterPesertaScoring();
 }
 
 function startDrawing() { 
@@ -1774,48 +1702,6 @@ function calculateRandoriFinalists(catName) {
 
     return results.length > 0 ? results : null;
 }
-function cancelFinalist() {
-    const filter = document.getElementById('rank-filter-kategori').value;
-    if(!filter) return;
-    if(!confirm("⚠️ Batalkan status finalis untuk kategori ini?\nData akan dikembalikan ke Pool awal.")) return;
-    let catParts = STATE.participants.filter(p => p.kategori === filter);
-    let changed = false;
-    catParts.forEach(p => {
-        if (p.isFinalist) {
-            p.isFinalist = false; p.urutFinal = 0;
-            if (p.pool === 'FINAL') {
-                let takenA = catParts.some(x => x.pool === 'A' && x.urut === p.urut && x.id !== p.id);
-                let takenB = catParts.some(x => x.pool === 'B' && x.urut === p.urut && x.id !== p.id);
-                if (takenA && !takenB) p.pool = 'B'; else if (takenB && !takenA) p.pool = 'A'; else p.pool = 'A'; 
-            }
-            changed = true;
-        }
-    });
-    if(changed) { saveToLocalStorage(); alert("Status Finalis dibatalkan!"); renderRanking(); checkExistingDrawing(); filterPesertaScoring(); }
-}
-
-function promoteToFinal() {
-    const filter = document.getElementById('rank-filter-kategori').value;
-    if(!filter) return alert("Pilih kategori spesifik terlebih dahulu!");
-    const catObj = STATE.categories.find(c => c.name === filter);
-    if(catObj && catObj.discipline === 'randori') return alert("Tindakan ini hanya untuk nomor Embu.");
-    let list = STATE.participants.filter(p => p.kategori === filter && (p.pool === 'A' || p.pool === 'B'));
-    if(list.length === 0) return alert("Kategori ini tidak memiliki sistem Pool penyisihan.");
-    if(list.some(p => p.isFinalist)) return alert("Finalis sudah ditetapkan!");
-    
-    let numFinalists = parseInt(prompt("Masukkan JUMLAH finalis DARI MASING-MASING POOL (misal: 3):", "3"));
-    if(!numFinalists || isNaN(numFinalists) || numFinalists <= 0) return;
-    
-    let poolA = list.filter(p => p.pool === 'A' && p.scores.b1.final > 0).sort((a,b) => b.scores.b1.final - a.scores.b1.final || b.scores.b1.tech - a.scores.b1.tech);
-    let poolB = list.filter(p => p.pool === 'B' && p.scores.b1.final > 0).sort((a,b) => b.scores.b1.final - a.scores.b1.final || b.scores.b1.tech - a.scores.b1.tech);
-    let combined = [...poolA.slice(0, numFinalists), ...poolB.slice(0, numFinalists)];
-    
-    if(combined.length === 0) return alert("Tidak ada data nilai.");
-    if(confirm("Tetapkan " + combined.length + " peserta ini sebagai Finalis?")) {
-        combined.forEach(w => { let p = STATE.participants.find(x => x.id === w.id); if(p) { p.isFinalist = true; p.urutFinal = 0; } });
-        saveToLocalStorage(); alert("Finalis ditetapkan!"); renderRanking(); checkExistingDrawing(); filterPesertaScoring();
-    }
-}
 
 // =========================================================
 // MAGIC BUTTON: AUTO GENERATE FINAL RANDORI DARI POOL
@@ -1923,18 +1809,7 @@ function renderRanking() {
     const hasPools = catList.some(p => p.pool === 'A' || p.pool === 'B' || (p.pool === 'FINAL' && p.urut > 0)); 
     const hasFinal = catList.some(p => p.isFinalist); 
     
-    if(catObj && catObj.discipline === 'embu' && hasPools) {
-        btnPromote.classList.remove('hidden');
-        if(!hasFinal) {
-            btnPromote.innerHTML = '<i class="fas fa-arrow-up mr-2"></i>TETAPKAN FINALIS';
-            btnPromote.className = "whitespace-nowrap bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors text-sm";
-            btnPromote.onclick = promoteToFinal;
-        } else {
-            btnPromote.innerHTML = '<i class="fas fa-undo mr-2"></i>BATALKAN FINALIS';
-            btnPromote.className = "whitespace-nowrap bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors text-sm";
-            btnPromote.onclick = cancelFinalist;
-        }
-    } else if (catObj && catObj.discipline === 'randori') {
+    if (catObj && catObj.discipline === 'randori') {
         const poolResults = calculateRandoriFinalists(filter);
         const hasPoolA = poolResults && poolResults.some(r => r.pool === 'A');
         const hasPoolB = poolResults && poolResults.some(r => r.pool === 'B');
