@@ -2228,8 +2228,16 @@ function handleEmbuSwap(participantId, poolType) {
 // LOGIKA EMBU HEAD-TO-HEAD (SISTEM BAGAN)
 // =========================================================
 let currentEmbuMatchId = null;
-let activeEmbuCorner = 'merah'; 
-let tempEmbuScores = { merah: 0, putih: 0, merahTech: 0, putihTech: 0 };
+let activeEmbuCorner = null; 
+
+// FIX MEMORI: Tambahkan raw array & waktu agar data tidak hilang saat pindah tab
+let tempEmbuScores = { 
+    merah: 0, putih: 0, 
+    merahTech: 0, putihTech: 0,
+    merahRaw: [], putihRaw: [],
+    merahTechRaw: [], putihTechRaw: [],
+    merahTime: 0, putihTime: 0
+};
 
 document.getElementById('select-peserta').addEventListener('change', (e) => { 
     if(e.target.selectedIndex >= 0 && e.target.value.startsWith('match-')) {
@@ -2258,37 +2266,77 @@ function loadEmbuMatch() {
     document.getElementById('embu-nama-merah').innerText = merah ? merah.nama : "-";
     document.getElementById('embu-nama-putih').innerText = putih ? putih.nama : "-";
 
-    tempEmbuScores = { merah: match.skorMerah || 0, putih: match.skorPutih || 0, merahTech: 0, putihTech: 0 };
+    // Reset dan siapkan keranjang memori untuk partai baru
+    tempEmbuScores = { 
+        merah: match.skorMerah || 0, putih: match.skorPutih || 0, 
+        merahTech: 0, putihTech: 0,
+        merahRaw: [], putihRaw: [],
+        merahTechRaw: [], putihTechRaw: [],
+        merahTime: 0, putihTime: 0
+    };
+
     document.getElementById('embu-skor-merah').innerText = tempEmbuScores.merah.toFixed(1);
     document.getElementById('embu-skor-putih').innerText = tempEmbuScores.putih.toFixed(1);
 
+    activeEmbuCorner = null; // Cegah bug penumpukan memori awal
     setEmbuCorner('merah'); 
 }
 
 function setEmbuCorner(corner) {
+    // 1. AUTO-SAVE MEMORI: Simpan data layar saat ini ke dalam variabel sebelum pindah tab
+    if (activeEmbuCorner) {
+        let calc = calculateLive();
+        if (activeEmbuCorner === 'merah') {
+            tempEmbuScores.merahRaw = calc.raw;
+            tempEmbuScores.merahTechRaw = calc.techRaw;
+            tempEmbuScores.merahTime = UI.timerSeconds;
+        } else if (activeEmbuCorner === 'putih') {
+            tempEmbuScores.putihRaw = calc.raw;
+            tempEmbuScores.putihTechRaw = calc.techRaw;
+            tempEmbuScores.putihTime = UI.timerSeconds;
+        }
+    }
+
     activeEmbuCorner = corner;
     const tabMerah = document.getElementById('embu-tab-merah');
     const tabPutih = document.getElementById('embu-tab-putih');
+    const namaPutih = document.getElementById('embu-nama-putih');
+    const skorPutih = document.getElementById('embu-skor-putih');
+    const labelPutih = document.querySelector('#embu-tab-putih .text-xs');
 
+    // Kosmetik UI Tab Aktif
     if(corner === 'merah') {
         tabMerah.className = "flex-1 bg-red-900/50 border-2 border-red-500 p-3 rounded-lg mr-2 text-center cursor-pointer shadow-[0_0_10px_rgba(239,68,68,0.3)] transition-all";
         tabPutih.className = "flex-1 bg-slate-800 border border-slate-600 p-3 rounded-lg ml-2 text-center cursor-pointer opacity-50 hover:opacity-100 transition-all";
+        
+        namaPutih.classList.remove('text-slate-900'); namaPutih.classList.add('text-white');
+        skorPutih.classList.remove('text-slate-900'); skorPutih.classList.add('text-white');
+        labelPutih.classList.remove('text-slate-600'); labelPutih.classList.add('text-slate-400');
     } else {
         tabPutih.className = "flex-1 bg-slate-200 border-2 border-white p-3 rounded-lg ml-2 text-center cursor-pointer shadow-[0_0_10px_rgba(255,255,255,0.3)] transition-all";
         tabMerah.className = "flex-1 bg-red-900/30 border border-red-800 p-3 rounded-lg mr-2 text-center cursor-pointer opacity-50 hover:opacity-100 transition-all";
-        document.getElementById('embu-nama-putih').classList.replace('text-white', 'text-slate-900');
-        document.getElementById('embu-skor-putih').classList.replace('text-white', 'text-slate-900');
-        document.querySelector('#embu-tab-putih .text-xs').classList.replace('text-slate-400', 'text-slate-600');
+        
+        namaPutih.classList.remove('text-white'); namaPutih.classList.add('text-slate-900');
+        skorPutih.classList.remove('text-white'); skorPutih.classList.add('text-slate-900');
+        labelPutih.classList.remove('text-slate-400'); labelPutih.classList.add('text-slate-600');
     }
 
-    // Reset kotak juri setiap pindah sudut
+    // 2. LOAD MEMORI: Tarik kembali data lama yang tersimpan ke dalam kotak juri
+    let rawData = corner === 'merah' ? tempEmbuScores.merahRaw : tempEmbuScores.putihRaw;
+    let techRawData = corner === 'merah' ? tempEmbuScores.merahTechRaw : tempEmbuScores.putihTechRaw;
+    let savedTime = corner === 'merah' ? tempEmbuScores.merahTime : tempEmbuScores.putihTime;
+
     for(let i=1; i<=STATE.settings.numJudges; i++) {
         let sEl = document.getElementById(`score-${i}`);
         let tEl = document.getElementById(`tech-${i}`);
-        if(sEl) sEl.value = '';
-        if(tEl) tEl.value = '';
+        
+        // Jika angka 0, anggap kosong agar UI terlihat bersih
+        if(sEl) sEl.value = (rawData && rawData[i-1] > 0) ? rawData[i-1] : '';
+        if(tEl) tEl.value = (techRawData && techRawData[i-1] > 0) ? techRawData[i-1] : '';
     }
-    UI.timerSeconds = 0; updateTimerUI();
+
+    UI.timerSeconds = savedTime || 0; 
+    updateTimerUI();
     calculateLive();
 }
 
@@ -2304,13 +2352,21 @@ function saveEmbuCornerScore() {
     if(activeEmbuCorner === 'merah') {
         tempEmbuScores.merah = calc.final;
         tempEmbuScores.merahTech = calc.tieBreaker;
+        tempEmbuScores.merahRaw = calc.raw;
+        tempEmbuScores.merahTechRaw = calc.techRaw;
+        tempEmbuScores.merahTime = UI.timerSeconds;
         document.getElementById('embu-skor-merah').innerText = calc.final.toFixed(1);
-        alert("NILAI TERSIMPAN SEMENTARA.\nSilakan tekan 'LANJUT' dan isikan nilai untuk Sudut PUTIH.");
+        
+        alert("NILAI TERSIMPAN SEMENTARA.\nSilakan tekan 'LANJUT' atau klik Tab Putih untuk isikan nilai Sudut PUTIH.");
         setEmbuCorner('putih'); 
     } else {
         tempEmbuScores.putih = calc.final;
         tempEmbuScores.putihTech = calc.tieBreaker;
+        tempEmbuScores.putihRaw = calc.raw;
+        tempEmbuScores.putihTechRaw = calc.techRaw;
+        tempEmbuScores.putihTime = UI.timerSeconds;
         document.getElementById('embu-skor-putih').innerText = calc.final.toFixed(1);
+        
         alert("NILAI TERSIMPAN.\nSilakan tekan tombol hijau 'SELESAIKAN PARTAI' di bawah untuk menentukan pemenang.");
     }
 }
@@ -2346,7 +2402,7 @@ function finalizeEmbuMatch() {
 
     let winnerName = winnerId === match.merahId ? "PITA MERAH" : "PITA PUTIH";
 
-    if(confirm(`Konfirmasi Pemenang EMBU: ${winnerName}\nSkor Akhir: ${sMerah} vs ${sPutih}\n\nSimpan ke Bagan?`)) {
+    if(confirm(`Konfirmasi Pemenang EMBU: ${winnerName}\nSkor Akhir: ${sMerah.toFixed(1)} vs ${sPutih.toFixed(1)}\n\nSimpan ke Bagan?`)) {
         match.skorMerah = sMerah; match.skorPutih = sPutih;
         match.winnerId = winnerId; match.loserId = loserId;
         match.status = 'done';
@@ -2374,7 +2430,7 @@ function finalizeEmbuMatch() {
         updates['turnamen_data/participants'] = STATE.participants;
 
         database.ref().update(updates).then(() => {
-            alert("Partai Embu Selesai! Pemenang dicatat di bagan.");
+            alert("✅ Partai Embu Selesai! Pemenang dicatat di bagan.");
             filterPesertaScoring(); checkExistingDrawing();
         }).catch(err => alert("Gagal Simpan: " + err));
     }
