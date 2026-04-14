@@ -1661,46 +1661,56 @@ function autoGenerateRandoriFinal(catName) {
 // TAB RANKING & MUNCULNYA MAGIC BUTTON (EMBU & RANDORI)
 // =========================================================
 function renderRanking() { 
-    const filter = document.getElementById('rank-filter-kategori').value; 
-    const btnPromote = document.getElementById('btn-promote-final'); 
+    const filterEl = document.getElementById('rank-filter-kategori');
+    const filter = filterEl ? filterEl.value : null; 
     const container = document.getElementById('ranking-list'); 
 
+    // 1. PENGAMANAN ANTI-CRASH: Jika tombol terhapus di HTML, buat ulang secara otomatis!
+    let btnPromote = document.getElementById('btn-promote-final'); 
+    if (!btnPromote && filterEl && filterEl.parentElement) {
+        btnPromote = document.createElement('button');
+        btnPromote.id = 'btn-promote-final';
+        btnPromote.className = 'hidden';
+        filterEl.parentElement.appendChild(btnPromote);
+    }
+
     let microRankBtn = document.getElementById('btn-micro-rank-export');
-    if (!microRankBtn && btnPromote && btnPromote.parentElement) {
+    if (!microRankBtn && filterEl && filterEl.parentElement) {
         microRankBtn = document.createElement('button');
         microRankBtn.id = 'btn-micro-rank-export';
         microRankBtn.className = 'whitespace-nowrap bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors text-sm flex items-center justify-center gap-2';
         microRankBtn.innerHTML = '<i class="fas fa-file-csv"></i> UNDUH HASIL RAW';
         microRankBtn.onclick = () => exportRawHasilCSV(document.getElementById('rank-filter-kategori').value);
-        btnPromote.parentElement.appendChild(microRankBtn);
+        filterEl.parentElement.appendChild(microRankBtn);
     }
 
     if (!filter) {
-        btnPromote.classList.add('hidden');
-        if(microRankBtn) microRankBtn.classList.add('hidden');
-        return container.innerHTML = `<div class="p-10 text-center text-slate-500 border border-dashed border-slate-700 rounded-xl"><i class="fas fa-filter text-3xl mb-3 text-slate-600 block"></i>Pilih kategori pertandingan di atas untuk melihat hasil klasemen.</div>`;
+        if (btnPromote) btnPromote.classList.add('hidden');
+        if (microRankBtn) microRankBtn.classList.add('hidden');
+        if (container) container.innerHTML = `<div class="p-10 text-center text-slate-500 border border-dashed border-slate-700 rounded-xl"><i class="fas fa-filter text-3xl mb-3 text-slate-600 block"></i>Pilih kategori pertandingan di atas untuk melihat hasil klasemen.</div>`;
+        return;
     }
     
-    if(microRankBtn) microRankBtn.classList.remove('hidden');
+    if (microRankBtn) microRankBtn.classList.remove('hidden');
 
     let catObj = STATE.categories.find(c => c.name === filter);
     if(!catObj) return;
 
-    // --- RESTORE MAGIC BUTTON (KINI BERLAKU UNTUK EMBU & RANDORI) ---
     const poolResults = calculateRandoriFinalists(filter); 
     const hasPoolA = poolResults && poolResults.some(r => r.pool === 'A');
     const hasPoolB = poolResults && poolResults.some(r => r.pool === 'B');
     const isAlreadyFinal = filter.toUpperCase().includes('FINAL');
 
     if (hasPoolA && hasPoolB && !isAlreadyFinal) {
-        btnPromote.classList.remove('hidden');
-        btnPromote.innerHTML = '<i class="fas fa-magic mr-2"></i>GENERATE PARTAI FINAL';
-        btnPromote.className = "whitespace-nowrap bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors text-sm animate-pulse";
-        btnPromote.onclick = () => autoGenerateFinal(filter, catObj.discipline);
+        if (btnPromote) {
+            btnPromote.classList.remove('hidden');
+            btnPromote.innerHTML = '<i class="fas fa-magic mr-2"></i>GENERATE PARTAI FINAL';
+            btnPromote.className = "whitespace-nowrap bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors text-sm animate-pulse";
+            btnPromote.onclick = () => autoGenerateFinal(filter, catObj.discipline);
+        }
     } else {
-        btnPromote.classList.add('hidden'); 
+        if (btnPromote) btnPromote.classList.add('hidden'); 
     }
-    // -----------------------------------------------------------------
 
     let htmlOutput = `<h3 class="text-xl font-bold text-yellow-400 mt-4 mb-4 border-b-2 border-slate-700 pb-3 flex items-center gap-3"><span class="${catObj.discipline==='randori'?'bg-red-700':'bg-blue-600'} text-[10px] px-2 py-1 rounded font-black">${catObj.discipline.toUpperCase()}</span>${catObj.name}</h3>`;
     
@@ -1725,9 +1735,8 @@ function renderRanking() {
         });
         htmlOutput += `</div>`;
     }
-    container.innerHTML = htmlOutput; 
+    if (container) container.innerHTML = htmlOutput; 
 }
-
 // =========================================================
 // MAGIC BUTTON: AUTO GENERATE FINAL (RANDORI & EMBU)
 // =========================================================
