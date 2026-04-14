@@ -2494,7 +2494,24 @@ function finalizeEmbuMatch() {
 
     let winnerName = winnerId === match.merahId ? "PITA MERAH" : "PITA PUTIH";
 
-    if(confirm(`Konfirmasi Pemenang EMBU: ${winnerName}\nSkor Akhir: ${sMerah.toFixed(1)} vs ${sPutih.toFixed(1)}\n\nSimpan ke Bagan?`)) {
+    // --- LOGIKA TAMPILAN SKOR RINGKAS (Score/TB1/TB2) ---
+    let displayMerah = sMerah.toFixed(1);
+    let displayPutih = sPutih.toFixed(1);
+
+    if (sMerah === sPutih) {
+        // Jika seri, tambahkan Nilai Teknik Wasit 1 (TB1)
+        displayMerah += `/${tempEmbuScores.merahTechW1}`;
+        displayPutih += `/${tempEmbuScores.putihTechW1}`;
+
+        if (tempEmbuScores.merahTechW1 === tempEmbuScores.putihTechW1) {
+            // Jika TB1 masih seri, tambahkan Total 5 Nilai Teknik (TB2)
+            displayMerah += `/${tempEmbuScores.merahTechAll}`;
+            displayPutih += `/${tempEmbuScores.putihTechAll}`;
+        }
+    }
+    // ---------------------------------------------------
+
+    if(confirm(`Konfirmasi Pemenang EMBU: ${winnerName}\nSkor Akhir: ${displayMerah} vs ${displayPutih}\n\nSimpan ke Bagan?`)) {
         match.skorMerah = sMerah; match.skorPutih = sPutih;
         match.winnerId = winnerId; match.loserId = loserId;
         match.status = 'done';
