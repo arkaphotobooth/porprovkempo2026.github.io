@@ -956,6 +956,24 @@ function renderVisualBracket(catName) {
 
                     let undoBtn = m.status === 'done' ? `<button onclick="undoMatchResult(${m.id})" class="absolute -bottom-2 -right-2 bg-red-600 hover:bg-red-500 text-white text-[10px] w-7 h-7 rounded-full shadow-lg border border-slate-800 z-10 flex items-center justify-center transition-transform hover:scale-110" title="Batalkan Hasil Partai Ini"><i class="fas fa-undo"></i></button>` : '';
 
+                    // --- LOGIKA PENAMPILAN SKOR TIE-BREAKER DI BAGAN ---
+                    let dMerah = m.skorMerah > 0 ? m.skorMerah : '';
+                    let dPutih = m.skorPutih > 0 ? m.skorPutih : '';
+
+                    // Jika partai sudah selesai dan nilainya seri
+                    if (m.status === 'done' && m.skorMerah > 0 && m.skorMerah === m.skorPutih) {
+                        if (m.tbMerahW1 !== undefined && m.tbPutihW1 !== undefined) {
+                            dMerah += `/${m.tbMerahW1}`;
+                            dPutih += `/${m.tbPutihW1}`;
+                            // Jika TB1 juga seri
+                            if (m.tbMerahW1 === m.tbPutihW1 && m.tbMerahAll !== undefined) {
+                                dMerah += `/${m.tbMerahAll || 0}`;
+                                dPutih += `/${m.tbPutihAll || 0}`;
+                            }
+                        }
+                    }
+                    // -----------------------------------------------------
+
                     colHTML += `
                         <div class="bracket-match p-3 rounded-lg border-2 ${bgStyle} relative shadow-lg transition-all">
                             <span class="absolute -top-3 -left-3 bg-slate-700 text-[10px] w-6 h-6 flex items-center justify-center rounded-full font-black border border-slate-500">G${displayNum}</span>
@@ -963,11 +981,11 @@ function renderVisualBracket(catName) {
                             <span class="text-[9px] uppercase text-slate-400 block mb-2 font-bold">${m.babak}</span>
                             <div class="flex justify-between items-center text-sm font-bold border-b border-slate-700 pb-1 mb-1">
                                 ${nMerahHTML}
-                                <span class="text-xs text-slate-500">${m.skorMerah > 0 ? m.skorMerah : ''}</span>
+                                <span class="text-xs text-slate-500">${dMerah}</span>
                             </div>
                             <div class="flex justify-between items-center text-sm font-bold">
                                 ${nPutihHTML}
-                                <span class="text-xs text-slate-500">${m.skorPutih > 0 ? m.skorPutih : ''}</span>
+                                <span class="text-xs text-slate-500">${dPutih}</span>
                             </div>
                         </div>
                     `;
@@ -2499,12 +2517,10 @@ function finalizeEmbuMatch() {
     let displayPutih = sPutih.toFixed(1);
 
     if (sMerah === sPutih) {
-        // Jika seri, tambahkan Nilai Teknik Wasit 1 (TB1)
         displayMerah += `/${tempEmbuScores.merahTechW1}`;
         displayPutih += `/${tempEmbuScores.putihTechW1}`;
 
         if (tempEmbuScores.merahTechW1 === tempEmbuScores.putihTechW1) {
-            // Jika TB1 masih seri, tambahkan Total 5 Nilai Teknik (TB2)
             displayMerah += `/${tempEmbuScores.merahTechAll}`;
             displayPutih += `/${tempEmbuScores.putihTechAll}`;
         }
@@ -2513,6 +2529,13 @@ function finalizeEmbuMatch() {
 
     if(confirm(`Konfirmasi Pemenang EMBU: ${winnerName}\nSkor Akhir: ${displayMerah} vs ${displayPutih}\n\nSimpan ke Bagan?`)) {
         match.skorMerah = sMerah; match.skorPutih = sPutih;
+        
+        // SIMPAN DATA TIE BREAKER KE DATABASE PARTAI
+        match.tbMerahW1 = tempEmbuScores.merahTechW1;
+        match.tbPutihW1 = tempEmbuScores.putihTechW1;
+        match.tbMerahAll = tempEmbuScores.merahTechAll;
+        match.tbPutihAll = tempEmbuScores.putihTechAll;
+
         match.winnerId = winnerId; match.loserId = loserId;
         match.status = 'done';
 
