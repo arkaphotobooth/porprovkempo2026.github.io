@@ -1073,31 +1073,23 @@ function applyDrawingData(arr, poolName) { arr.forEach((p, index) => { const fou
 // =========================================================
 function formatAthleteNameGrid(participant) {
     if (!participant) return "-";
-    
     if (participant.nama.includes(',')) {
         let names = participant.nama.split(',').map(n => n.trim());
+        let html = `<div class="text-lg lg:text-xl font-black leading-tight mb-1.5 break-words pr-16">${participant.kontingen}</div>`;
         
-        let html = `<div class="text-xl lg:text-2xl font-black leading-tight mb-3 break-words pr-16">${participant.kontingen}</div>`;
-        
-        html += `<div class="grid grid-cols-3 gap-2 w-full">`;
+        html += `<div class="grid grid-cols-3 gap-1.5 w-full">`;
         names.forEach((n, idx) => {
-            // 1. Ambil maksimal 2 kata pertama saja
             let words = n.split(' ');
             let shortName = words.slice(0, 2).join(' ');
-
-            // 2. Gunakan 'truncate' agar jika 2 kata itu tetap kepanjangan, tidak akan turun ke bawah
-            // 3. Tambahkan title="${n}" agar nama lengkap muncul saat di-hover (ditahan kursornya)
-            html += `<div class="bg-black/30 border border-slate-600/50 rounded px-2 py-1.5 text-[10px] md:text-xs text-left flex items-center shadow-inner text-slate-200 overflow-hidden" title="${n}">
-                <span class="text-slate-500 mr-1.5 font-bold shrink-0">${idx+1}.</span> 
+            html += `<div class="bg-black/30 border border-slate-600/50 rounded px-1.5 py-1 text-[9px] md:text-[10px] text-left flex items-center shadow-inner text-slate-200 overflow-hidden" title="${n}">
+                <span class="text-slate-500 mr-1 font-bold shrink-0">${idx+1}.</span> 
                 <span class="truncate w-full font-semibold">${shortName}</span>
             </div>`;
         });
         html += `</div>`;
-        
         return html;
     }
-    
-    return `<div class="text-xl lg:text-2xl font-black leading-tight break-words pr-16 mt-1">${participant.nama}</div>`;
+    return `<div class="text-lg lg:text-xl font-black leading-tight break-words pr-16 mt-0.5">${participant.nama}</div>`;
 }
 function filterPesertaScoring() {
     const catName = document.getElementById('select-kategori').value;
@@ -1384,8 +1376,7 @@ function setJudges(n) {
 
     container.innerHTML = ''; 
     for(let i=1; i<=n; i++) { 
-        // Menggambar kotak baru sambil memasukkan kembali nilai dari memori (tempScores)
-        container.innerHTML += `<div class="bg-slate-900 p-3 rounded-lg border border-slate-600 focus-within:border-blue-500 transition-colors"><div class="text-center mb-2 pb-2 border-b border-slate-700"><label class="block text-[10px] text-slate-400 uppercase font-bold">Wasit ${i}</label></div><div class="space-y-2"><div><label class="block text-[9px] text-slate-500 mb-1">TOTAL NILAI</label><input type="number" step="0.5" id="score-${i}" value="${tempScores[i-1] || ''}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-2xl font-black outline-none text-center text-white placeholder-slate-700" placeholder="0"></div><div><label class="block text-[9px] text-slate-500 mb-1 flex justify-between"><span>TEKNIK</span> ${i===1?'<span class="text-yellow-500 font-bold">TIE-BREAK</span>':''}</label><input type="number" step="0.5" id="tech-${i}" value="${tempTechs[i-1] || ''}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-sm font-bold outline-none text-center ${i===1?'text-yellow-400':'text-blue-300'} placeholder-slate-700" placeholder="Opsional"></div></div></div>`; 
+        container.innerHTML += `<div class="bg-slate-900 p-2 rounded-lg border border-slate-600 focus-within:border-blue-500 transition-colors"><div class="text-center mb-1 pb-1 border-b border-slate-700"><label class="block text-[9px] text-slate-400 uppercase font-bold">Wasit ${i}</label></div><div class="space-y-1.5"><div><label class="block text-[8px] text-slate-500 mb-0.5">TOTAL NILAI</label><input type="number" step="0.5" id="score-${i}" value="${tempScores[i-1] || ''}" oninput="calculateLive()" class="w-full bg-slate-800 p-1.5 rounded text-xl font-black outline-none text-center text-white placeholder-slate-700" placeholder="0"></div><div><label class="block text-[8px] text-slate-500 mb-0.5 flex justify-between"><span>TEKNIK</span> ${i===1?'<span class="text-yellow-500 font-bold">TIE-BREAK</span>':''}</label><input type="number" step="0.5" id="tech-${i}" value="${tempTechs[i-1] || ''}" oninput="calculateLive()" class="w-full bg-slate-800 p-1.5 rounded text-xs font-bold outline-none text-center ${i===1?'text-yellow-400':'text-blue-300'} placeholder-slate-700" placeholder="Opt"></div></div></div>`; 
     } 
     calculateLive(); 
 }
