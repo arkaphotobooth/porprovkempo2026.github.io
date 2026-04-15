@@ -1076,11 +1076,13 @@ function formatAthleteNameGrid(participant) {
     
     if (participant.nama.includes(',')) {
         let names = participant.nama.split(',').map(n => n.trim());
-        let html = `<div class="text-xl lg:text-2xl font-black leading-tight mb-3 truncate">${participant.kontingen}</div>`;
         
-        html += `<div class="grid grid-cols-3 gap-2">`;
+        // pr-16 memberi sedikit ruang di kanan agar kontingen tidak langsung menabrak angka skor
+        let html = `<div class="text-xl lg:text-2xl font-black leading-tight mb-3 break-words pr-16">${participant.kontingen}</div>`;
+        
+        // w-full agar grid memakan seluruh ruang yang tersedia
+        html += `<div class="grid grid-cols-3 gap-2 w-full">`;
         names.forEach((n, idx) => {
-            // FIX NAMA PENDEK: Hapus truncate, ganti ke break-words agar nama 2 suku kata melebar ke bawah
             html += `<div class="bg-black/30 border border-slate-600/50 rounded px-2 py-1.5 text-[10px] md:text-xs text-left whitespace-normal break-words leading-tight flex items-start shadow-inner text-slate-200">
                 <span class="text-slate-500 mr-1.5 font-bold">${idx+1}.</span> 
                 <span>${n}</span>
@@ -1089,8 +1091,7 @@ function formatAthleteNameGrid(participant) {
         html += `</div>`;
         return html;
     }
-    
-    return `<div class="text-xl lg:text-2xl font-black leading-tight truncate mt-1">${participant.nama}</div>`;
+        return `<div class="text-xl lg:text-2xl font-black leading-tight break-words pr-16 mt-1">${participant.nama}</div>`;
 }
 function filterPesertaScoring() {
     const catName = document.getElementById('select-kategori').value;
@@ -1709,7 +1710,6 @@ function renderRanking() {
     const filter = filterEl ? filterEl.value : null; 
     const container = document.getElementById('ranking-list'); 
 
-    // 1. PENGAMANAN ANTI-CRASH: Jika tombol terhapus di HTML, buat ulang secara otomatis!
     let btnPromote = document.getElementById('btn-promote-final'); 
     if (!btnPromote && filterEl && filterEl.parentElement) {
         btnPromote = document.createElement('button');
@@ -1724,7 +1724,7 @@ function renderRanking() {
         microRankBtn.id = 'btn-micro-rank-export';
         microRankBtn.className = 'whitespace-nowrap bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors text-sm flex items-center justify-center gap-2';
         microRankBtn.innerHTML = '<i class="fas fa-file-csv"></i> UNDUH HASIL RAW';
-        microRankBtn.onclick = () => exportRawHasilCSV(document.getElementById('rank-filter-kategori').value);
+        microRankBtn.onclick = () => exportRawHasilCSV(filterEl.value);
         filterEl.parentElement.appendChild(microRankBtn);
     }
 
