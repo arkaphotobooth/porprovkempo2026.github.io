@@ -262,16 +262,25 @@
                         </div>
 
                         <div id="panel-embu" class="hidden flex-col h-full">
-                         <div class="flex justify-between mb-6">
-                             <div class="flex-1 bg-red-900/50 border-2 border-red-500 p-3 rounded-lg mr-2 text-center cursor-pointer shadow-[0_0_10px_rgba(239,68,68,0.3)] transition-all" onclick="setEmbuCorner('merah')" id="embu-tab-merah">
-                                 <div class="text-xs text-red-400 font-bold uppercase tracking-wider">Pita Merah</div>
-                                 <div class="font-bold text-white truncate mt-1 text-lg" id="embu-nama-merah">-</div>
-                                 <div class="text-3xl font-black text-red-500 mt-2 font-mono" id="embu-skor-merah">000.0</div>
+                         <div class="flex justify-between mb-4 gap-3">
+                             <div class="flex-1 bg-red-900/50 border-2 border-red-500 p-3 rounded-lg flex flex-row justify-between items-center cursor-pointer shadow-[0_0_10px_rgba(239,68,68,0.3)] transition-all" onclick="setEmbuCorner('merah')" id="embu-tab-merah">
+                                 <div class="text-left w-2/3 pr-2">
+                                     <div class="text-[9px] text-red-400 font-bold uppercase tracking-wider mb-1">Pita Merah</div>
+                                     <div id="embu-nama-merah" class="text-white">-</div>
+                                 </div>
+                                 <div class="text-right w-1/3 border-l border-red-500/30 pl-2">
+                                     <div class="text-4xl lg:text-5xl font-black text-red-500 font-mono" id="embu-skor-merah">0.0</div>
+                                 </div>
                              </div>
-                             <div class="flex-1 bg-slate-800 border border-slate-600 p-3 rounded-lg ml-2 text-center cursor-pointer opacity-50 hover:opacity-100 transition-all" onclick="setEmbuCorner('putih')" id="embu-tab-putih">
-                                 <div class="text-xs text-slate-400 font-bold uppercase tracking-wider">Pita Putih</div>
-                                 <div class="font-bold text-white truncate mt-1 text-lg" id="embu-nama-putih">-</div>
-                                 <div class="text-3xl font-black text-white mt-2 font-mono" id="embu-skor-putih">000.0</div>
+                             
+                             <div class="flex-1 bg-slate-800 border border-slate-600 p-3 rounded-lg flex flex-row justify-between items-center cursor-pointer opacity-50 hover:opacity-100 transition-all" onclick="setEmbuCorner('putih')" id="embu-tab-putih">
+                                 <div class="text-left w-2/3 pr-2">
+                                     <div class="text-[9px] text-slate-400 font-bold uppercase tracking-wider mb-1">Pita Putih</div>
+                                     <div id="embu-nama-putih" class="text-white">-</div>
+                                 </div>
+                                 <div class="text-right w-1/3 border-l border-slate-600/50 pl-2">
+                                     <div class="text-4xl lg:text-5xl font-black text-white font-mono" id="embu-skor-putih">0.0</div>
+                                 </div>
                              </div>
                          </div>
                      
