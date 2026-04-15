@@ -1145,7 +1145,8 @@ function filterPesertaScoring() {
     if (selectEl.options.length > 0) document.getElementById('scoring-athlete-name').innerText = selectEl.options[selectEl.selectedIndex].text;
 
     const btnSelesaiEmbu = document.getElementById('btn-selesai-embu');
-    const juriToggle = document.getElementById('juri-toggle-container');
+    // UBAH TARGET ID KE SIDEBAR KIRI
+    const juriToggle = document.getElementById('juri-toggle-sidebar');
 
     // TAMPILKAN PANEL SESUAI DISIPLIN
     if(categoryObj.discipline === 'randori') {
@@ -1160,7 +1161,7 @@ function filterPesertaScoring() {
         badgeEmbu.classList.remove('hidden'); badgeRandori.classList.add('hidden');
         if(panelWaktu) panelWaktu.classList.remove('hidden'); 
         if(btnSelesaiEmbu) btnSelesaiEmbu.classList.remove('hidden');
-        if(juriToggle) juriToggle.classList.remove('hidden'); // Muncul di Embu
+        if(juriToggle) juriToggle.classList.remove('hidden'); // Muncul di Embu Kiri
         loadEmbuMatch(); 
     }
 }
