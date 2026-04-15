@@ -1069,29 +1069,28 @@ function startDrawing() {
 function shuffleArray(arr) { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } }
 function applyDrawingData(arr, poolName) { arr.forEach((p, index) => { const found = STATE.participants.find(item => item.id === p.id); if(found) { found.urut = index + 1; found.pool = poolName; }}); }
 // =========================================================
-// UI HELPER: FORMAT MICRO-CHIPS NAMA BEREGU/PASANGAN
+// UI HELPER: FORMAT GRID NAMA BEREGU/PASANGAN (3 KOLOM)
 // =========================================================
 function formatAthleteNameGrid(participant) {
     if (!participant) return "-";
     
-    // Jika nama mengandung koma (berarti lebih dari 1 orang / Tim)
     if (participant.nama.includes(',')) {
         let names = participant.nama.split(',').map(n => n.trim());
         
-        // Judul Utama = Nama Kontingen (Lebih ringkas)
-        let html = `<div class="text-base lg:text-lg font-black leading-tight mb-1.5 truncate">${participant.kontingen}</div>`;
+        let html = `<div class="text-base lg:text-lg font-black leading-tight mb-3 truncate">${participant.kontingen}</div>`;
         
-        // Nama Atlet = Micro Chips (Mengalir ke samping, hemat tempat)
-        html += `<div class="flex flex-wrap gap-1">`;
+        // Grid 3 kolom (Jika 6 orang, otomatis jadi 3x2)
+        html += `<div class="grid grid-cols-3 gap-2">`;
         names.forEach((n, idx) => {
-            html += `<span class="bg-black/40 text-slate-300 text-[9px] px-1.5 py-0.5 rounded border border-slate-600/50 whitespace-nowrap"><b class="text-slate-500 mr-0.5">${idx+1}.</b> ${n}</span>`;
+            html += `<div class="bg-black/30 border border-slate-600/50 rounded px-2 py-1.5 text-[10px] md:text-xs text-left truncate flex items-center shadow-inner text-slate-200">
+                <span class="text-slate-500 mr-1.5 font-bold">${idx+1}.</span> ${n}
+            </div>`;
         });
         html += `</div>`;
         
         return html;
     }
     
-    // Jika perorangan (1 orang), tampilkan nama seperti biasa
     return `<div class="text-base lg:text-lg font-black leading-tight truncate">${participant.nama}</div>`;
 }
 function filterPesertaScoring() {
@@ -1145,15 +1144,19 @@ function filterPesertaScoring() {
     
     if (selectEl.options.length > 0) document.getElementById('scoring-athlete-name').innerText = selectEl.options[selectEl.selectedIndex].text;
 
+    const btnSelesaiEmbu = document.getElementById('btn-selesai-embu');
+    // TAMPILKAN PANEL SESUAI DISIPLIN
     if(categoryObj.discipline === 'randori') {
         panelEmbu.classList.add('hidden'); panelRandori.classList.remove('hidden'); 
         badgeEmbu.classList.add('hidden'); badgeRandori.classList.remove('hidden');
         if(panelWaktu) panelWaktu.classList.add('hidden'); 
+        if(btnSelesaiEmbu) btnSelesaiEmbu.classList.add('hidden'); // Sembunyikan di Randori
         loadRandoriMatch(); 
     } else {
         panelEmbu.classList.remove('hidden'); panelRandori.classList.add('hidden'); 
         badgeEmbu.classList.remove('hidden'); badgeRandori.classList.add('hidden');
         if(panelWaktu) panelWaktu.classList.remove('hidden'); 
+        if(btnSelesaiEmbu) btnSelesaiEmbu.classList.remove('hidden'); // Munculkan di Embu
         loadEmbuMatch(); 
     }
 }
