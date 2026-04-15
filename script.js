@@ -1068,7 +1068,35 @@ function startDrawing() {
 
 function shuffleArray(arr) { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } }
 function applyDrawingData(arr, poolName) { arr.forEach((p, index) => { const found = STATE.participants.find(item => item.id === p.id); if(found) { found.urut = index + 1; found.pool = poolName; }}); }
-
+// =========================================================
+// UI HELPER: FORMAT GRID NAMA BEREGU/PASANGAN
+// =========================================================
+function formatAthleteNameGrid(participant) {
+    if (!participant) return "-";
+    
+    // Jika nama mengandung koma (berarti lebih dari 1 orang / Tim)
+    if (participant.nama.includes(',')) {
+        let names = participant.nama.split(',').map(n => n.trim());
+        
+        // Judul Utama = Nama Kontingen
+        let html = `<div class="text-lg md:text-xl font-black mb-2">${participant.kontingen}</div>`;
+        
+        // Grid Layout untuk nama-nama atlet
+        html += `<div class="grid grid-cols-1 xl:grid-cols-2 gap-1.5 w-full">`;
+        names.forEach((n, idx) => {
+            html += `
+            <div class="bg-black/20 border border-slate-500/30 rounded px-2 py-1 text-[10px] text-left truncate flex items-center shadow-inner font-bold">
+                <span class="bg-slate-500/50 w-4 h-4 flex items-center justify-center rounded-full mr-2 flex-shrink-0 font-mono text-[9px]">${idx+1}</span>
+                ${n}
+            </div>`;
+        });
+        html += `</div>`;
+        return html;
+    }
+    
+    // Jika perorangan (1 orang), tampilkan nama seperti biasa
+    return `<div class="text-xl font-black">${participant.nama}</div>`;
+}
 function filterPesertaScoring() {
     const catName = document.getElementById('select-kategori').value;
     const categoryObj = STATE.categories.find(c => c.name === catName);
@@ -1084,7 +1112,6 @@ function filterPesertaScoring() {
     let gridEl = document.getElementById('scoring-athlete-grid');
     if(gridEl) gridEl.className = 'hidden'; 
 
-    // AMBIL DATA PARTAI (KEDUA DISIPLIN SEKARANG PAKAI PARTAI)
     let catMatches = STATE.matches.filter(m => 
         m.kategori === catName && 
         m.status === 'pending' && 
@@ -1102,11 +1129,17 @@ function filterPesertaScoring() {
     const currentSelected = selectEl.value;
 
     selectEl.innerHTML = catMatches.sort((a,b)=>a.matchNum - b.matchNum).map((m) => {
-        const mrh = STATE.participants.find(p => p.id === m.merahId) || { nama: "Menunggu..." }; 
-        const pth = STATE.participants.find(p => p.id === m.putihId) || { nama: "Menunggu..." };
+        const mrh = STATE.participants.find(p => p.id === m.merahId) || { nama: "Menunggu...", kontingen: "-" }; 
+        const pth = STATE.participants.find(p => p.id === m.putihId) || { nama: "Menunggu...", kontingen: "-" };
+        
+        // --- LOGIKA SINGKATAN (Ide Cerdas Anda) ---
+        let dispMrh = mrh.nama.includes(',') ? `${mrh.kontingen} (Tim)` : mrh.nama;
+        let dispPth = pth.nama.includes(',') ? `${pth.kontingen} (Tim)` : pth.nama;
+
         let displayNum = m.matchNum % 50 === 0 ? 50 : m.matchNum % 50;
         let pLabel = m.pool !== '-' ? `Pool ${m.pool}` : 'Utama';
-        return `<option value="match-${m.id}">G-${displayNum} [${pLabel}] [${m.babak}] ${mrh.nama} vs ${pth.nama}</option>`;
+        
+        return `<option value="match-${m.id}">G-${displayNum} [${pLabel}] [${m.babak}] ${dispMrh} vs ${dispPth}</option>`;
     }).join('');
 
     let stillExists = Array.from(selectEl.options).some(opt => opt.value === currentSelected);
@@ -1115,7 +1148,6 @@ function filterPesertaScoring() {
     
     if (selectEl.options.length > 0) document.getElementById('scoring-athlete-name').innerText = selectEl.options[selectEl.selectedIndex].text;
 
-    // TAMPILKAN PANEL SESUAI DISIPLIN
     if(categoryObj.discipline === 'randori') {
         panelEmbu.classList.add('hidden'); panelRandori.classList.remove('hidden'); 
         badgeEmbu.classList.add('hidden'); badgeRandori.classList.remove('hidden');
@@ -1125,7 +1157,7 @@ function filterPesertaScoring() {
         panelEmbu.classList.remove('hidden'); panelRandori.classList.add('hidden'); 
         badgeEmbu.classList.remove('hidden'); badgeRandori.classList.add('hidden');
         if(panelWaktu) panelWaktu.classList.remove('hidden'); 
-        loadEmbuMatch(); // Panggil fungsi Embu Baru
+        loadEmbuMatch(); 
     }
 }
 let currentRandoriMatchId = null;
@@ -1133,10 +1165,8 @@ function loadRandoriMatch() {
     const val = document.getElementById('select-peserta').value; 
     if(!val || !val.startsWith('match-')) return;
     
-    // --- FIX BUG HANTU BEREGU (LAPIS KEDUA): Sapu bersih saat muat partai ---
     let gridEl = document.getElementById('scoring-athlete-grid');
     if(gridEl) gridEl.className = 'hidden'; 
-    // -----------------------------------------------------------------------
 
     const newMatchId = parseInt(val.replace('match-', '')); 
     
@@ -1148,10 +1178,21 @@ function loadRandoriMatch() {
 
     const merah = STATE.participants.find(p => p.id === match.merahId); 
     const putih = STATE.participants.find(p => p.id === match.putihId);
-    document.getElementById('randori-nama-merah').innerText = merah ? merah.nama : "-"; 
-    document.getElementById('randori-kont-merah').innerText = merah ? merah.kontingen : "-";
-    document.getElementById('randori-nama-putih').innerText = putih ? putih.nama : "-"; 
-    document.getElementById('randori-kont-putih').innerText = putih ? putih.kontingen : "-";
+    
+    let merahEl = document.getElementById('randori-nama-merah');
+    let putihEl = document.getElementById('randori-nama-putih');
+
+    // Hapus pembatas tinggi & truncate agar Grid bisa tampil penuh
+    merahEl.classList.remove('h-14', 'overflow-hidden', 'truncate');
+    putihEl.classList.remove('h-14', 'overflow-hidden', 'truncate');
+
+    // Render Grid
+    merahEl.innerHTML = formatAthleteNameGrid(merah);
+    putihEl.innerHTML = formatAthleteNameGrid(putih);
+    
+    // Ubah sub-kontingen jika beregu
+    document.getElementById('randori-kont-merah').innerText = merah && !merah.nama.includes(',') ? merah.kontingen : (merah ? "Tim Beregu / Pasangan" : "-");
+    document.getElementById('randori-kont-putih').innerText = putih && !putih.nama.includes(',') ? putih.kontingen : (putih ? "Tim Beregu / Pasangan" : "-");
     
     resetRandoriBoard(); 
 }
@@ -2214,8 +2255,16 @@ function loadEmbuMatch() {
     const merah = STATE.participants.find(p => p.id === match.merahId);
     const putih = STATE.participants.find(p => p.id === match.putihId);
 
-    document.getElementById('embu-nama-merah').innerText = merah ? merah.nama : "-";
-    document.getElementById('embu-nama-putih').innerText = putih ? putih.nama : "-";
+    let merahEl = document.getElementById('embu-nama-merah');
+    let putihEl = document.getElementById('embu-nama-putih');
+
+    // Hapus kelas pembatas agar grid beregu tidak terpotong
+    merahEl.classList.remove('truncate');
+    putihEl.classList.remove('truncate');
+
+    // Render Grid
+    merahEl.innerHTML = formatAthleteNameGrid(merah);
+    putihEl.innerHTML = formatAthleteNameGrid(putih);
 
     tempEmbuScores = { 
         merah: match.skorMerah || 0, putih: match.skorPutih || 0, 
@@ -2232,7 +2281,6 @@ function loadEmbuMatch() {
     activeEmbuCorner = null; 
     setEmbuCorner('merah'); 
 }
-
 function setEmbuCorner(corner) {
     if (activeEmbuCorner) {
         let calc = calculateLive();
