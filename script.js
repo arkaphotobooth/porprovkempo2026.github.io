@@ -1076,23 +1076,20 @@ function formatAthleteNameGrid(participant) {
     
     if (participant.nama.includes(',')) {
         let names = participant.nama.split(',').map(n => n.trim());
-        
-        // NAMA KONTINGEN DIPERBESAR (Sesuai request lingkaran merah)
         let html = `<div class="text-xl lg:text-2xl font-black leading-tight mb-3 truncate">${participant.kontingen}</div>`;
         
-        // Grid 3 kolom 
         html += `<div class="grid grid-cols-3 gap-2">`;
         names.forEach((n, idx) => {
-            html += `<div class="bg-black/30 border border-slate-600/50 rounded px-2 py-1.5 text-[10px] md:text-xs text-left truncate flex items-center shadow-inner text-slate-200">
-                <span class="text-slate-500 mr-1.5 font-bold">${idx+1}.</span> ${n}
+            // FIX NAMA PENDEK: Hapus truncate, ganti ke break-words agar nama 2 suku kata melebar ke bawah
+            html += `<div class="bg-black/30 border border-slate-600/50 rounded px-2 py-1.5 text-[10px] md:text-xs text-left whitespace-normal break-words leading-tight flex items-start shadow-inner text-slate-200">
+                <span class="text-slate-500 mr-1.5 font-bold">${idx+1}.</span> 
+                <span>${n}</span>
             </div>`;
         });
         html += `</div>`;
-        
         return html;
     }
     
-    // Tampilan jika main tunggal (Solo)
     return `<div class="text-xl lg:text-2xl font-black leading-tight truncate mt-1">${participant.nama}</div>`;
 }
 function filterPesertaScoring() {
@@ -1147,18 +1144,22 @@ function filterPesertaScoring() {
     if (selectEl.options.length > 0) document.getElementById('scoring-athlete-name').innerText = selectEl.options[selectEl.selectedIndex].text;
 
     const btnSelesaiEmbu = document.getElementById('btn-selesai-embu');
+    const juriToggle = document.getElementById('juri-toggle-container');
+
     // TAMPILKAN PANEL SESUAI DISIPLIN
     if(categoryObj.discipline === 'randori') {
         panelEmbu.classList.add('hidden'); panelRandori.classList.remove('hidden'); 
         badgeEmbu.classList.add('hidden'); badgeRandori.classList.remove('hidden');
         if(panelWaktu) panelWaktu.classList.add('hidden'); 
-        if(btnSelesaiEmbu) btnSelesaiEmbu.classList.add('hidden'); // Sembunyikan di Randori
+        if(btnSelesaiEmbu) btnSelesaiEmbu.classList.add('hidden');
+        if(juriToggle) juriToggle.classList.add('hidden'); // Sembunyi di Randori
         loadRandoriMatch(); 
     } else {
         panelEmbu.classList.remove('hidden'); panelRandori.classList.add('hidden'); 
         badgeEmbu.classList.remove('hidden'); badgeRandori.classList.add('hidden');
         if(panelWaktu) panelWaktu.classList.remove('hidden'); 
-        if(btnSelesaiEmbu) btnSelesaiEmbu.classList.remove('hidden'); // Munculkan di Embu
+        if(btnSelesaiEmbu) btnSelesaiEmbu.classList.remove('hidden');
+        if(juriToggle) juriToggle.classList.remove('hidden'); // Muncul di Embu
         loadEmbuMatch(); 
     }
 }
@@ -2302,20 +2303,25 @@ function setEmbuCorner(corner) {
     const tabPutih = document.getElementById('embu-tab-putih');
     const namaPutih = document.getElementById('embu-nama-putih');
     const skorPutih = document.getElementById('embu-skor-putih');
-    const labelPutih = document.querySelector('#embu-tab-putih .text-[10px]');
+    
+    // FIX FATAL ERROR: Tarik elemen via ID, bukan Class Tailwind!
+    const labelPutih = document.getElementById('embu-label-putih');
+    const labelMerah = document.getElementById('embu-label-merah');
 
     if(corner === 'merah') {
         tabMerah.className = "flex-1 bg-red-900/50 border-2 border-red-500 p-4 rounded-xl cursor-pointer shadow-[0_0_15px_rgba(239,68,68,0.2)] transition-all relative overflow-hidden";
         tabPutih.className = "flex-1 bg-slate-800 border border-slate-600 p-4 rounded-xl cursor-pointer opacity-50 hover:opacity-100 transition-all relative overflow-hidden";
         namaPutih.classList.remove('text-slate-900'); namaPutih.classList.add('text-white');
         skorPutih.classList.remove('text-slate-900'); skorPutih.classList.add('text-white');
-        labelPutih.classList.remove('text-slate-600'); labelPutih.classList.add('text-slate-400');
+        if(labelPutih) { labelPutih.classList.remove('text-slate-600'); labelPutih.classList.add('text-slate-400'); }
+        if(labelMerah) { labelMerah.classList.remove('text-red-800'); labelMerah.classList.add('text-red-400'); }
     } else {
         tabPutih.className = "flex-1 bg-slate-200 border-2 border-white p-4 rounded-xl cursor-pointer shadow-[0_0_15px_rgba(255,255,255,0.3)] transition-all relative overflow-hidden";
         tabMerah.className = "flex-1 bg-red-900/30 border border-red-800 p-4 rounded-xl cursor-pointer opacity-50 hover:opacity-100 transition-all relative overflow-hidden";
         namaPutih.classList.remove('text-white'); namaPutih.classList.add('text-slate-900');
         skorPutih.classList.remove('text-white'); skorPutih.classList.add('text-slate-900');
-        labelPutih.classList.remove('text-slate-400'); labelPutih.classList.add('text-slate-600');
+        if(labelPutih) { labelPutih.classList.remove('text-slate-400'); labelPutih.classList.add('text-slate-600'); }
+        if(labelMerah) { labelMerah.classList.remove('text-red-400'); labelMerah.classList.add('text-red-800'); }
     }
 
     let rawData = corner === 'merah' ? tempEmbuScores.merahRaw : tempEmbuScores.putihRaw;
