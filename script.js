@@ -1069,7 +1069,7 @@ function startDrawing() {
 function shuffleArray(arr) { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } }
 function applyDrawingData(arr, poolName) { arr.forEach((p, index) => { const found = STATE.participants.find(item => item.id === p.id); if(found) { found.urut = index + 1; found.pool = poolName; }}); }
 // =========================================================
-// UI HELPER: FORMAT GRID NAMA BEREGU/PASANGAN
+// UI HELPER: FORMAT MICRO-CHIPS NAMA BEREGU/PASANGAN
 // =========================================================
 function formatAthleteNameGrid(participant) {
     if (!participant) return "-";
@@ -1078,24 +1078,21 @@ function formatAthleteNameGrid(participant) {
     if (participant.nama.includes(',')) {
         let names = participant.nama.split(',').map(n => n.trim());
         
-        // Judul Utama = Nama Kontingen
-        let html = `<div class="text-lg md:text-xl font-black mb-2">${participant.kontingen}</div>`;
+        // Judul Utama = Nama Kontingen (Lebih ringkas)
+        let html = `<div class="text-base lg:text-lg font-black leading-tight mb-1.5 truncate">${participant.kontingen}</div>`;
         
-        // Grid Layout untuk nama-nama atlet
-        html += `<div class="grid grid-cols-1 xl:grid-cols-2 gap-1.5 w-full">`;
+        // Nama Atlet = Micro Chips (Mengalir ke samping, hemat tempat)
+        html += `<div class="flex flex-wrap gap-1">`;
         names.forEach((n, idx) => {
-            html += `
-            <div class="bg-black/20 border border-slate-500/30 rounded px-2 py-1 text-[10px] text-left truncate flex items-center shadow-inner font-bold">
-                <span class="bg-slate-500/50 w-4 h-4 flex items-center justify-center rounded-full mr-2 flex-shrink-0 font-mono text-[9px]">${idx+1}</span>
-                ${n}
-            </div>`;
+            html += `<span class="bg-black/40 text-slate-300 text-[9px] px-1.5 py-0.5 rounded border border-slate-600/50 whitespace-nowrap"><b class="text-slate-500 mr-0.5">${idx+1}.</b> ${n}</span>`;
         });
         html += `</div>`;
+        
         return html;
     }
     
     // Jika perorangan (1 orang), tampilkan nama seperti biasa
-    return `<div class="text-xl font-black">${participant.nama}</div>`;
+    return `<div class="text-base lg:text-lg font-black leading-tight truncate">${participant.nama}</div>`;
 }
 function filterPesertaScoring() {
     const catName = document.getElementById('select-kategori').value;
