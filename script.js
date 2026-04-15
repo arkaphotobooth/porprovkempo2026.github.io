@@ -1968,71 +1968,116 @@ function exportDrawingCSV(filterCatName = null) {
 }
 
 // =========================================================
-// MESIN EKSPOR 1: DATA RAW (Untuk Tab Ranking - Detail Nilai Juri)
+// FITUR EKSPOR CSV RAW (RANKING & BAGAN)
 // =========================================================
-function exportRawHasilCSV(filterCatName = null) {
-    let categoriesToExport = filterCatName ? STATE.categories.filter(c => c.name === filterCatName) : STATE.categories;
-    let rows = [];
+function exportRawHasilCSV(catName) {
+    if (!catName) {
+        alert("Silakan pilih kategori pertandingan terlebih dahulu!");
+        return;
+    }
 
-    rows.push(["DATA MENTAH (RAW) HASIL PERTANDINGAN - MASS KEMPO"]);
-    rows.push(["Dicetak pada:", new Date().toLocaleString('id-ID')]);
-    rows.push([]);
+    // 1. Filter Data Mentah (Hanya ambil partai di kategori yang dipilih)
+    const catMatches = STATE.matches.filter(m => m.kategori === catName);
+    
+    if (catMatches.length === 0) {
+        alert("Tidak ada data pertandingan untuk kategori ini.");
+        return;
+    }
 
-    categoriesToExport.forEach(cat => {
-        rows.push(["==============================================================="]);
-        rows.push(["KATEGORI:", cat.name.toUpperCase()]);
-        rows.push(["DISIPLIN:", cat.discipline.toUpperCase()]);
-        rows.push(["==============================================================="]);
+    // Ambil info Disiplin dari Kategori
+    const categoryObj = STATE.categories.find(c => c.name === catName);
+    const disiplin = categoryObj ? categoryObj.discipline.toUpperCase() : "UNKNOWN";
 
-        if (cat.discipline === 'embu') {
-            rows.push([]);
-            rows.push(["No. Partai", "Babak", "Sudut", "Nama Atlet", "Kontingen", "W1", "W2", "W3", "W4", "W5", "Penalti", "Total Nilai", "W1(Teknik)", "W2(T)", "W3(T)", "W4(T)", "W5(T)"]);
+    // 2. Siapkan Header Kolom (Sesuai Permintaan)
+    let csvContent = "Disiplin,Kategori,Pool,No Urut Partai,Sudut Merah (Nama),Kontingen Merah,Nilai Merah (Utama/Tie Breaker),Sudut Putih (Nama),Kontingen Putih,Nilai Putih (Utama/Tie Breaker),Status\n";
 
-            let catMatches = STATE.matches.filter(m => m.kategori === cat.name && m.status === 'done').sort((a,b) => a.matchNum - b.matchNum);
-            
-            if(catMatches.length === 0) {
-                rows.push(["-", "-", "-", "Belum ada partai Embu yang selesai", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-"]);
-            } else {
-                catMatches.forEach(m => {
-                    let mrh = STATE.participants.find(x => x.id === m.merahId);
-                    let pth = STATE.participants.find(x => x.id === m.putihId);
-                    let displayNum = m.matchNum % 50 === 0 ? 50 : m.matchNum % 50;
+    // 3. Looping dan Mapping Data
+    // Kita urutkan berdasarkan Pool, lalu Babak/Kolom, lalu Nomor Partai
+    catMatches.sort((a, b) => {
+        if (a.pool !== b.pool) return a.pool.localeCompare(b.pool);
+        if (a.col !== b.col) return a.col - b.col;
+        return a.matchNum - b.matchNum;
+    }).forEach(m => {
+        
+        // Cari data lengkap atlet (Merah & Putih)
+        let pMerah = STATE.participants.find(p => p.id === m.merahId);
+        let pPutih = STATE.participants.find(p => p.id === m.putihId);
 
-                    let rM = m.merahRaw || []; let tM = m.merahTechRaw || [];
-                    let rP = m.putihRaw || []; let tP = m.putihTechRaw || [];
+        // Ambil Nama dan Kontingen (Handle BYE atau belum ada peserta)
+        let namaMerah = pMerah ? pMerah.nama : (m.merahId === -1 ? "BYE" : "Menunggu...");
+        let kontingenMerah = pMerah ? pMerah.kontingen : "-";
+        
+        let namaPutih = pPutih ? pPutih.nama : (m.putihId === -1 ? "BYE" : "Menunggu...");
+        let kontingenPutih = pPutih ? pPutih.kontingen : "-";
 
-                    rows.push([ `G-${displayNum}`, m.babak, "MERAH", mrh ? mrh.nama : "-", mrh ? mrh.kontingen : "-", String(rM[0]||'').replace('.',','), String(rM[1]||'').replace('.',','), String(rM[2]||'').replace('.',','), String(rM[3]||'').replace('.',','), String(rM[4]||'').replace('.',','), "-", String(m.skorMerah||0).replace('.',','), String(tM[0]||'').replace('.',','), String(tM[1]||'').replace('.',','), String(tM[2]||'').replace('.',','), String(tM[3]||'').replace('.',','), String(tM[4]||'') ]);
-                    rows.push([ `G-${displayNum}`, m.babak, "PUTIH", pth ? pth.nama : "-", pth ? pth.kontingen : "-", String(rP[0]||'').replace('.',','), String(rP[1]||'').replace('.',','), String(rP[2]||'').replace('.',','), String(rP[3]||'').replace('.',','), String(rP[4]||'').replace('.',','), "-", String(m.skorPutih||0).replace('.',','), String(tP[0]||'').replace('.',','), String(tP[1]||'').replace('.',','), String(tP[2]||'').replace('.',','), String(tP[3]||'').replace('.',','), String(tP[4]||'') ]);
-                    rows.push([]); 
-                });
+        // --- Logika Cerdas Nilai (Tie-Breaker) ---
+        let nilaiMerah = "";
+        let nilaiPutih = "";
+
+        if (m.status === 'done') {
+            // Skor Utama
+            nilaiMerah = m.skorMerah > 0 ? m.skorMerah.toString() : "0";
+            nilaiPutih = m.skorPutih > 0 ? m.skorPutih.toString() : "0";
+
+            // Tambahkan Tie-Breaker Jika Ada (dan jika skor utama sama)
+            if (m.skorMerah === m.skorPutih && m.skorMerah > 0) {
+                if (m.tbMerahW1 !== undefined && m.tbPutihW1 !== undefined) {
+                    nilaiMerah += ` / ${m.tbMerahW1}`;
+                    nilaiPutih += ` / ${m.tbPutihW1}`;
+                    
+                    // Jika Tie-Breaker Wasit 1 masih sama, tambah Total Teknik
+                    if (m.tbMerahW1 === m.tbPutihW1 && m.tbMerahAll !== undefined) {
+                        nilaiMerah += ` / ${m.tbMerahAll}`;
+                        nilaiPutih += ` / ${m.tbPutihAll}`;
+                    }
+                }
             }
+        } else if (m.status === 'auto-win') {
+            nilaiMerah = m.winnerId === m.merahId ? "Menang WO" : "-";
+            nilaiPutih = m.winnerId === m.putihId ? "Menang WO" : "-";
         } else {
-            rows.push([]);
-            rows.push(["Peringkat / Medali", "Nama Atlet", "Kontingen", "Keterangan"]);
-            let poolResults = calculateRandoriFinalists(cat.name);
-            if (poolResults) {
-                poolResults.forEach(res => {
-                    let isFinalCat = cat.name.toUpperCase().includes('FINAL');
-                    let isSinglePool = res.pool === '-';
-                    let label1 = isFinalCat || isSinglePool ? "Juara 1 (Emas)" : `Juara 1 Pool ${res.pool}`;
-                    let label2 = isFinalCat || isSinglePool ? "Juara 2 (Perak)" : `Runner-Up Pool ${res.pool}`;
-                    let label3 = isFinalCat || isSinglePool ? "Juara 3 Bersama (Perunggu)" : `Juara 3 Pool ${res.pool}`;
-
-                    if(res.emas) rows.push(["Emas", res.emas, res.emasKontingen, label1]);
-                    if(res.perak) rows.push(["Perak", res.perak, res.perakKontingen, label2]);
-                    res.perunggu.forEach(p => rows.push(["Perunggu", p.nama, p.kontingen, label3]));
-                });
-            } else {
-                rows.push(["-", "Belum ada juara / Turnamen masih berjalan", "-", "-"]);
-            }
+            nilaiMerah = "-";
+            nilaiPutih = "-";
         }
-        rows.push([]); rows.push([]);
+
+        // --- Status Partai ---
+        let statusTeks = "";
+        if (m.status === 'done') statusTeks = "Selesai";
+        else if (m.status === 'auto-win') statusTeks = "Auto Win (BYE)";
+        else statusTeks = "Pending";
+
+        // 4. Rakit Baris (Gunakan tanda kutip ganda "" untuk menghindari error jika nama mengandung koma)
+        let baris = [
+            `"${disiplin}"`,
+            `"${catName}"`,
+            `"${m.pool}"`,
+            `"${m.matchNum}"`,
+            `"${namaMerah}"`,
+            `"${kontingenMerah}"`,
+            `"${nilaiMerah}"`,
+            `"${namaPutih}"`,
+            `"${kontingenPutih}"`,
+            `"${nilaiPutih}"`,
+            `"${statusTeks}"`
+        ];
+
+        csvContent += baris.join(",") + "\n";
     });
 
-    let prefix = filterCatName ? `RAW_Nilai_${filterCatName.replace(/[^a-zA-Z0-9]/g, '_')}` : `Semua_RAW_Nilai`;
-    downloadCSV(`${prefix}_${new Date().toISOString().slice(0,10)}.csv`, rows);
+    // 5. Perintah Download via Blob
+    // Tambahkan BOM (Byte Order Mark) agar Excel bisa membaca karakter unik dengan baik
+    const blob = new Blob(["\ufeff", csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    // Buat elemen link rahasia untuk memicu download
+    const link = document.createElement("a");
+    const safeCatName = catName.replace(/[^a-z0-9]/gi, '_').toLowerCase(); // Bersihkan nama file
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Hasil_Raw_${safeCatName}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
-
 
 // =========================================================
 // MESIN EKSPOR 2: REKAPITULASI (Untuk Tab Admin - Bersih 4 Kolom)
