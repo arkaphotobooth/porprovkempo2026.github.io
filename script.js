@@ -1068,30 +1068,28 @@ function startDrawing() {
 
 function shuffleArray(arr) { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } }
 function applyDrawingData(arr, poolName) { arr.forEach((p, index) => { const found = STATE.participants.find(item => item.id === p.id); if(found) { found.urut = index + 1; found.pool = poolName; }}); }
-// =========================================================
-// UI HELPER: FORMAT GRID NAMA BEREGU/PASANGAN (3 KOLOM & FIX TINGGI)
-// =========================================================
 function formatAthleteNameGrid(participant) {
     if (!participant) return "-";
+    
     if (participant.nama.includes(',')) {
         let names = participant.nama.split(',').map(n => n.trim());
         let html = `<div class="text-xl lg:text-2xl font-black leading-tight mb-2 break-words pr-16">${participant.kontingen}</div>`;
         
         html += `<div class="grid grid-cols-3 gap-2 w-full">`;
         names.forEach((n, idx) => {
-            let words = n.split(' ');
-            let shortName = words.slice(0, 2).join(' ');
-            
-            // PERBAIKAN: text-[11px] untuk tablet, lg:text-xs xl:text-sm untuk laptop
-            html += `<div class="bg-black/30 border border-slate-600/50 rounded px-2 py-1.5 text-[11px] lg:text-xs xl:text-sm text-left flex items-center shadow-inner text-slate-200 overflow-hidden" title="${n}">
+            // KLIK AMAN: Munculkan Pop-up, cegah bocor ke tombol induk.
+            // TRUNCATE: Mengandalkan CSS bawaan Tailwind untuk memotong teks berlebih menjadi "..."
+            html += `<div onclick="event.stopPropagation(); alert('Nama Lengkap Atlet:\\n${n}')" class="bg-black/30 border border-slate-600/50 rounded px-2 py-1.5 text-[11px] lg:text-xs xl:text-sm text-left flex items-center shadow-inner text-slate-200 overflow-hidden cursor-pointer hover:bg-slate-700/50 transition-colors" title="Klik untuk lihat nama lengkap">
                 <span class="text-slate-500 mr-1.5 font-bold shrink-0">${idx+1}.</span> 
-                <span class="truncate w-full font-semibold">${shortName}</span>
+                <span class="truncate w-full font-semibold">${n}</span>
             </div>`;
         });
         html += `</div>`;
         return html;
     }
-    return `<div class="text-xl lg:text-2xl font-black leading-tight break-words pr-16 mt-1">${participant.nama}</div>`;
+    
+    // Untuk Peserta Solo: Terapkan juga Pop-up dan Truncate
+    return `<div onclick="event.stopPropagation(); alert('Nama Lengkap Atlet:\\n${participant.nama}')" class="text-xl lg:text-2xl font-black leading-tight break-words pr-16 mt-1 cursor-pointer hover:text-yellow-300 transition-colors truncate" title="Klik untuk lihat nama lengkap">${participant.nama}</div>`;
 }
 function filterPesertaScoring() {
     const catName = document.getElementById('select-kategori').value;
