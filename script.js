@@ -1075,21 +1075,23 @@ function formatAthleteNameGrid(participant) {
     if (!participant) return "-";
     if (participant.nama.includes(',')) {
         let names = participant.nama.split(',').map(n => n.trim());
-        let html = `<div class="text-lg lg:text-xl font-black leading-tight mb-1.5 break-words pr-16">${participant.kontingen}</div>`;
+        let html = `<div class="text-xl lg:text-2xl font-black leading-tight mb-2 break-words pr-16">${participant.kontingen}</div>`;
         
-        html += `<div class="grid grid-cols-3 gap-1.5 w-full">`;
+        html += `<div class="grid grid-cols-3 gap-2 w-full">`;
         names.forEach((n, idx) => {
             let words = n.split(' ');
             let shortName = words.slice(0, 2).join(' ');
-            html += `<div class="bg-black/30 border border-slate-600/50 rounded px-1.5 py-1 text-[9px] md:text-[10px] text-left flex items-center shadow-inner text-slate-200 overflow-hidden" title="${n}">
-                <span class="text-slate-500 mr-1 font-bold shrink-0">${idx+1}.</span> 
+            
+            // PERBAIKAN: text-[11px] untuk tablet, lg:text-xs xl:text-sm untuk laptop
+            html += `<div class="bg-black/30 border border-slate-600/50 rounded px-2 py-1.5 text-[11px] lg:text-xs xl:text-sm text-left flex items-center shadow-inner text-slate-200 overflow-hidden" title="${n}">
+                <span class="text-slate-500 mr-1.5 font-bold shrink-0">${idx+1}.</span> 
                 <span class="truncate w-full font-semibold">${shortName}</span>
             </div>`;
         });
         html += `</div>`;
         return html;
     }
-    return `<div class="text-lg lg:text-xl font-black leading-tight break-words pr-16 mt-0.5">${participant.nama}</div>`;
+    return `<div class="text-xl lg:text-2xl font-black leading-tight break-words pr-16 mt-1">${participant.nama}</div>`;
 }
 function filterPesertaScoring() {
     const catName = document.getElementById('select-kategori').value;
@@ -1354,17 +1356,14 @@ function updateScoringButtonsUI() {
 
 function setJudges(n) { 
     STATE.settings.numJudges = n; 
-    
-    // Warnai tombol aktif
     let btnJ3 = document.getElementById('btn-j3');
     let btnJ5 = document.getElementById('btn-j5');
-    if(btnJ3) btnJ3.className = n === 3 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; 
-    if(btnJ5) btnJ5.className = n === 5 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; 
+    if(btnJ3) btnJ3.className = n === 3 ? 'flex-1 px-2 py-1.5 rounded font-bold text-xs bg-blue-600 text-white transition-colors shadow-sm' : 'flex-1 px-2 py-1.5 rounded font-semibold text-xs text-slate-400 hover:text-white transition-colors'; 
+    if(btnJ5) btnJ5.className = n === 5 ? 'flex-1 px-2 py-1.5 rounded font-bold text-xs bg-blue-600 text-white transition-colors shadow-sm' : 'flex-1 px-2 py-1.5 rounded font-semibold text-xs text-slate-400 hover:text-white transition-colors'; 
     
     const container = document.getElementById('judge-inputs'); 
     if(!container) return;
 
-    // --- FIX BUG JURI: Simpan nilai yang sudah diketik sebelum kotak di-reset ---
     let tempScores = [];
     let tempTechs = [];
     for(let i=1; i<=5; i++) {
@@ -1376,7 +1375,7 @@ function setJudges(n) {
 
     container.innerHTML = ''; 
     for(let i=1; i<=n; i++) { 
-        container.innerHTML += `<div class="bg-slate-900 p-2 rounded-lg border border-slate-600 focus-within:border-blue-500 transition-colors"><div class="text-center mb-1 pb-1 border-b border-slate-700"><label class="block text-[9px] text-slate-400 uppercase font-bold">Wasit ${i}</label></div><div class="space-y-1.5"><div><label class="block text-[8px] text-slate-500 mb-0.5">TOTAL NILAI</label><input type="number" step="0.5" id="score-${i}" value="${tempScores[i-1] || ''}" oninput="calculateLive()" class="w-full bg-slate-800 p-1.5 rounded text-xl font-black outline-none text-center text-white placeholder-slate-700" placeholder="0"></div><div><label class="block text-[8px] text-slate-500 mb-0.5 flex justify-between"><span>TEKNIK</span> ${i===1?'<span class="text-yellow-500 font-bold">TIE-BREAK</span>':''}</label><input type="number" step="0.5" id="tech-${i}" value="${tempTechs[i-1] || ''}" oninput="calculateLive()" class="w-full bg-slate-800 p-1.5 rounded text-xs font-bold outline-none text-center ${i===1?'text-yellow-400':'text-blue-300'} placeholder-slate-700" placeholder="Opt"></div></div></div>`; 
+        container.innerHTML += `<div class="bg-slate-900 p-2 lg:p-3 rounded-lg border border-slate-600 focus-within:border-blue-500 transition-colors"><div class="text-center mb-1 pb-1 border-b border-slate-700"><label class="block text-[10px] lg:text-xs text-slate-400 uppercase font-bold">Wasit ${i}</label></div><div class="space-y-1.5"><div><label class="block text-[9px] lg:text-[10px] text-slate-500 mb-0.5">TOTAL NILAI</label><input type="number" step="0.5" id="score-${i}" value="${tempScores[i-1] || ''}" oninput="calculateLive()" class="w-full bg-slate-800 p-1.5 lg:p-2 rounded text-xl lg:text-2xl font-black outline-none text-center text-white placeholder-slate-700" placeholder="0"></div><div><label class="block text-[9px] lg:text-[10px] text-slate-500 mb-0.5 flex justify-between"><span>TEKNIK</span> ${i===1?'<span class="text-yellow-500 font-bold">TIE-BREAK</span>':''}</label><input type="number" step="0.5" id="tech-${i}" value="${tempTechs[i-1] || ''}" oninput="calculateLive()" class="w-full bg-slate-800 p-1.5 rounded text-xs lg:text-sm font-bold outline-none text-center ${i===1?'text-yellow-400':'text-blue-300'} placeholder-slate-700" placeholder="Opt"></div></div></div>`; 
     } 
     calculateLive(); 
 }
