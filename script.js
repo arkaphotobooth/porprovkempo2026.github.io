@@ -1068,6 +1068,9 @@ function startDrawing() {
 
 function shuffleArray(arr) { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } }
 function applyDrawingData(arr, poolName) { arr.forEach((p, index) => { const found = STATE.participants.find(item => item.id === p.id); if(found) { found.urut = index + 1; found.pool = poolName; }}); }
+// =========================================================
+// UI HELPER: FORMAT GRID NAMA (TRUNCATE + CUSTOM TOOLTIP)
+// =========================================================
 function formatAthleteNameGrid(participant) {
     if (!participant) return "-";
     
@@ -1075,21 +1078,38 @@ function formatAthleteNameGrid(participant) {
         let names = participant.nama.split(',').map(n => n.trim());
         let html = `<div class="text-xl lg:text-2xl font-black leading-tight mb-2 break-words pr-16">${participant.kontingen}</div>`;
         
+        // Pastikan container tidak memiliki overflow-hidden agar tooltip bisa keluar
         html += `<div class="grid grid-cols-3 gap-2 w-full">`;
         names.forEach((n, idx) => {
-            // KLIK AMAN: Munculkan Pop-up, cegah bocor ke tombol induk.
-            // TRUNCATE: Mengandalkan CSS bawaan Tailwind untuk memotong teks berlebih menjadi "..."
-            html += `<div onclick="event.stopPropagation(); alert('Nama Lengkap Atlet:\\n${n}')" class="bg-black/30 border border-slate-600/50 rounded px-2 py-1.5 text-[11px] lg:text-xs xl:text-sm text-left flex items-center shadow-inner text-slate-200 overflow-hidden cursor-pointer hover:bg-slate-700/50 transition-colors" title="Klik untuk lihat nama lengkap">
+            
+            // 1. Ganti onclick alert dengan 'group' dan 'relative' untuk Tooltip
+            html += `
+            <div class="group relative bg-black/30 border border-slate-600/50 rounded px-2 py-1.5 text-[11px] lg:text-xs xl:text-sm text-left flex items-center shadow-inner text-slate-200 cursor-pointer hover:bg-slate-700/50 transition-colors">
+                
                 <span class="text-slate-500 mr-1.5 font-bold shrink-0">${idx+1}.</span> 
                 <span class="truncate w-full font-semibold">${n}</span>
+                
+                <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50 bg-slate-900 border border-slate-600 text-yellow-400 text-xs lg:text-sm font-bold px-3 py-1.5 rounded-lg shadow-[0_5px_15px_rgba(0,0,0,0.5)] whitespace-nowrap pointer-events-none">
+                    ${n}
+                    <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-600"></div>
+                </div>
+                
             </div>`;
         });
         html += `</div>`;
         return html;
     }
     
-    // Untuk Peserta Solo: Terapkan juga Pop-up dan Truncate
-    return `<div onclick="event.stopPropagation(); alert('Nama Lengkap Atlet:\\n${participant.nama}')" class="text-xl lg:text-2xl font-black leading-tight break-words pr-16 mt-1 cursor-pointer hover:text-yellow-300 transition-colors truncate" title="Klik untuk lihat nama lengkap">${participant.nama}</div>`;
+    // Terapkan juga untuk atlet tunggal (Solo)
+    return `
+    <div class="group relative inline-block mt-1">
+        <div class="text-xl lg:text-2xl font-black leading-tight break-words pr-16 cursor-pointer hover:text-yellow-300 transition-colors truncate">
+            ${participant.nama}
+        </div>
+        <div class="absolute bottom-full left-0 mb-2 hidden group-hover:block z-50 bg-slate-900 border border-slate-600 text-yellow-400 text-sm font-bold px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap pointer-events-none">
+            ${participant.nama}
+        </div>
+    </div>`;
 }
 function filterPesertaScoring() {
     const catName = document.getElementById('select-kategori').value;
