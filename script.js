@@ -1077,9 +1077,10 @@ function formatAthleteNameGrid(participant) {
     if (participant.nama.includes(',')) {
         let names = participant.nama.split(',').map(n => n.trim());
         
-        let html = `<div class="text-base lg:text-lg font-black leading-tight mb-3 truncate">${participant.kontingen}</div>`;
+        // NAMA KONTINGEN DIPERBESAR (Sesuai request lingkaran merah)
+        let html = `<div class="text-xl lg:text-2xl font-black leading-tight mb-3 truncate">${participant.kontingen}</div>`;
         
-        // Grid 3 kolom (Jika 6 orang, otomatis jadi 3x2)
+        // Grid 3 kolom 
         html += `<div class="grid grid-cols-3 gap-2">`;
         names.forEach((n, idx) => {
             html += `<div class="bg-black/30 border border-slate-600/50 rounded px-2 py-1.5 text-[10px] md:text-xs text-left truncate flex items-center shadow-inner text-slate-200">
@@ -1091,7 +1092,8 @@ function formatAthleteNameGrid(participant) {
         return html;
     }
     
-    return `<div class="text-base lg:text-lg font-black leading-tight truncate">${participant.nama}</div>`;
+    // Tampilan jika main tunggal (Solo)
+    return `<div class="text-xl lg:text-2xl font-black leading-tight truncate mt-1">${participant.nama}</div>`;
 }
 function filterPesertaScoring() {
     const catName = document.getElementById('select-kategori').value;
@@ -2300,17 +2302,17 @@ function setEmbuCorner(corner) {
     const tabPutih = document.getElementById('embu-tab-putih');
     const namaPutih = document.getElementById('embu-nama-putih');
     const skorPutih = document.getElementById('embu-skor-putih');
-    const labelPutih = document.querySelector('#embu-tab-putih .text-xs');
+    const labelPutih = document.querySelector('#embu-tab-putih .text-[10px]');
 
     if(corner === 'merah') {
-        tabMerah.className = "flex-1 bg-red-900/50 border-2 border-red-500 p-3 rounded-lg mr-2 text-center cursor-pointer shadow-[0_0_10px_rgba(239,68,68,0.3)] transition-all";
-        tabPutih.className = "flex-1 bg-slate-800 border border-slate-600 p-3 rounded-lg ml-2 text-center cursor-pointer opacity-50 hover:opacity-100 transition-all";
+        tabMerah.className = "flex-1 bg-red-900/50 border-2 border-red-500 p-4 rounded-xl cursor-pointer shadow-[0_0_15px_rgba(239,68,68,0.2)] transition-all relative overflow-hidden";
+        tabPutih.className = "flex-1 bg-slate-800 border border-slate-600 p-4 rounded-xl cursor-pointer opacity-50 hover:opacity-100 transition-all relative overflow-hidden";
         namaPutih.classList.remove('text-slate-900'); namaPutih.classList.add('text-white');
         skorPutih.classList.remove('text-slate-900'); skorPutih.classList.add('text-white');
         labelPutih.classList.remove('text-slate-600'); labelPutih.classList.add('text-slate-400');
     } else {
-        tabPutih.className = "flex-1 bg-slate-200 border-2 border-white p-3 rounded-lg ml-2 text-center cursor-pointer shadow-[0_0_10px_rgba(255,255,255,0.3)] transition-all";
-        tabMerah.className = "flex-1 bg-red-900/30 border border-red-800 p-3 rounded-lg mr-2 text-center cursor-pointer opacity-50 hover:opacity-100 transition-all";
+        tabPutih.className = "flex-1 bg-slate-200 border-2 border-white p-4 rounded-xl cursor-pointer shadow-[0_0_15px_rgba(255,255,255,0.3)] transition-all relative overflow-hidden";
+        tabMerah.className = "flex-1 bg-red-900/30 border border-red-800 p-4 rounded-xl cursor-pointer opacity-50 hover:opacity-100 transition-all relative overflow-hidden";
         namaPutih.classList.remove('text-white'); namaPutih.classList.add('text-slate-900');
         skorPutih.classList.remove('text-white'); skorPutih.classList.add('text-slate-900');
         labelPutih.classList.remove('text-slate-400'); labelPutih.classList.add('text-slate-600');
@@ -2331,7 +2333,6 @@ function setEmbuCorner(corner) {
     updateTimerUI();
     calculateLive();
 }
-
 function setJudges(n) { 
     STATE.settings.numJudges = n; 
     let btnJ3 = document.getElementById('btn-j3');
