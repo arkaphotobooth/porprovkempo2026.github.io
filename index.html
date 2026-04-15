@@ -250,42 +250,42 @@
                 <div class="col-span-1 lg:col-span-9">
                     <div class="bg-dark-card p-6 rounded-2xl border border-slate-800 shadow-xl h-full flex flex-col">
                         
-                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 border-b border-slate-700 pb-4 gap-4">
-                            <div>
+                        <div class="flex flex-col md:flex-row justify-between items-start mb-6 border-b border-slate-700 pb-4 gap-4">
+                            <div class="flex-1 pr-4">
                                 <div class="flex items-center gap-3 mb-1">
                                     <span id="scoring-badge-embu" class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded font-bold hidden">EMBU</span>
                                     <span id="scoring-badge-randori" class="bg-red-700 text-white text-[10px] px-2 py-0.5 rounded font-bold hidden">RANDORI</span>
                                     <h2 class="text-xl font-black text-white m-0">Panel Penilaian</h2>
                                 </div>
-                                <div id="scoring-athlete-name" class="text-lg font-bold text-yellow-400 mt-2 whitespace-normal break-words w-full max-w-2xl">Pilih pertandingan di panel kiri</div>
+                                <div id="scoring-athlete-name" class="text-lg font-bold text-yellow-400 mt-2 whitespace-normal break-words w-full">Pilih pertandingan di panel kiri</div>
                             </div>
                             
-                            <div class="flex items-center gap-3">
-                                <div id="juri-toggle-container" class="bg-slate-800 p-1 rounded-lg flex border border-slate-700 hidden">
-                                    <button id="btn-j3" onclick="setJudges(3)" class="px-3 py-1.5 rounded font-semibold text-xs text-slate-400 hover:text-white transition-colors">3 Juri</button>
-                                    <button id="btn-j5" onclick="setJudges(5)" class="px-3 py-1.5 rounded font-bold text-xs bg-blue-600 text-white transition-colors shadow-sm">5 Juri</button>
-                                </div>
-
-                                <button id="btn-selesai-embu" onclick="finalizeEmbuMatch()" class="hidden bg-green-600 hover:bg-green-500 text-white font-bold py-2.5 px-6 rounded-lg shadow-lg transition-transform hover:scale-105 tracking-wider uppercase">
+                            <div class="flex flex-col items-end gap-2 shrink-0 min-w-[140px]">
+                                <button id="btn-selesai-embu" onclick="finalizeEmbuMatch()" class="hidden bg-green-600 hover:bg-green-500 text-white font-black py-2 px-6 rounded-lg shadow-lg transition-transform hover:scale-105 tracking-widest uppercase w-full">
                                     <i class="fas fa-check-circle mr-2"></i>SELESAI
                                 </button>
+
+                                <div id="juri-toggle-container" class="bg-slate-800 p-1 rounded-lg flex border border-slate-700 hidden w-full">
+                                    <button id="btn-j3" onclick="setJudges(3)" class="flex-1 px-2 py-1.5 rounded font-semibold text-xs text-slate-400 hover:text-white transition-colors">3 Juri</button>
+                                    <button id="btn-j5" onclick="setJudges(5)" class="flex-1 px-2 py-1.5 rounded font-bold text-xs bg-blue-600 text-white transition-colors shadow-sm">5 Juri</button>
+                                </div>
                             </div>
                         </div>
 
                         <div id="panel-embu" class="hidden flex-col h-full">
                             <div class="flex flex-col md:flex-row justify-between mb-6 gap-4">
                                 <div class="flex-1 bg-red-900/50 border-2 border-red-500 p-4 rounded-xl cursor-pointer shadow-[0_0_15px_rgba(239,68,68,0.2)] transition-all relative overflow-hidden" onclick="setEmbuCorner('merah')" id="embu-tab-merah">
-                                    <div class="absolute top-4 right-5 text-4xl lg:text-5xl font-black text-red-500 font-mono drop-shadow-md" id="embu-skor-merah">0.0</div>
+                                    <div class="absolute top-4 right-5 text-4xl lg:text-5xl font-black text-red-500 font-mono drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" id="embu-skor-merah">0.0</div>
                                     
                                     <div id="embu-label-merah" class="text-[10px] text-red-400 font-black uppercase tracking-widest mb-1 opacity-80">Pita Merah</div>
-                                    <div id="embu-nama-merah" class="text-white w-3/4">-</div>
+                                    <div id="embu-nama-merah" class="text-white w-full">-</div>
                                 </div>
                                 
                                 <div class="flex-1 bg-slate-800 border border-slate-600 p-4 rounded-xl cursor-pointer opacity-50 hover:opacity-100 transition-all relative overflow-hidden" onclick="setEmbuCorner('putih')" id="embu-tab-putih">
-                                    <div class="absolute top-4 right-5 text-4xl lg:text-5xl font-black text-white font-mono drop-shadow-md" id="embu-skor-putih">0.0</div>
+                                    <div class="absolute top-4 right-5 text-4xl lg:text-5xl font-black text-white font-mono drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" id="embu-skor-putih">0.0</div>
                                     
                                     <div id="embu-label-putih" class="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1 opacity-80">Pita Putih</div>
-                                    <div id="embu-nama-putih" class="text-white w-3/4">-</div>
+                                    <div id="embu-nama-putih" class="text-white w-full">-</div>
                                 </div>
                             </div>
                             
