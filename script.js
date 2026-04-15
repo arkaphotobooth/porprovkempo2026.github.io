@@ -951,7 +951,12 @@ function renderVisualBracket(catName) {
                     let isInteractive = (m.col === 1 && (m.status === 'pending' || m.status === 'auto-win'));
                     let activeM = (SWAP_SELECTION && SWAP_SELECTION.matchId === m.id && SWAP_SELECTION.corner === 'merah') ? 'bg-yellow-600/80 px-1 rounded text-white shadow-[0_0_10px_rgba(234,179,8,0.5)]' : '';
                     let activeP = (SWAP_SELECTION && SWAP_SELECTION.matchId === m.id && SWAP_SELECTION.corner === 'putih') ? 'bg-yellow-600/80 px-1 rounded text-white shadow-[0_0_10px_rgba(234,179,8,0.5)]' : '';
-                    let cursorM = isInteractive ? `cursor-pointer hover:text-yellow-400 border-b border-dashed border-slate-500 ${activeM}` : '';
+                    // Tambahkan ikon ⇄ jika Interactive
+let nMerahRaw = ... (kode Anda yang lama);
+if (isInteractive) nMerahRaw = `<i class="fas fa-exchange-alt text-[8px] text-yellow-500 mr-1"></i>` + nMerahRaw;
+
+let nPutihRaw = ... (kode Anda yang lama);
+if (isInteractive) nPutihRaw = `<i class="fas fa-exchange-alt text-[8px] text-yellow-500 mr-1"></i>` + nPutihRaw;
                     let cursorP = isInteractive ? `cursor-pointer hover:text-yellow-400 border-b border-dashed border-slate-500 ${activeP}` : '';
                     
                     // --- PEMASANGAN CUSTOM TOOLTIP DI BAGAN ---
