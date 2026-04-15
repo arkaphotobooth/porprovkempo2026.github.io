@@ -939,8 +939,7 @@ function renderVisualBracket(catName) {
                     let pMerah = STATE.participants.find(p => p.id === m.merahId);
                     let pPutih = STATE.participants.find(p => p.id === m.putihId);
                     
-                    // --- LOGIKA SMART DISPLAY (Bagan Ringkas) ---
-                    // Jika ada koma (Tim), tampilkan Kontingen. Jika tidak ada koma (Solo), tampilkan Nama.
+                    // 1. DEKLARASI PERTAMA VARIABEL
                     let nMerahRaw = m.merahId === -1 ? "BYE" : (pMerah ? (pMerah.nama.includes(',') ? pMerah.kontingen : pMerah.nama) : (m.merahId ? "Hantu" : "Menunggu..."));
                     let nPutihRaw = m.putihId === -1 ? "BYE" : (pPutih ? (pPutih.nama.includes(',') ? pPutih.kontingen : pPutih.nama) : (m.putihId ? "Hantu" : "Menunggu..."));
                     
@@ -949,17 +948,18 @@ function renderVisualBracket(catName) {
                     let wPutih = m.winnerId === m.putihId ? 'text-green-400' : m.winnerId && m.winnerId !== m.putihId ? 'text-slate-500 line-through' : 'text-white';
 
                     let isInteractive = (m.col === 1 && (m.status === 'pending' || m.status === 'auto-win'));
+                    
+                    // 2. PERBAIKAN BUG: Tanpa kata 'let' lagi saat menambahkan ikon panah Swap
+                    if (isInteractive) {
+                        nMerahRaw = `<i class="fas fa-exchange-alt text-[8px] text-yellow-500 mr-1"></i>` + nMerahRaw;
+                        nPutihRaw = `<i class="fas fa-exchange-alt text-[8px] text-yellow-500 mr-1"></i>` + nPutihRaw;
+                    }
+
                     let activeM = (SWAP_SELECTION && SWAP_SELECTION.matchId === m.id && SWAP_SELECTION.corner === 'merah') ? 'bg-yellow-600/80 px-1 rounded text-white shadow-[0_0_10px_rgba(234,179,8,0.5)]' : '';
                     let activeP = (SWAP_SELECTION && SWAP_SELECTION.matchId === m.id && SWAP_SELECTION.corner === 'putih') ? 'bg-yellow-600/80 px-1 rounded text-white shadow-[0_0_10px_rgba(234,179,8,0.5)]' : '';
-                    // Tambahkan ikon ⇄ jika Interactive
-let nMerahRaw = ... (kode Anda yang lama);
-if (isInteractive) nMerahRaw = `<i class="fas fa-exchange-alt text-[8px] text-yellow-500 mr-1"></i>` + nMerahRaw;
-
-let nPutihRaw = ... (kode Anda yang lama);
-if (isInteractive) nPutihRaw = `<i class="fas fa-exchange-alt text-[8px] text-yellow-500 mr-1"></i>` + nPutihRaw;
+                    let cursorM = isInteractive ? `cursor-pointer hover:text-yellow-400 border-b border-dashed border-slate-500 ${activeM}` : '';
                     let cursorP = isInteractive ? `cursor-pointer hover:text-yellow-400 border-b border-dashed border-slate-500 ${activeP}` : '';
                     
-                    // --- PEMASANGAN CUSTOM TOOLTIP DI BAGAN ---
                     let nMerahHTML = `
                         <div class="group relative flex-1 min-w-0 mr-2 flex items-center">
                             <span class="${wMerah} truncate block w-full ${cursorM}" ${isInteractive ? `onclick="handleSwap(${m.id}, 'merah', ${m.merahId}, event)" title="Klik untuk Tukar"` : ''}>${nMerahRaw}</span>
@@ -978,7 +978,6 @@ if (isInteractive) nPutihRaw = `<i class="fas fa-exchange-alt text-[8px] text-ye
 
                     let undoBtn = m.status === 'done' ? `<button onclick="undoMatchResult(${m.id})" class="absolute -bottom-2 -right-2 bg-red-600 hover:bg-red-500 text-white text-[10px] w-7 h-7 rounded-full shadow-lg border border-slate-800 z-10 flex items-center justify-center transition-transform hover:scale-110" title="Batalkan Hasil Partai Ini"><i class="fas fa-undo"></i></button>` : '';
 
-                    // --- LOGIKA PENAMPILAN SKOR TIE-BREAKER DI BAGAN ---
                     let dMerah = m.skorMerah > 0 ? m.skorMerah : '';
                     let dPutih = m.skorPutih > 0 ? m.skorPutih : '';
 
@@ -992,7 +991,6 @@ if (isInteractive) nPutihRaw = `<i class="fas fa-exchange-alt text-[8px] text-ye
                             }
                         }
                     }
-                    // -----------------------------------------------------
 
                     colHTML += `
                         <div class="bracket-match p-3 rounded-lg border-2 ${bgStyle} relative shadow-lg transition-all">
