@@ -937,9 +937,12 @@ function renderVisualBracket(catName) {
                 colMatches.forEach(m => {
                     let displayNum = m.matchNum % 50 === 0 ? 50 : m.matchNum % 50; 
                     let pMerah = STATE.participants.find(p => p.id === m.merahId);
-                    let nMerahRaw = m.merahId === -1 ? "BYE" : (pMerah ? pMerah.nama : (m.merahId ? "Hantu" : "Menunggu..."));
                     let pPutih = STATE.participants.find(p => p.id === m.putihId);
-                    let nPutihRaw = m.putihId === -1 ? "BYE" : (pPutih ? pPutih.nama : (m.putihId ? "Hantu" : "Menunggu..."));
+                    
+                    // --- LOGIKA SMART DISPLAY (Bagan Ringkas) ---
+                    // Jika ada koma (Tim), tampilkan Kontingen. Jika tidak ada koma (Solo), tampilkan Nama.
+                    let nMerahRaw = m.merahId === -1 ? "BYE" : (pMerah ? (pMerah.nama.includes(',') ? pMerah.kontingen : pMerah.nama) : (m.merahId ? "Hantu" : "Menunggu..."));
+                    let nPutihRaw = m.putihId === -1 ? "BYE" : (pPutih ? (pPutih.nama.includes(',') ? pPutih.kontingen : pPutih.nama) : (m.putihId ? "Hantu" : "Menunggu..."));
                     
                     let bgStyle = m.status === 'done' ? 'border-green-500 bg-slate-800' : m.status === 'auto-win' ? 'border-slate-600 bg-slate-900 opacity-50' : 'border-blue-500 bg-slate-800';
                     let wMerah = m.winnerId === m.merahId ? 'text-green-400' : m.winnerId && m.winnerId !== m.merahId ? 'text-slate-500 line-through' : 'text-red-400';
@@ -951,8 +954,22 @@ function renderVisualBracket(catName) {
                     let cursorM = isInteractive ? `cursor-pointer hover:text-yellow-400 border-b border-dashed border-slate-500 ${activeM}` : '';
                     let cursorP = isInteractive ? `cursor-pointer hover:text-yellow-400 border-b border-dashed border-slate-500 ${activeP}` : '';
                     
-                    let nMerahHTML = `<span class="${wMerah} truncate w-32 ${cursorM}" ${isInteractive ? `onclick="handleSwap(${m.id}, 'merah', ${m.merahId}, event)" title="Klik untuk Tukar"` : ''}>${nMerahRaw}</span>`;
-                    let nPutihHTML = `<span class="${wPutih} truncate w-32 ${cursorP}" ${isInteractive ? `onclick="handleSwap(${m.id}, 'putih', ${m.putihId}, event)" title="Klik untuk Tukar"` : ''}>${nPutihRaw}</span>`;
+                    // --- PEMASANGAN CUSTOM TOOLTIP DI BAGAN ---
+                    let nMerahHTML = `
+                        <div class="group relative flex-1 min-w-0 mr-2 flex items-center">
+                            <span class="${wMerah} truncate block w-full ${cursorM}" ${isInteractive ? `onclick="handleSwap(${m.id}, 'merah', ${m.merahId}, event)" title="Klik untuk Tukar"` : ''}>${nMerahRaw}</span>
+                            ${pMerah ? `<div class="absolute bottom-full left-0 mb-2 hidden group-hover:block z-[60] bg-slate-900 border border-slate-600 text-yellow-400 text-xs font-bold px-3 py-1.5 rounded-lg shadow-[0_5px_15px_rgba(0,0,0,0.5)] whitespace-nowrap pointer-events-none">
+                                ${pMerah.nama}
+                            </div>` : ''}
+                        </div>`;
+                        
+                    let nPutihHTML = `
+                        <div class="group relative flex-1 min-w-0 mr-2 flex items-center">
+                            <span class="${wPutih} truncate block w-full ${cursorP}" ${isInteractive ? `onclick="handleSwap(${m.id}, 'putih', ${m.putihId}, event)" title="Klik untuk Tukar"` : ''}>${nPutihRaw}</span>
+                            ${pPutih ? `<div class="absolute bottom-full left-0 mb-2 hidden group-hover:block z-[60] bg-slate-900 border border-slate-600 text-yellow-400 text-xs font-bold px-3 py-1.5 rounded-lg shadow-[0_5px_15px_rgba(0,0,0,0.5)] whitespace-nowrap pointer-events-none">
+                                ${pPutih.nama}
+                            </div>` : ''}
+                        </div>`;
 
                     let undoBtn = m.status === 'done' ? `<button onclick="undoMatchResult(${m.id})" class="absolute -bottom-2 -right-2 bg-red-600 hover:bg-red-500 text-white text-[10px] w-7 h-7 rounded-full shadow-lg border border-slate-800 z-10 flex items-center justify-center transition-transform hover:scale-110" title="Batalkan Hasil Partai Ini"><i class="fas fa-undo"></i></button>` : '';
 
@@ -960,12 +977,10 @@ function renderVisualBracket(catName) {
                     let dMerah = m.skorMerah > 0 ? m.skorMerah : '';
                     let dPutih = m.skorPutih > 0 ? m.skorPutih : '';
 
-                    // Jika partai sudah selesai dan nilainya seri
                     if (m.status === 'done' && m.skorMerah > 0 && m.skorMerah === m.skorPutih) {
                         if (m.tbMerahW1 !== undefined && m.tbPutihW1 !== undefined) {
                             dMerah += `/${m.tbMerahW1}`;
                             dPutih += `/${m.tbPutihW1}`;
-                            // Jika TB1 juga seri
                             if (m.tbMerahW1 === m.tbPutihW1 && m.tbMerahAll !== undefined) {
                                 dMerah += `/${m.tbMerahAll || 0}`;
                                 dPutih += `/${m.tbPutihAll || 0}`;
@@ -981,11 +996,11 @@ function renderVisualBracket(catName) {
                             <span class="text-[9px] uppercase text-slate-400 block mb-2 font-bold">${m.babak}</span>
                             <div class="flex justify-between items-center text-sm font-bold border-b border-slate-700 pb-1 mb-1">
                                 ${nMerahHTML}
-                                <span class="text-xs text-slate-500">${dMerah}</span>
+                                <span class="text-xs text-slate-500 shrink-0">${dMerah}</span>
                             </div>
                             <div class="flex justify-between items-center text-sm font-bold">
                                 ${nPutihHTML}
-                                <span class="text-xs text-slate-500">${dPutih}</span>
+                                <span class="text-xs text-slate-500 shrink-0">${dPutih}</span>
                             </div>
                         </div>
                     `;
