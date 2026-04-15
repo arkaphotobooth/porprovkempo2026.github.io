@@ -1069,7 +1069,7 @@ function startDrawing() {
 function shuffleArray(arr) { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } }
 function applyDrawingData(arr, poolName) { arr.forEach((p, index) => { const found = STATE.participants.find(item => item.id === p.id); if(found) { found.urut = index + 1; found.pool = poolName; }}); }
 // =========================================================
-// UI HELPER: FORMAT GRID NAMA BEREGU/PASANGAN (3 KOLOM)
+// UI HELPER: FORMAT GRID NAMA BEREGU/PASANGAN (3 KOLOM & FIX TINGGI)
 // =========================================================
 function formatAthleteNameGrid(participant) {
     if (!participant) return "-";
@@ -1077,21 +1077,27 @@ function formatAthleteNameGrid(participant) {
     if (participant.nama.includes(',')) {
         let names = participant.nama.split(',').map(n => n.trim());
         
-        // pr-16 memberi sedikit ruang di kanan agar kontingen tidak langsung menabrak angka skor
         let html = `<div class="text-xl lg:text-2xl font-black leading-tight mb-3 break-words pr-16">${participant.kontingen}</div>`;
         
-        // w-full agar grid memakan seluruh ruang yang tersedia
         html += `<div class="grid grid-cols-3 gap-2 w-full">`;
         names.forEach((n, idx) => {
-            html += `<div class="bg-black/30 border border-slate-600/50 rounded px-2 py-1.5 text-[10px] md:text-xs text-left whitespace-normal break-words leading-tight flex items-start shadow-inner text-slate-200">
-                <span class="text-slate-500 mr-1.5 font-bold">${idx+1}.</span> 
-                <span>${n}</span>
+            // 1. Ambil maksimal 2 kata pertama saja
+            let words = n.split(' ');
+            let shortName = words.slice(0, 2).join(' ');
+
+            // 2. Gunakan 'truncate' agar jika 2 kata itu tetap kepanjangan, tidak akan turun ke bawah
+            // 3. Tambahkan title="${n}" agar nama lengkap muncul saat di-hover (ditahan kursornya)
+            html += `<div class="bg-black/30 border border-slate-600/50 rounded px-2 py-1.5 text-[10px] md:text-xs text-left flex items-center shadow-inner text-slate-200 overflow-hidden" title="${n}">
+                <span class="text-slate-500 mr-1.5 font-bold shrink-0">${idx+1}.</span> 
+                <span class="truncate w-full font-semibold">${shortName}</span>
             </div>`;
         });
         html += `</div>`;
+        
         return html;
     }
-        return `<div class="text-xl lg:text-2xl font-black leading-tight break-words pr-16 mt-1">${participant.nama}</div>`;
+    
+    return `<div class="text-xl lg:text-2xl font-black leading-tight break-words pr-16 mt-1">${participant.nama}</div>`;
 }
 function filterPesertaScoring() {
     const catName = document.getElementById('select-kategori').value;
