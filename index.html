@@ -306,50 +306,50 @@
 
                         <div id="panel-randori" class="hidden flex-col h-full gap-4">
                         
-                        <div class="flex items-stretch justify-between bg-slate-900 border border-slate-700 p-4 lg:p-6 rounded-2xl shadow-inner">
+                        <div class="flex items-stretch justify-between bg-slate-900 border border-slate-700 p-2 lg:p-4 rounded-2xl shadow-inner min-h-[450px]">
                             
-                            <div class="flex-1 flex flex-col items-center border-r border-slate-700 px-2 lg:px-4">
-                                <div class="bg-red-600 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-[0_0_8px_rgba(220,38,38,0.5)] tracking-widest mb-3">PITA MERAH</div>
+                            <div class="flex-1 flex flex-col items-center justify-center border-r border-slate-700 px-2 lg:px-4">
+                                <div class="bg-red-600 text-white text-[10px] font-black px-4 py-1 rounded-full shadow-[0_0_8px_rgba(220,38,38,0.5)] tracking-widest mb-4">PITA MERAH</div>
                                 
-                                <div id="randori-nama-merah" class="text-xl lg:text-2xl font-black text-white leading-tight text-center line-clamp-2 w-full">Iwan Fals</div>
-                                <div id="randori-kont-merah" class="text-[10px] lg:text-xs text-slate-400 font-bold uppercase tracking-widest mt-1 text-center w-full truncate">KAB. KLATEN</div>
+                                <div id="randori-nama-merah" class="text-2xl font-black text-white leading-tight text-center line-clamp-2 w-full">Iwan Fals</div>
+                                <div id="randori-kont-merah" class="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1 text-center w-full truncate mb-6">KAB. KLATEN</div>
                                 
-                                <div id="score-merah" class="text-8xl font-black text-red-500 font-mono mt-4 mb-8 leading-none drop-shadow-md">0</div>
+                                <div id="score-merah" class="text-[100px] lg:text-[120px] font-black text-red-500 font-mono leading-none drop-shadow-md mb-8">0</div>
                                 
-                                <div class="flex flex-col gap-2 mb-2 w-full px-1 lg:px-8 mt-auto">
-                                    <div class="flex gap-2">
-                                        <button onclick="addRandoriScore('merah', 5)" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 lg:py-3 rounded text-[10px] lg:text-[11px] shadow-sm transition-colors">WAZA-ARI (+5)</button>
-                                        <button onclick="addRandoriScore('merah', 5)" class="flex-1 bg-purple-600 hover:bg-purple-500 text-white font-bold py-2.5 lg:py-3 rounded text-[10px] lg:text-[11px] shadow-sm transition-colors">YUSEI KACHI (+5)</button>
-                                        <button onclick="addRandoriScore('merah', 10)" class="flex-1 bg-green-600 hover:bg-green-500 text-white font-bold py-2.5 lg:py-3 rounded text-[10px] lg:text-[11px] shadow-sm transition-colors">IPPON (+10)</button>
+                                <div class="flex flex-col gap-2 w-full px-1 lg:px-6">
+                                    <div class="flex gap-2 h-14">
+                                        <button onclick="addRandoriScore('merah', 5)" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-[10px] lg:text-xs shadow-sm flex flex-col items-center justify-center leading-tight">WAZA-ARI<br>(+5)</button>
+                                        <button onclick="addRandoriScore('merah', 5)" class="flex-1 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-lg text-[10px] lg:text-xs shadow-sm flex flex-col items-center justify-center leading-tight">YUSEI KACHI<br>(+5)</button>
+                                        <button onclick="addRandoriScore('merah', 10)" class="flex-1 bg-green-600 hover:bg-green-500 text-white font-bold rounded-lg text-[10px] lg:text-xs shadow-sm flex flex-col items-center justify-center leading-tight">IPPON<br>(+10)</button>
                                     </div>
-                                    <div class="flex gap-2">
-                                        <button onclick="addRandoriScore('putih', 5)" class="flex-1 bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 rounded text-[10px] shadow-sm transition-colors" title="Batsu ke Merah, Poin Putih">BATSU LAWAN (+5)</button>
-                                        <button onclick="addRandoriScore('putih', 10)" class="flex-1 bg-orange-600 hover:bg-orange-500 text-white font-bold py-2 rounded text-[10px] shadow-sm transition-colors" title="Batsu ke Merah, Poin Putih">BATSU LAWAN (+10)</button>
+                                    <div class="flex gap-2 h-12">
+                                        <button onclick="addRandoriScore('putih', 5)" class="flex-1 bg-yellow-600 hover:bg-yellow-500 text-white font-bold rounded-lg text-[10px] shadow-sm flex items-center justify-center" title="Batsu ke Merah, Poin Putih">BATSU LAWAN (+5)</button>
+                                        <button onclick="addRandoriScore('putih', 10)" class="flex-1 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-lg text-[10px] shadow-sm flex items-center justify-center" title="Batsu ke Merah, Poin Putih">BATSU LAWAN (+10)</button>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="px-2 lg:px-6 flex flex-col items-center justify-center">
-                                <div class="text-2xl lg:text-3xl font-black text-slate-600 italic font-mono">VS</div>
+                            <div class="px-2 lg:px-4 flex flex-col items-center justify-center">
+                                <div class="text-3xl font-black text-slate-700 italic font-mono">VS</div>
                             </div>
 
-                            <div class="flex-1 flex flex-col items-center pl-2 lg:px-4">
-                                <div class="bg-white text-slate-900 text-[10px] font-black px-3 py-1 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.3)] tracking-widest mb-3">PITA PUTIH</div>
+                            <div class="flex-1 flex flex-col items-center justify-center pl-2 lg:px-4">
+                                <div class="bg-white text-slate-900 text-[10px] font-black px-4 py-1 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.3)] tracking-widest mb-4">PITA PUTIH</div>
                                 
-                                <div id="randori-nama-putih" class="text-xl lg:text-2xl font-black text-white leading-tight text-center line-clamp-2 w-full">Lukman Sardi</div>
-                                <div id="randori-kont-putih" class="text-[10px] lg:text-xs text-slate-400 font-bold uppercase tracking-widest mt-1 text-center w-full truncate">KAB. KENDAL</div>
+                                <div id="randori-nama-putih" class="text-2xl font-black text-white leading-tight text-center line-clamp-2 w-full">Lukman Sardi</div>
+                                <div id="randori-kont-putih" class="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1 text-center w-full truncate mb-6">KAB. KENDAL</div>
                                 
-                                <div id="score-putih" class="text-8xl font-black text-white font-mono mt-4 mb-8 leading-none drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">0</div>
+                                <div id="score-putih" class="text-[100px] lg:text-[120px] font-black text-white font-mono leading-none drop-shadow-[0_0_10px_rgba(255,255,255,0.2)] mb-8">0</div>
                                 
-                                <div class="flex flex-col gap-2 mb-2 w-full px-1 lg:px-8 mt-auto">
-                                    <div class="flex gap-2">
-                                        <button onclick="addRandoriScore('putih', 5)" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 lg:py-3 rounded text-[10px] lg:text-[11px] shadow-sm transition-colors">WAZA-ARI (+5)</button>
-                                        <button onclick="addRandoriScore('putih', 5)" class="flex-1 bg-purple-600 hover:bg-purple-500 text-white font-bold py-2.5 lg:py-3 rounded text-[10px] lg:text-[11px] shadow-sm transition-colors">YUSEI KACHI (+5)</button>
-                                        <button onclick="addRandoriScore('putih', 10)" class="flex-1 bg-green-600 hover:bg-green-500 text-white font-bold py-2.5 lg:py-3 rounded text-[10px] lg:text-[11px] shadow-sm transition-colors">IPPON (+10)</button>
+                                <div class="flex flex-col gap-2 w-full px-1 lg:px-6">
+                                    <div class="flex gap-2 h-14">
+                                        <button onclick="addRandoriScore('putih', 5)" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-[10px] lg:text-xs shadow-sm flex flex-col items-center justify-center leading-tight">WAZA-ARI<br>(+5)</button>
+                                        <button onclick="addRandoriScore('putih', 5)" class="flex-1 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-lg text-[10px] lg:text-xs shadow-sm flex flex-col items-center justify-center leading-tight">YUSEI KACHI<br>(+5)</button>
+                                        <button onclick="addRandoriScore('putih', 10)" class="flex-1 bg-green-600 hover:bg-green-500 text-white font-bold rounded-lg text-[10px] lg:text-xs shadow-sm flex flex-col items-center justify-center leading-tight">IPPON<br>(+10)</button>
                                     </div>
-                                    <div class="flex gap-2">
-                                        <button onclick="addRandoriScore('merah', 5)" class="flex-1 bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 rounded text-[10px] shadow-sm transition-colors" title="Batsu ke Putih, Poin Merah">BATSU LAWAN (+5)</button>
-                                        <button onclick="addRandoriScore('merah', 10)" class="flex-1 bg-orange-600 hover:bg-orange-500 text-white font-bold py-2 rounded text-[10px] shadow-sm transition-colors" title="Batsu ke Putih, Poin Merah">BATSU LAWAN (+10)</button>
+                                    <div class="flex gap-2 h-12">
+                                        <button onclick="addRandoriScore('merah', 5)" class="flex-1 bg-yellow-600 hover:bg-yellow-500 text-white font-bold rounded-lg text-[10px] shadow-sm flex items-center justify-center" title="Batsu ke Putih, Poin Merah">BATSU LAWAN (+5)</button>
+                                        <button onclick="addRandoriScore('merah', 10)" class="flex-1 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-lg text-[10px] shadow-sm flex items-center justify-center" title="Batsu ke Putih, Poin Merah">BATSU LAWAN (+10)</button>
                                     </div>
                                 </div>
                             </div>
