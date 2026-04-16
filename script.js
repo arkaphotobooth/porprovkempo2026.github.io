@@ -1313,7 +1313,12 @@ function saveRandoriMatchResult() {
     const match = STATE.matches.find(m => m.id === currentRandoriMatchId);
     if(!match) return;
 
-    let sMerah = RANDORI_STATE.merah.score; let sPutih = RANDORI_STATE.putih.score;
+    // ==============================================================
+    // PERBAIKAN FATAL: Baca skor LANGSUNG dari teks besar di layar!
+    // ==============================================================
+    let sMerah = parseInt(document.getElementById('score-merah').innerText) || 0;
+    let sPutih = parseInt(document.getElementById('score-putih').innerText) || 0;
+
     if(sMerah === sPutih) return alert("Skor seri! Tambahkan poin kemenangan.");
 
     let winnerId = sMerah > sPutih ? match.merahId : match.putihId;
@@ -1346,7 +1351,6 @@ function saveRandoriMatchResult() {
         processAutoWins(match.kategori); 
         
         // --- STRATEGI B: BRANCH UPDATE ---
-        // Menembak spesifik ke cabang data, menghemat ukuran payload
         let updates = {};
         updates['turnamen_data/matches'] = STATE.matches;
         updates['turnamen_data/participants'] = STATE.participants;
