@@ -265,9 +265,13 @@
                             <div id="scoring-athlete-name" class="text-sm lg:text-base font-bold text-yellow-400 mt-1 whitespace-normal break-words w-full leading-tight">Pilih pertandingan...</div>
                         </div>
                         
-                        <div class="shrink-0 min-w-[120px] lg:min-w-[140px]">
+                        <div class="shrink-0 min-w-[120px] lg:min-w-[160px]">
                             <button id="btn-selesai-embu" onclick="finalizeEmbuMatch()" class="hidden bg-green-600 hover:bg-green-500 text-white font-black py-2.5 lg:py-3 px-6 rounded-lg shadow-md transition-transform hover:scale-105 tracking-widest uppercase w-full text-sm lg:text-base">
-                                <i class="fas fa-check-circle mr-2"></i>SELESAI
+                                <i class="fas fa-check-circle mr-2"></i>SELESAI EMBU
+                            </button>
+                            
+                            <button id="btn-selesai-randori" onclick="saveRandoriMatchResult()" class="hidden bg-red-600 hover:bg-red-500 text-white font-black py-2.5 lg:py-3 px-4 lg:px-6 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)] transition-transform hover:scale-105 tracking-widest uppercase w-full text-sm lg:text-base">
+                                <i class="fas fa-flag-checkered mr-2"></i>SIMPAN HASIL
                             </button>
                         </div>
                     </div>
