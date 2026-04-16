@@ -1202,6 +1202,7 @@ function filterPesertaScoring() {
     }
 }
 let currentRandoriMatchId = null;
+
 function loadRandoriMatch() {
     const val = document.getElementById('select-peserta').value; 
     if(!val || !val.startsWith('match-')) return;
@@ -1223,21 +1224,29 @@ function loadRandoriMatch() {
     let merahEl = document.getElementById('randori-nama-merah');
     let putihEl = document.getElementById('randori-nama-putih');
 
-    // Hapus pembatas tinggi & truncate agar Grid bisa tampil penuh
-    merahEl.classList.remove('h-14', 'overflow-hidden', 'truncate');
-    putihEl.classList.remove('h-14', 'overflow-hidden', 'truncate');
-
-    // Render Grid
-    merahEl.innerHTML = formatAthleteNameGrid(merah);
-    putihEl.innerHTML = formatAthleteNameGrid(putih);
+    // ==============================================================
+    // PERBAIKAN FATAL: JS PENGGANGGU (formatAthleteNameGrid) DIBUANG!
+    // Kita langsung tembak teks mentahnya agar CSS Tailwind di HTML bisa bekerja menengahkan teks.
+    // ==============================================================
     
-    // Ubah sub-kontingen jika beregu
-    document.getElementById('randori-kont-merah').innerText = merah && !merah.nama.includes(',') ? merah.kontingen : (merah ? "Tim Beregu / Pasangan" : "-");
-    document.getElementById('randori-kont-putih').innerText = putih && !putih.nama.includes(',') ? putih.kontingen : (putih ? "Tim Beregu / Pasangan" : "-");
+    // Format Nama: Jika beregu (ada koma), tampilkan nama pertama + "dkk" agar ringkas
+    let namaM = merah ? (merah.nama.includes(',') ? merah.nama.split(',')[0] + " dkk" : merah.nama) : "Menunggu...";
+    let namaP = putih ? (putih.nama.includes(',') ? putih.nama.split(',')[0] + " dkk" : putih.nama) : "Menunggu...";
+
+    merahEl.innerText = namaM;
+    putihEl.innerText = namaP;
+    
+    // Ubah Kontingen
+    document.getElementById('randori-kont-merah').innerText = merah ? merah.kontingen : "-";
+    document.getElementById('randori-kont-putih').innerText = putih ? putih.kontingen : "-";
+    
+    // Ubah Judul Pertandingan di atas panel agar serasi
+    let displayNum = match.matchNum % 50 === 0 ? 50 : match.matchNum % 50;
+    let titleText = `G-${displayNum} [${match.babak}] ${namaM} vs ${namaP}`;
+    document.getElementById('scoring-athlete-name').innerText = titleText;
     
     resetRandoriBoard(); 
 }
-
 function resetRandoriBoard() { RANDORI_STATE = { merah: { score: 0 }, putih: { score: 0 } }; updateRandoriUI(); }
 let riwayatPoin = [];
 function addRandoriScore(sudut, point) {
