@@ -1239,7 +1239,61 @@ function loadRandoriMatch() {
 }
 
 function resetRandoriBoard() { RANDORI_STATE = { merah: { score: 0 }, putih: { score: 0 } }; updateRandoriUI(); }
-function addRandoriScore(corner, points) { RANDORI_STATE[corner].score += points; if(RANDORI_STATE[corner].score < 0) RANDORI_STATE[corner].score = 0; updateRandoriUI(); }
+// 1. TAMBAHKAN ARRAY INI DI LUAR FUNGSI (Misal di bagian atas script Anda)
+let riwayatPoin = [];
+
+// 2. CARI FUNGSI INI DI SCRIPT.JS ANDA
+function addRandoriScore(sudut, point) {
+    // ... (Ini adalah kode asli Anda yang menghitung skor, BIARKAN SAJA) ...
+    // STATE.skorMerah += point; atau semacamnya
+    // updateUIDisplay();
+
+    // ========================================================
+    // 3. TAMBAHKAN KODE INI TEPAT SEBELUM KURUNG TUTUP FUNGSI
+    // ========================================================
+    let jenisPoin = point === 5 ? "Poin (+5)" : point === 10 ? "Ippon (+10)" : "Koreksi";
+    
+    // Simpan ke riwayat untuk fitur Undo
+    riwayatPoin.push({ sudut: sudut, nilai: point, jenis: jenisPoin });
+
+    // Update teks Log di UI (Garis Biru)
+    let namaSudut = sudut === 'merah' ? 'PITA MERAH' : 'PITA PUTIH';
+    let warnaTeks = sudut === 'merah' ? 'text-red-400' : 'text-slate-200';
+    let logEl = document.getElementById('log-kejadian-randori');
+    if(logEl) {
+        logEl.innerHTML = `<span class="${warnaTeks} font-bold">${namaSudut}</span>: Menambah ${point} Poin`;
+    }
+}
+
+// 4. PASTIKAN FUNGSI UNDO INI JUGA ADA DI SCRIPT.JS ANDA
+function undoPoinTerakhir() {
+    if (riwayatPoin.length === 0) {
+        alert("Belum ada tindakan yang bisa dibatalkan.");
+        return;
+    }
+
+    // Ambil tindakan terakhir
+    let terakhir = riwayatPoin.pop();
+
+    // Kurangi skor yang tadi barusan ditambah
+    // SESUAIKAN DENGAN NAMA VARIABEL SKOR ANDA
+    if (terakhir.sudut === 'merah') {
+        // STATE.skorMerah -= terakhir.nilai; 
+    } else {
+        // STATE.skorPutih -= terakhir.nilai;
+    }
+    
+    // Panggil fungsi render/update UI skor Anda di sini
+    // renderScoringRandori(); 
+
+    // Update tulisan log
+    let logEl = document.getElementById('log-kejadian-randori');
+    if(logEl) {
+        logEl.innerHTML = riwayatPoin.length > 0 
+            ? `<span class="text-slate-400 italic">Tindakan terakhir dibatalkan.</span>` 
+            : `<span class="text-slate-500 italic">Belum ada poin tercatat...</span>`;
+    }
+}
 function updateRandoriUI() { document.getElementById('score-merah').innerText = RANDORI_STATE.merah.score; document.getElementById('score-putih').innerText = RANDORI_STATE.putih.score; }
 
 function saveRandoriMatchResult() {
@@ -2729,36 +2783,4 @@ function finalizeEmbuMatch() {
             filterPesertaScoring(); checkExistingDrawing();
         }).catch(err => alert("Gagal Simpan: " + err));
     }
-}
-let riwayatPoin = []; // Array kosong saat partai dimulai
-
-function tambahPoin(sudut, jenis, nilai) {
-    // 1. Eksekusi penambahan skor di UI
-    // ... kode tambah skor Anda ...
-
-    // 2. Simpan ke riwayat
-    riwayatPoin.push({ sudut: sudut, jenis: jenis, nilai: nilai });
-
-    // 3. Update teks log (Garis Biru)
-    let namaSudut = sudut === 'merah' ? 'Pita Merah' : 'Pita Putih';
-    let warnaTeks = sudut === 'merah' ? 'text-red-400' : 'text-slate-200';
-    document.getElementById('log-kejadian-randori').innerHTML = 
-        `<span class="${warnaTeks} font-bold">${namaSudut}</span>: ${jenis} (+${nilai})`;
-}
-
-function undoPoinTerakhir() {
-    if (riwayatPoin.length === 0) {
-        alert("Tidak ada tindakan yang bisa di-undo.");
-        return;
-    }
-
-    // Ambil kejadian terakhir dan keluarkan dari array
-    let kejadianTerakhir = riwayatPoin.pop();
-
-    // 1. Kurangi skor sesuai data kejadianTerakhir
-    // ... kode pengurang skor Anda ...
-
-    // 2. Update teks log
-    document.getElementById('log-kejadian-randori').innerHTML = 
-        riwayatPoin.length > 0 ? `<span class="text-slate-400">Tindakan terakhir dibatalkan.</span>` : `<span class="text-slate-500 italic">Belum ada poin tercatat...</span>`;
 }
