@@ -1737,150 +1737,67 @@ function autoGenerateRandoriFinal(catName) {
 // =========================================================
 // UI DISPLAY: TAB RANKING (HYBRID: MULTI-POOL & DOUBLE ELIM)
 // =========================================================
-function renderRanking() { 
+function renderRanking() {
     const filterEl = document.getElementById('rank-filter-kategori');
     const filter = filterEl ? filterEl.value : null; 
     const container = document.getElementById('ranking-list'); 
 
-    // Siapkan wadah untuk tombol Promote Final (Sistem Pool)
-    let btnPromote = document.getElementById('btn-promote-final'); 
-    if (!btnPromote && filterEl && filterEl.parentElement) {
-        btnPromote = document.createElement('button');
-        btnPromote.id = 'btn-promote-final';
-        btnPromote.className = 'hidden';
-        filterEl.parentElement.appendChild(btnPromote);
-    } else if (btnPromote) {
-        btnPromote.classList.add('hidden'); // Sembunyikan dulu secara default
-    }
-
     if (!filter) {
-        if (container) container.innerHTML = `<div class="p-10 text-center text-slate-500 border border-dashed border-slate-700 rounded-xl"><i class="fas fa-filter text-3xl mb-3 text-slate-600 block"></i>Pilih kategori pertandingan di atas untuk melihat hasil klasemen.</div>`;
+        if (container) container.innerHTML = `<div class="p-10 text-center text-slate-500 border border-dashed border-slate-700 rounded-xl">Pilih kategori untuk melihat klasemen.</div>`;
         return;
     }
 
     let catObj = STATE.categories.find(c => c.name === filter);
-    if(!catObj) return;
+    let rankingData = getRankingData(filter);
 
-    let catMatches = STATE.matches.filter(m => m.kategori === filter);
-    if (catMatches.length === 0) {
-        if (container) container.innerHTML = `<div class="p-6 text-center text-slate-600 bg-slate-900/50 rounded-xl border border-slate-800 text-sm italic">Belum ada data pertandingan untuk <b>${filter}</b>.</div>`;
-        return;
-    }
+    let htmlOutput = `
+        <div class="flex flex-col md:flex-row justify-between items-center mb-6 mt-4 gap-4 border-b-2 border-slate-700 pb-4">
+            <h3 class="text-xl font-bold text-yellow-400">${filter}</h3>
+            <div class="flex gap-2">
+                <button onclick="exportRawHasilCSV('${filter}')" class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 px-4 rounded-lg text-xs flex items-center gap-2">
+                    <i class="fas fa-file-alt"></i> UNDUH HASIL RAW
+                </button>
+                <button onclick="exportRekapJuaraCSV('${filter}')" class="bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-lg text-xs flex items-center gap-2">
+                    <i class="fas fa-trophy"></i> UNDUH SK JUARA
+                </button>
+            </div>
+        </div>
+        <div class="overflow-x-auto bg-slate-900 rounded-xl border border-slate-700 shadow-xl mt-4">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-800 text-slate-300 text-[10px] uppercase tracking-widest">
+                        <th class="p-4 text-center w-20">Rank</th>
+                        <th class="p-4">Kontingen</th>
+                        <th class="p-4">Nama Atlet</th>
+                        <th class="p-4 text-center">Status Akhir</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800">
+    `;
 
-    // ==========================================
-    // AUTO-DETEKSI: SISTEM POOL ATAU DOUBLE ELIMINATION?
-    // ==========================================
-    const hasPools = catMatches.some(m => m.pool === 'A' || m.pool === 'B');
-
-    // ----------------------------------------------------
-    // SKENARIO 1: SISTEM MULTI-POOL (Tampilan Kartu Lama)
-    // ----------------------------------------------------
-    if (hasPools) {
-        const poolResults = calculateRandoriFinalists(filter); 
-        const isAlreadyFinal = filter.toUpperCase().includes('FINAL');
-
-        if (poolResults.some(r => r.pool === 'A') && poolResults.some(r => r.pool === 'B') && !isAlreadyFinal) {
-            if (btnPromote) {
-                btnPromote.classList.remove('hidden');
-                btnPromote.innerHTML = '<i class="fas fa-magic mr-2"></i>GENERATE PARTAI FINAL';
-                btnPromote.className = "whitespace-nowrap bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors text-sm animate-pulse ml-4";
-                btnPromote.onclick = () => autoGenerateFinal(filter, catObj.discipline);
-            }
+    rankingData.forEach(r => {
+        let displayStatus = r.status;
+        if (displayStatus.includes(' (')) {
+            let parts = displayStatus.split(' (');
+            displayStatus = `${parts[0]}<br><span class="text-[8px] opacity-60">(${parts[1]}</span>`;
         }
 
-        let htmlOutput = `<h3 class="text-xl font-bold text-yellow-400 mt-4 mb-4 border-b-2 border-slate-700 pb-3 flex items-center gap-3"><span class="${catObj.discipline==='randori'?'bg-red-700':'bg-blue-600'} text-[10px] px-2 py-1 rounded font-black uppercase text-white">${catObj.discipline}</span>${catObj.name}</h3>`;
-        htmlOutput += `<div class="mb-4 text-xs bg-blue-900/30 text-blue-300 p-3 rounded-lg border border-blue-800"><i class="fas fa-info-circle mr-2"></i>Klasemen Pool. Selesaikan penyisihan untuk generate partai final.</div>`;
-
-        if(!poolResults) { 
-            htmlOutput += `<div class="p-6 text-center text-slate-600 bg-slate-900/50 rounded-xl border border-slate-800 text-sm italic">Turnamen di kategori ini belum selesai.</div>`; 
-        } else {
-            htmlOutput += `<div class="grid grid-cols-1 md:grid-cols-2 gap-6">`;
-            poolResults.forEach(res => {
-                let title = `JUARA POOL ${res.pool}`;
-                htmlOutput += `<div><h4 class="text-md font-bold text-red-400 mb-3 pl-2 border-l-4 border-red-500">${title}</h4>`;
-                if(res.emas) htmlOutput += `<div class="flex items-center p-4 rounded-xl border border-yellow-600 gap-4 mb-3 bg-yellow-600/10"><div class="w-12 text-center flex-shrink-0"><i class="fas fa-medal text-yellow-400 text-3xl"></i></div><div class="flex-1"><div class="font-bold text-lg text-white">${res.emas}</div><div class="text-xs text-slate-400 mt-1 uppercase font-bold text-yellow-500">${res.emasKontingen}</div></div></div>`;
-                if(res.perak) htmlOutput += `<div class="flex items-center p-4 rounded-xl border border-slate-600 gap-4 mb-3 bg-slate-500/10"><div class="w-12 text-center flex-shrink-0"><i class="fas fa-medal text-slate-300 text-3xl"></i></div><div class="flex-1"><div class="font-bold text-lg text-white">${res.perak}</div><div class="text-xs text-slate-400 mt-1 uppercase font-bold text-slate-300">${res.perakKontingen}</div></div></div>`;
-                htmlOutput += `</div>`;
-            });
-            htmlOutput += `</div>`;
-        }
-        if (container) container.innerHTML = htmlOutput;
-    } 
-    
-    // ----------------------------------------------------
-    // SKENARIO 2: SISTEM DOUBLE ELIMINATION (Tabel 1-8)
-    // ----------------------------------------------------
-    else {
-        let rankingData = getRankingData(filter);
-        
-        let htmlOutput = `
-            <div class="flex flex-col md:flex-row justify-between items-center mb-6 mt-4 gap-4 border-b-2 border-slate-700 pb-4">
-                <h3 class="text-xl font-bold text-yellow-400 flex items-center gap-3">
-                    <span class="${catObj.discipline==='randori'?'bg-red-700':'bg-blue-600'} text-[10px] px-2 py-1 rounded font-black uppercase text-white">${catObj.discipline}</span>
-                    ${catObj.name}
-                </h3>
-                
-                <div class="flex flex-wrap justify-end gap-2">
-                    <button onclick="exportRawHasilCSV('${filter}')" class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors text-xs flex items-center gap-2 border border-slate-600">
-                        <i class="fas fa-file-alt"></i> UNDUH HASIL RAW
-                    </button>
-                    <button onclick="exportSKJuaraKategori('${filter}')" class="bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors text-xs flex items-center gap-2 shadow-[0_0_10px_rgba(22,163,74,0.3)]">
-                        <i class="fas fa-trophy text-yellow-300"></i> UNDUH SK JUARA
-                    </button>
-                </div>
-            </div>
-
-            <div class="mb-4 text-xs bg-blue-900/30 text-blue-300 p-3 rounded-lg border border-blue-800">
-                <i class="fas fa-info-circle mr-2"></i>Klasemen Double Elimination / Bagan Utama. Peringkat diurutkan otomatis berdasarkan babak gugur terjauh.
-            </div>
-
-            <div class="overflow-x-auto bg-slate-900 rounded-xl border border-slate-700 shadow-xl mt-4">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-slate-800 border-b-2 border-slate-600 text-slate-300 text-[10px] uppercase tracking-widest">
-                            <th class="p-4 text-center w-20">Rank</th>
-                            <th class="p-4">Kontingen</th>
-                            <th class="p-4">Nama Atlet</th>
-                            <th class="p-4 text-center">Status Akhir</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-800">
+        htmlOutput += `
+            <tr class="hover:bg-slate-800/80">
+                <td class="p-4 text-center text-lg font-black ${r.rank <= 3 ? 'text-yellow-500' : 'text-slate-500'}">${r.rank}</td>
+                <td class="p-4 font-black text-white">${r.kontingen}</td>
+                <td class="p-4 text-slate-400 text-sm whitespace-normal">${r.nama}</td>
+                <td class="p-4 text-center">
+                    <span class="text-[10px] px-2 py-1 rounded ${r.rank <= 3 ? 'bg-green-900/30 text-green-400 border border-green-800' : 'bg-slate-800 border border-slate-700 text-slate-500'} uppercase font-bold inline-block leading-tight">
+                        ${displayStatus}
+                    </span>
+                </td>
+            </tr>
         `;
+    });
 
-        rankingData.forEach(r => {
-            let rankColor = "text-slate-400";
-            if (r.rank === 1) rankColor = "text-yellow-400 font-black text-2xl drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]";
-            else if (r.rank === 2) rankColor = "text-slate-300 font-black text-xl drop-shadow-[0_0_8px_rgba(203,213,225,0.5)]";
-            else if (r.rank === 3) rankColor = "text-amber-600 font-black text-xl drop-shadow-[0_0_8px_rgba(217,119,6,0.5)]";
-
-            // ====================================================
-            // PERBAIKAN UI: MEMBELAH STATUS AKHIR MENJADI 2 BARIS
-            // ====================================================
-            let displayStatus = r.status;
-            if (displayStatus.includes(' (')) {
-                // Membelah "Juara 2" dan "(Kalah di G-15)"
-                let parts = displayStatus.split(' (');
-                // Format ulang dengan font lebih kecil dan pindah baris (<br>)
-                displayStatus = `${parts[0]}<br><span class="text-[8px] font-medium opacity-80 block mt-1 tracking-wider leading-none">(${parts[1]}</span>`;
-            }
-
-            htmlOutput += `
-                <tr class="hover:bg-slate-800/80 transition-colors">
-                    <td class="p-4 text-center text-lg ${rankColor}">${r.rank}</td>
-                    <td class="p-4 font-black text-white text-base">${r.kontingen}</td>
-                    <td class="p-4 text-slate-400 text-sm whitespace-normal min-w-[200px]">${r.nama}</td>
-                    <td class="p-4 text-center">
-                        <span class="text-[10px] px-2 py-1.5 rounded ${r.rank <= 3 ? 'bg-green-900/30 text-green-400 border border-green-800' : 'bg-slate-800 border border-slate-700 text-slate-500'} uppercase font-bold inline-block leading-tight min-w-[120px]">
-                            ${displayStatus}
-                        </span>
-                    </td>
-                </tr>
-            `;
-        });
-
-        htmlOutput += `</tbody></table></div>`;
-        if (container) container.innerHTML = htmlOutput; 
-    }
+    htmlOutput += `</tbody></table></div>`;
+    if (container) container.innerHTML = htmlOutput;
 }
 // =========================================================
 // CORE ENGINE: PENCARI PERINGKAT DOUBLE ELIMINATION (UPDATE G-..)
@@ -1906,14 +1823,14 @@ function getRankingData(catName) {
         if (!pObj) return;
 
         if (pId === championId) {
-            elimList.push({ pObj, babak: 'Final', scoreWeight: 1000, matchNum: 0 });
+            elimList.push({ pObj, scoreWeight: 1000, matchNum: 0, isChamp: true });
             return;
         }
 
         let losses = finishedMatches.filter(m => (m.merahId === pId || m.putihId === pId) && m.winnerId !== pId);
         if (losses.length > 0) {
             let finalLoss = [...losses].sort((a,b) => b.matchNum - a.matchNum)[0];
-            elimList.push({ pObj, babak: finalLoss.babak, scoreWeight: finalLoss.col, matchNum: finalLoss.matchNum });
+            elimList.push({ pObj, scoreWeight: finalLoss.col, matchNum: finalLoss.matchNum, isChamp: false });
         }
     });
 
@@ -1923,25 +1840,14 @@ function getRankingData(catName) {
     });
 
     return elimList.map((item, index) => {
-        // LOGIKA PENAMAAN STATUS AKHIR (Menambahkan Game ke berapa)
-        let statusKeterangan = "";
-        
-        if (index === 0) {
-            statusKeterangan = "Juara 1";
-        } else if (index === 1) {
-            statusKeterangan = `Juara 2 (Kalah di G-${item.matchNum})`;
-        } else if (index === 2) {
-            statusKeterangan = `Juara 3 (Kalah di G-${item.matchNum})`;
-        } else {
-            statusKeterangan = `Kalah di G-${item.matchNum}`;
-        }
+        let rank = index + 1;
+        let status = "";
+        if (rank === 1) status = "Juara 1";
+        else if (rank === 2) status = `Juara 2 (Kalah di G-${item.matchNum})`;
+        else if (rank === 3) status = `Juara 3 (Kalah di G-${item.matchNum})`;
+        else status = `Kalah di G-${item.matchNum}`;
 
-        return {
-            rank: index + 1,
-            nama: item.pObj.nama,
-            kontingen: item.pObj.kontingen,
-            status: statusKeterangan
-        };
+        return { rank, nama: item.pObj.nama, kontingen: item.pObj.kontingen, status };
     });
 }
 function exportSKJuaraKategori(catName) {
@@ -2271,67 +2177,45 @@ function exportRawHasilCSV(catName) {
 // =========================================================
 function exportRekapJuaraCSV(filterCatName = null) {
     let categoriesToExport = filterCatName ? STATE.categories.filter(c => c.name === filterCatName) : STATE.categories;
-    
-    // RAHASIA EXCEL RAPI: Gunakan titik koma (;)
     const separator = ";"; 
     let csvContent = "";
 
-    // Header Global (Kop Surat)
     csvContent += `"REKAPITULASI PEMENANG - MASS KEMPO"\n`;
     csvContent += `"Dicetak pada:"${separator}"${new Date().toLocaleString('id-ID')}"\n\n`;
 
     categoriesToExport.forEach(cat => {
-        // Garis Pembatas dan Judul Kategori
         csvContent += `"==============================================================="\n`;
         csvContent += `"KATEGORI:"${separator}"${cat.name.toUpperCase()}"\n`;
         csvContent += `"DISIPLIN:"${separator}"${cat.discipline.toUpperCase()}"\n`;
         csvContent += `"==============================================================="\n`;
+        csvContent += `"Peringkat"${separator}"Nama Atlet"${separator}"Kontingen"\n`;
 
-        // Header Kolom Data
-        csvContent += `"Peringkat"${separator}"Nama Atlet"${separator}"Kontingen"${separator}"Status Akhir"\n`;
-
-        // Ambil data dari engine Double Elimination
         let rankingData = getRankingData(cat.name);
 
         if (rankingData && rankingData.length > 0) {
             rankingData.forEach(r => {
-                // Penamaan medali untuk top 3
-                let rankLabel = "";
-                if (r.rank === 1) rankLabel = "Emas (1)";
-                else if (r.rank === 2) rankLabel = "Perak (2)";
-                else if (r.rank === 3) rankLabel = "Perunggu (3)";
-                else rankLabel = `Peringkat ${r.rank}`;
-
-                // Susun baris data
-                let baris = [
-                    `"${rankLabel}"`, 
-                    `"${r.nama}"`, 
-                    `"${r.kontingen}"`, 
-                    `"${r.status}"`
-                ];
-                csvContent += baris.join(separator) + "\n";
+                // Pecah nama atlet berdasarkan koma
+                let names = r.nama.split(',').map(n => n.trim());
+                
+                names.forEach((name, index) => {
+                    // Hanya baris pertama yang berisi Angka Peringkat dan Kontingen
+                    let rankCol = index === 0 ? `"${r.rank}"` : `""`;
+                    let kontingenCol = index === 0 ? `"${r.kontingen}"` : `""`;
+                    
+                    csvContent += `${rankCol}${separator}"${name}"${separator}${kontingenCol}\n`;
+                });
             });
         } else {
-            // Jika turnamen belum selesai/belum ada data
-            csvContent += `"-"${separator}"Belum ada pemenang / Menunggu"${separator}"-"${separator}"-"\n`;
+            csvContent += `"-"${separator}"Belum ada pemenang"${separator}"-"\n`;
         }
-
-        // Jarak antar kategori (2 baris kosong)
         csvContent += `\n\n`;
     });
 
-    // Proses Eksekusi Unduh Langsung
-    let prefix = filterCatName ? `Rekap_Pemenang_${filterCatName.replace(/[^a-zA-Z0-9]/g, '_')}` : `Rekapitulasi_Pemenang`;
-    let filename = `${prefix}_${new Date().toISOString().slice(0,10)}.csv`;
-
-    // Tambahkan BOM (\ufeff) agar karakter teks aman di Excel
     const blob = new Blob(["\ufeff", csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = filename;
-    document.body.appendChild(link);
+    link.download = `Rekap_Pemenang_${new Date().toISOString().slice(0,10)}.csv`;
     link.click();
-    document.body.removeChild(link);
 }
 function exportMedaliCSV() {
     let tally = {}; 
