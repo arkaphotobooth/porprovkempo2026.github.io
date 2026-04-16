@@ -1852,16 +1852,24 @@ function renderRanking() {
         else if (r.rank === 3) rankColor = "text-amber-600 font-black text-xl drop-shadow-[0_0_8px_rgba(217,119,6,0.5)]";
 
         // ====================================================
-        // PERBAIKAN UI: HIERARKI TEKS STATUS
+        // PERBAIKAN UI: WARNA EMAS KHUSUS JUARA 1
         // ====================================================
         let displayStatus = r.status;
-        if (displayStatus.includes(' (')) {
-            // Jika ada 2 baris (Misal: Juara 2 dan Kalah di...)
+        let badgeStyle = "";
+
+        if (r.rank === 1) {
+            // Khusus Juara 1: Teks lebih besar, warna EMAS, dan kotak bercahaya emas
+            displayStatus = `<span class="text-sm font-black tracking-widest text-yellow-400 drop-shadow-md">${displayStatus}</span>`;
+            badgeStyle = "bg-yellow-900/20 border border-yellow-600 shadow-[0_0_12px_rgba(250,204,21,0.3)]";
+        } else if (displayStatus.includes(' (')) {
+            // Juara 2 & 3: Warna hijau, dibelah dua baris
             let parts = displayStatus.split(' (');
             displayStatus = `<span class="text-xs font-black tracking-wider">${parts[0]}</span><span class="text-[9px] opacity-75 mt-1 tracking-widest font-semibold">(${parts[1]}</span>`;
+            badgeStyle = "bg-green-900/30 text-green-400 border border-green-800 shadow-[0_0_10px_rgba(21,128,61,0.2)]";
         } else {
-            // Jika cuma 1 baris (Misal: Juara 1 atau Kalah di G-10)
+            // Yang kalah di penyisihan: Teks dan kotak abu-abu standar
             displayStatus = `<span class="text-[10px] font-bold tracking-wider">${displayStatus}</span>`;
+            badgeStyle = "bg-slate-800 border border-slate-700 text-slate-400";
         }
 
         htmlOutput += `
@@ -1870,7 +1878,7 @@ function renderRanking() {
                 <td class="p-4 font-black text-white text-base">${r.kontingen}</td>
                 <td class="p-4 text-slate-400 text-sm whitespace-normal min-w-[200px]">${r.nama}</td>
                 <td class="p-4 text-center">
-                    <div class="inline-flex flex-col justify-center items-center min-w-[140px] px-3 py-1.5 rounded-lg ${r.rank <= 3 ? 'bg-green-900/30 text-green-400 border border-green-800 shadow-[0_0_10px_rgba(21,128,61,0.2)]' : 'bg-slate-800 border border-slate-700 text-slate-400'} uppercase leading-none text-center">
+                    <div class="inline-flex flex-col justify-center items-center min-w-[140px] px-3 py-1.5 rounded-lg ${badgeStyle} uppercase leading-none text-center">
                         ${displayStatus}
                     </div>
                 </td>
