@@ -1853,13 +1853,26 @@ function renderRanking() {
             else if (r.rank === 2) rankColor = "text-slate-300 font-black text-xl drop-shadow-[0_0_8px_rgba(203,213,225,0.5)]";
             else if (r.rank === 3) rankColor = "text-amber-600 font-black text-xl drop-shadow-[0_0_8px_rgba(217,119,6,0.5)]";
 
+            // ====================================================
+            // PERBAIKAN UI: MEMBELAH STATUS AKHIR MENJADI 2 BARIS
+            // ====================================================
+            let displayStatus = r.status;
+            if (displayStatus.includes(' (')) {
+                // Membelah "Juara 2" dan "(Kalah di G-15)"
+                let parts = displayStatus.split(' (');
+                // Format ulang dengan font lebih kecil dan pindah baris (<br>)
+                displayStatus = `${parts[0]}<br><span class="text-[8px] font-medium opacity-80 block mt-1 tracking-wider leading-none">(${parts[1]}</span>`;
+            }
+
             htmlOutput += `
                 <tr class="hover:bg-slate-800/80 transition-colors">
                     <td class="p-4 text-center text-lg ${rankColor}">${r.rank}</td>
                     <td class="p-4 font-black text-white text-base">${r.kontingen}</td>
                     <td class="p-4 text-slate-400 text-sm whitespace-normal min-w-[200px]">${r.nama}</td>
                     <td class="p-4 text-center">
-                        <span class="text-[10px] px-2 py-1 rounded ${r.rank <= 3 ? 'bg-green-900/30 text-green-400 border border-green-800' : 'bg-slate-800 border border-slate-700 text-slate-500'} uppercase font-bold">${r.status}</span>
+                        <span class="text-[10px] px-2 py-1.5 rounded ${r.rank <= 3 ? 'bg-green-900/30 text-green-400 border border-green-800' : 'bg-slate-800 border border-slate-700 text-slate-500'} uppercase font-bold inline-block leading-tight min-w-[120px]">
+                            ${displayStatus}
+                        </span>
                     </td>
                 </tr>
             `;
@@ -2254,45 +2267,71 @@ function exportRawHasilCSV(catName) {
 }
 
 // =========================================================
-// MESIN EKSPOR 2: REKAPITULASI (Untuk Tab Admin - Bersih 4 Kolom)
+// MACRO EXPORT: MASTER REKAPITULASI PEMENANG (FORMAT KLASIK + MESIN BARU)
 // =========================================================
 function exportRekapJuaraCSV(filterCatName = null) {
     let categoriesToExport = filterCatName ? STATE.categories.filter(c => c.name === filterCatName) : STATE.categories;
-    let rows = [];
+    
+    // RAHASIA EXCEL RAPI: Gunakan titik koma (;)
+    const separator = ";"; 
+    let csvContent = "";
 
-    rows.push(["REKAPITULASI PEMENANG - MASS KEMPO"]);
-    rows.push(["Dicetak pada:", new Date().toLocaleString('id-ID')]);
-    rows.push([]);
+    // Header Global (Kop Surat)
+    csvContent += `"REKAPITULASI PEMENANG - MASS KEMPO"\n`;
+    csvContent += `"Dicetak pada:"${separator}"${new Date().toLocaleString('id-ID')}"\n\n`;
 
     categoriesToExport.forEach(cat => {
-        rows.push(["==============================================================="]);
-        rows.push(["KATEGORI:", cat.name.toUpperCase()]);
-        rows.push(["DISIPLIN:", cat.discipline.toUpperCase()]);
-        rows.push(["==============================================================="]);
+        // Garis Pembatas dan Judul Kategori
+        csvContent += `"==============================================================="\n`;
+        csvContent += `"KATEGORI:"${separator}"${cat.name.toUpperCase()}"\n`;
+        csvContent += `"DISIPLIN:"${separator}"${cat.discipline.toUpperCase()}"\n`;
+        csvContent += `"==============================================================="\n`;
 
-        rows.push(["Peringkat", "Nama Atlet", "Kontingen"]);
-        let poolResults = calculateRandoriFinalists(cat.name);
-        let foundFinalResult = false;
+        // Header Kolom Data
+        csvContent += `"Peringkat"${separator}"Nama Atlet"${separator}"Kontingen"${separator}"Status Akhir"\n`;
 
-        if (poolResults) {
-            poolResults.forEach(res => {
-                let isFinalCat = cat.name.toUpperCase().includes('FINAL');
-                let isSinglePool = res.pool === '-';
+        // Ambil data dari engine Double Elimination
+        let rankingData = getRankingData(cat.name);
 
-                if (isFinalCat || isSinglePool) {
-                    foundFinalResult = true;
-                    if(res.emas) rows.push(["Emas (1)", res.emas, res.emasKontingen]);
-                    if(res.perak) rows.push(["Perak (2)", res.perak, res.perakKontingen]);
-                    res.perunggu.forEach(p => rows.push(["Perunggu (3)", p.nama, p.kontingen]));
-                }
+        if (rankingData && rankingData.length > 0) {
+            rankingData.forEach(r => {
+                // Penamaan medali untuk top 3
+                let rankLabel = "";
+                if (r.rank === 1) rankLabel = "Emas (1)";
+                else if (r.rank === 2) rankLabel = "Perak (2)";
+                else if (r.rank === 3) rankLabel = "Perunggu (3)";
+                else rankLabel = `Peringkat ${r.rank}`;
+
+                // Susun baris data
+                let baris = [
+                    `"${rankLabel}"`, 
+                    `"${r.nama}"`, 
+                    `"${r.kontingen}"`, 
+                    `"${r.status}"`
+                ];
+                csvContent += baris.join(separator) + "\n";
             });
-        } 
-        if (!foundFinalResult) rows.push(["-", "Belum ada pemenang / Menunggu", "-"]);
-        rows.push([]); rows.push([]);
+        } else {
+            // Jika turnamen belum selesai/belum ada data
+            csvContent += `"-"${separator}"Belum ada pemenang / Menunggu"${separator}"-"${separator}"-"\n`;
+        }
+
+        // Jarak antar kategori (2 baris kosong)
+        csvContent += `\n\n`;
     });
 
+    // Proses Eksekusi Unduh Langsung
     let prefix = filterCatName ? `Rekap_Pemenang_${filterCatName.replace(/[^a-zA-Z0-9]/g, '_')}` : `Rekapitulasi_Pemenang`;
-    downloadCSV(`${prefix}_${new Date().toISOString().slice(0,10)}.csv`, rows);
+    let filename = `${prefix}_${new Date().toISOString().slice(0,10)}.csv`;
+
+    // Tambahkan BOM (\ufeff) agar karakter teks aman di Excel
+    const blob = new Blob(["\ufeff", csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 function exportMedaliCSV() {
     let tally = {}; 
