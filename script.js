@@ -1869,6 +1869,9 @@ function renderRanking() {
         if (container) container.innerHTML = htmlOutput; 
     }
 }
+// =========================================================
+// CORE ENGINE: PENCARI PERINGKAT DOUBLE ELIMINATION (UPDATE G-..)
+// =========================================================
 function getRankingData(catName) {
     const allMatches = STATE.matches.filter(m => m.kategori === catName);
     const finishedMatches = allMatches.filter(m => m.status !== 'pending');
@@ -1880,7 +1883,6 @@ function getRankingData(catName) {
         if (m.putihId && m.putihId !== -1) uniqueIds.add(m.putihId);
     });
 
-    // Cari Juara 1 (Pemenang Grand Final)
     let sortedMatches = [...allMatches].sort((a,b) => b.matchNum - a.matchNum);
     let lastMatch = sortedMatches[0];
     let championId = (lastMatch && lastMatch.status !== 'pending') ? lastMatch.winnerId : null;
@@ -1898,23 +1900,36 @@ function getRankingData(catName) {
         let losses = finishedMatches.filter(m => (m.merahId === pId || m.putihId === pId) && m.winnerId !== pId);
         if (losses.length > 0) {
             let finalLoss = [...losses].sort((a,b) => b.matchNum - a.matchNum)[0];
-            // Bobot skor berdasarkan nomor babak (col) agar peringkat 3 > 4, dsb.
             elimList.push({ pObj, babak: finalLoss.babak, scoreWeight: finalLoss.col, matchNum: finalLoss.matchNum });
         }
     });
 
-    // Urutkan: Babak terjauh dulu, jika sama maka nomor partai terkecil (bagan atas) menang
     elimList.sort((a, b) => {
         if (b.scoreWeight !== a.scoreWeight) return b.scoreWeight - a.scoreWeight;
         return a.matchNum - b.matchNum; 
     });
 
-    return elimList.map((item, index) => ({
-        rank: index + 1,
-        nama: item.pObj.nama,
-        kontingen: item.pObj.kontingen,
-        status: index === 0 ? "Juara 1" : index === 1 ? "Juara 2" : `Tereliminasi di ${item.babak}`
-    }));
+    return elimList.map((item, index) => {
+        // LOGIKA PENAMAAN STATUS AKHIR (Menambahkan Game ke berapa)
+        let statusKeterangan = "";
+        
+        if (index === 0) {
+            statusKeterangan = "Juara 1";
+        } else if (index === 1) {
+            statusKeterangan = `Juara 2 (Kalah di G-${item.matchNum})`;
+        } else if (index === 2) {
+            statusKeterangan = `Juara 3 (Kalah di G-${item.matchNum})`;
+        } else {
+            statusKeterangan = `Kalah di G-${item.matchNum}`;
+        }
+
+        return {
+            rank: index + 1,
+            nama: item.pObj.nama,
+            kontingen: item.pObj.kontingen,
+            status: statusKeterangan
+        };
+    });
 }
 function exportSKJuaraKategori(catName) {
     let rankingData = getRankingData(catName);
@@ -2156,7 +2171,7 @@ function exportDrawingCSV(filterCatName = null) {
 }
 
 // =========================================================
-// FITUR EKSPOR CSV RAW (RANKING & BAGAN)
+// FITUR EKSPOR CSV RAW (EXCEL INDONESIA - TITIK KOMA)
 // =========================================================
 function exportRawHasilCSV(catName) {
     if (!catName) {
@@ -2164,59 +2179,47 @@ function exportRawHasilCSV(catName) {
         return;
     }
 
-    // 1. Filter Data Mentah (Hanya ambil partai di kategori yang dipilih)
     const catMatches = STATE.matches.filter(m => m.kategori === catName);
-    
     if (catMatches.length === 0) {
         alert("Tidak ada data pertandingan untuk kategori ini.");
         return;
     }
 
-    // Ambil info Disiplin dari Kategori
     const categoryObj = STATE.categories.find(c => c.name === catName);
     const disiplin = categoryObj ? categoryObj.discipline.toUpperCase() : "UNKNOWN";
 
-    // 2. Siapkan Header Kolom (Sesuai Permintaan)
-    let csvContent = "Disiplin,Kategori,Pool,No Urut Partai,Sudut Merah (Nama),Kontingen Merah,Nilai Merah (Utama/Tie Breaker),Sudut Putih (Nama),Kontingen Putih,Nilai Putih (Utama/Tie Breaker),Status\n";
+    // RAHASIA EXCEL RAPI: Gunakan titik koma (;)
+    const separator = ";"; 
+    let csvContent = ["Disiplin", "Kategori", "Pool", "No Urut Partai", "Sudut Merah (Nama)", "Kontingen Merah", "Nilai Merah (Utama/Tie Breaker)", "Sudut Putih (Nama)", "Kontingen Putih", "Nilai Putih (Utama/Tie Breaker)", "Status"].join(separator) + "\n";
 
-    // 3. Looping dan Mapping Data
-    // Kita urutkan berdasarkan Pool, lalu Babak/Kolom, lalu Nomor Partai
     catMatches.sort((a, b) => {
         if (a.pool !== b.pool) return a.pool.localeCompare(b.pool);
         if (a.col !== b.col) return a.col - b.col;
         return a.matchNum - b.matchNum;
     }).forEach(m => {
-        
-        // Cari data lengkap atlet (Merah & Putih)
         let pMerah = STATE.participants.find(p => p.id === m.merahId);
         let pPutih = STATE.participants.find(p => p.id === m.putihId);
 
-        // Ambil Nama dan Kontingen (Handle BYE atau belum ada peserta)
         let namaMerah = pMerah ? pMerah.nama : (m.merahId === -1 ? "BYE" : "Menunggu...");
         let kontingenMerah = pMerah ? pMerah.kontingen : "-";
-        
         let namaPutih = pPutih ? pPutih.nama : (m.putihId === -1 ? "BYE" : "Menunggu...");
         let kontingenPutih = pPutih ? pPutih.kontingen : "-";
 
-        // --- Logika Cerdas Nilai (Tie-Breaker) ---
         let nilaiMerah = "";
         let nilaiPutih = "";
 
         if (m.status === 'done') {
-            // Skor Utama
-            nilaiMerah = m.skorMerah > 0 ? m.skorMerah.toString() : "0";
-            nilaiPutih = m.skorPutih > 0 ? m.skorPutih.toString() : "0";
+            nilaiMerah = m.skorMerah > 0 ? String(m.skorMerah).replace('.', ',') : "0";
+            nilaiPutih = m.skorPutih > 0 ? String(m.skorPutih).replace('.', ',') : "0";
 
-            // Tambahkan Tie-Breaker Jika Ada (dan jika skor utama sama)
             if (m.skorMerah === m.skorPutih && m.skorMerah > 0) {
                 if (m.tbMerahW1 !== undefined && m.tbPutihW1 !== undefined) {
-                    nilaiMerah += ` / ${m.tbMerahW1}`;
-                    nilaiPutih += ` / ${m.tbPutihW1}`;
+                    nilaiMerah += ` / ${String(m.tbMerahW1).replace('.', ',')}`;
+                    nilaiPutih += ` / ${String(m.tbPutihW1).replace('.', ',')}`;
                     
-                    // Jika Tie-Breaker Wasit 1 masih sama, tambah Total Teknik
                     if (m.tbMerahW1 === m.tbPutihW1 && m.tbMerahAll !== undefined) {
-                        nilaiMerah += ` / ${m.tbMerahAll}`;
-                        nilaiPutih += ` / ${m.tbPutihAll}`;
+                        nilaiMerah += ` / ${String(m.tbMerahAll).replace('.', ',')}`;
+                        nilaiPutih += ` / ${String(m.tbPutihAll).replace('.', ',')}`;
                     }
                 }
             }
@@ -2228,38 +2231,21 @@ function exportRawHasilCSV(catName) {
             nilaiPutih = "-";
         }
 
-        // --- Status Partai ---
-        let statusTeks = "";
-        if (m.status === 'done') statusTeks = "Selesai";
-        else if (m.status === 'auto-win') statusTeks = "Auto Win (BYE)";
-        else statusTeks = "Pending";
+        let statusTeks = m.status === 'done' ? "Selesai" : (m.status === 'auto-win' ? "Auto Win (BYE)" : "Pending");
 
-        // 4. Rakit Baris (Gunakan tanda kutip ganda "" untuk menghindari error jika nama mengandung koma)
         let baris = [
-            `"${disiplin}"`,
-            `"${catName}"`,
-            `"${m.pool}"`,
-            `"${m.matchNum}"`,
-            `"${namaMerah}"`,
-            `"${kontingenMerah}"`,
-            `"${nilaiMerah}"`,
-            `"${namaPutih}"`,
-            `"${kontingenPutih}"`,
-            `"${nilaiPutih}"`,
-            `"${statusTeks}"`
+            `"${disiplin}"`, `"${catName}"`, `"${m.pool}"`, `"G-${m.matchNum}"`,
+            `"${namaMerah}"`, `"${kontingenMerah}"`, `"${nilaiMerah}"`,
+            `"${namaPutih}"`, `"${kontingenPutih}"`, `"${nilaiPutih}"`, `"${statusTeks}"`
         ];
 
-        csvContent += baris.join(",") + "\n";
+        csvContent += baris.join(separator) + "\n";
     });
 
-    // 5. Perintah Download via Blob
-    // Tambahkan BOM (Byte Order Mark) agar Excel bisa membaca karakter unik dengan baik
     const blob = new Blob(["\ufeff", csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    
-    // Buat elemen link rahasia untuk memicu download
     const link = document.createElement("a");
-    const safeCatName = catName.replace(/[^a-z0-9]/gi, '_').toLowerCase(); // Bersihkan nama file
+    const safeCatName = catName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
     link.setAttribute("href", url);
     link.setAttribute("download", `Hasil_Raw_${safeCatName}.csv`);
     document.body.appendChild(link);
