@@ -12,33 +12,28 @@
         .bg-dark-card { background-color: #1e293b; }
         .active-tab { border-bottom: 2px solid #3b82f6; background-color: rgba(59, 130, 246, 0.1); }
         
-        /* Custom Scrollbar */
+       /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #475569; }
 
-        /* Randori Bracket Styling */
-        .bracket-match::before { content: ''; position: absolute; top: 50%; left: -24px; width: 24px; height: 2px; background-color: #475569; }
-        .bracket-match::after { content: ''; position: absolute; top: 50%; right: -24px; width: 24px; height: 2px; background-color: #475569; }
-        .bracket-container { display: flex; gap: 3rem; padding: 2rem 0; overflow-x: auto; align-items: center; }
-
-        /* CSS KHUSUS BAGAN TURNAMEN (ANTI LONGSOR)   */
-        .bracket-col { position: relative; }
+        /* Mengunci jarak gap persis 48px (3rem) */
+        .bracket-container { display: flex; gap: 3rem; padding: 1.5rem 0; overflow-x: auto; align-items: stretch; }
+        .bracket-col { position: relative; display: flex; flex-direction: column; justify-content: center; }
         .bracket-match { position: relative; z-index: 10; }
         
-        /* Garis Horizontal ke Kanan (Kecuali Kolom Terakhir) */
+        /* Garis Keluar (Ke Kanan) -> Setengah gap = 24px */
         .bracket-match.has-next::after {
-            content: ''; position: absolute; top: 50%; right: -24px; width: 24px; height: 2px; background-color: #475569; z-index: 0;
-        }
-        /* Garis Horizontal ke Kiri (Kecuali Kolom Pertama) */
+            content: ''; position: absolute; top: 50%; right: -24px; width: 24px; height: 2px; background-color: #475569; z-index: -1;}
+        
+        /* Garis Masuk (Dari Kiri) -> Setengah gap = 24px */
         .bracket-match.not-first::before {
-            content: ''; position: absolute; top: 50%; left: -24px; width: 24px; height: 2px; background-color: #475569; z-index: 0;
-        }
-        /* Garis Vertikal (Gutter Line) untuk menyambungkan dahan pohon */
+            content: ''; position: absolute; top: 50%; left: -24px; width: 24px; height: 2px; background-color: #475569; z-index: -1;}
+        
+        /* Garis Vertikal (Menyambungkan dahan atas-bawah) */
         .bracket-col:not(:last-child)::after {
-            content: ''; position: absolute; top: 10%; bottom: 10%; right: -24px; width: 2px; background-color: #475569; z-index: 0;
-        }
+            content: ''; position: absolute; top: 15%; bottom: 15%; right: -24px; width: 2px; background-color: #475569; z-index: -1;}
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -191,9 +186,9 @@
             </div>
         </section>
 
-        <section id="section-drawing" class="hidden animate-fade-in">
-            <div class="bg-dark-card p-6 rounded-2xl border border-slate-800 shadow-xl mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
-                <div class="flex items-center gap-4 w-full md:w-auto">
+       <section id="section-drawing" class="hidden animate-fade-in">
+            <div class="bg-dark-card p-4 rounded-xl border border-slate-800 shadow-xl mb-2 flex flex-col md:flex-row items-center justify-between gap-4">
+               <div class="flex items-center gap-4 w-full md:w-auto">
                     <div class="bg-purple-600/20 p-3 rounded-lg border border-purple-500/30">
                         <i class="fas fa-sitemap text-purple-400 text-xl"></i>
                     </div>
@@ -220,12 +215,12 @@
 
             <div id="drawing-result" class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full"></div>
 
-            <div id="randori-bracket-container" class="hidden w-full overflow-x-auto bg-dark-card p-6 rounded-2xl border border-slate-800 shadow-inner mt-6 custom-scrollbar">
+            <div id="randori-bracket-container" class="hidden w-full overflow-x-auto bg-dark-card p-4 rounded-xl border border-slate-800 shadow-inner mt-2 custom-scrollbar">
                 <div id="randori-bracket-view" class="bracket-container min-w-max">
-                    </div>
+                </div>
             </div>
         </section>
-
+       
         <section id="section-scoring" class="hidden animate-fade-in">
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 
