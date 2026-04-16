@@ -991,16 +991,20 @@ function renderVisualBracket(catName) {
                     if (!isLastCol && m.nextW) lineClasses += " has-next";
                     if (!isFirstCol) lineClasses += " not-first";
 
-                    // TEKS DIPERBESAR: text-xs untuk nama, text-sm untuk skor
+                    // PERBAIKAN: Keterangan babak dimunculkan kembali & ukuran skor diperkecil (text-sm)
                     colHTML += `
                         <div class="bracket-match p-3 rounded-lg border-2 ${bgStyle} relative shadow-md transition-all ${lineClasses}">
-                            <span class="absolute -top-3 -left-3 bg-slate-700 text-[10px] w-6 h-6 flex items-center justify-center rounded-full font-black border border-slate-500 shadow">G${displayNum}</span>
+                            <span class="absolute -top-3 -left-3 bg-slate-700 text-[10px] w-6 h-6 flex items-center justify-center rounded-full font-black border border-slate-500 shadow z-20">G${displayNum}</span>
+                            
                             ${undoBtn}
-                            <div class="flex justify-between items-center text-xs font-bold border-b border-slate-700 pb-1.5 mb-1.5 mt-1">
+
+                            <span class="text-[9px] uppercase text-slate-500 block mb-2 font-black tracking-wider leading-none">${m.babak}</span>
+
+                            <div class="flex justify-between items-center text-sm font-bold border-b border-slate-700 pb-1.5 mb-1.5">
                                 ${nMerahHTML}
                                 <span class="text-sm font-black text-slate-300 shrink-0">${dMerah}</span>
                             </div>
-                            <div class="flex justify-between items-center text-xs font-bold">
+                            <div class="flex justify-between items-center text-sm font-bold">
                                 ${nPutihHTML}
                                 <span class="text-sm font-black text-slate-300 shrink-0">${dPutih}</span>
                             </div>
