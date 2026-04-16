@@ -912,7 +912,8 @@ function renderVisualBracket(catName) {
         pools.forEach(poolName => {
             let poolMatches = catMatches.filter(m => m.pool === poolName);
             
-            let poolHTML = `<div class="mb-10 w-full min-w-max">
+            // PERBAIKAN 1: Margin bawah dikurangi (mb-10 -> mb-4)
+            let poolHTML = `<div class="mb-4 w-full min-w-max">
                 <div class="flex items-center gap-3 mb-4 border-b border-slate-700 pb-2">
                     <h3 class="text-xl font-black text-yellow-400 m-0">BAGAN ${poolName !== '-' ? 'POOL ' + poolName : 'UTAMA'}</h3>
                     <span class="text-[10px] text-slate-500 font-mono ml-2 border-l border-slate-700 pl-3">Swap: Klik Nama | Undo: Klik <i class="fas fa-undo text-red-400 mx-1"></i></span>
@@ -920,7 +921,7 @@ function renderVisualBracket(catName) {
                         <i class="fas fa-eraser text-xs"></i>
                     </button>
                 </div>
-                <div class="flex gap-8 pb-4">`;
+                <div class="flex gap-12 pb-4 pt-4 items-stretch">`;
             
             let columns = [];
             poolMatches.forEach(m => { if(columns.indexOf(m.col) === -1) columns.push(m.col); });
@@ -931,15 +932,20 @@ function renderVisualBracket(catName) {
                 let colMatches = poolMatches.filter(m => m.col === colNum).sort((a,b) => a.matchNum - b.matchNum);
                 if(colMatches.length === 0) return;
 
-                let colHTML = `<div class="flex flex-col gap-6 justify-center min-w-[240px]">`;
-                colHTML += `<h4 class="text-center text-xs font-bold uppercase text-slate-500 mb-2">Babak ${colNum}</h4>`;
+                let isFirstCol = (colNum === columns[0]);
+                let isLastCol = (colNum === maxCol);
+
+                // PERBAIKAN 3: Lebar kolom dirampingkan (240px -> 200px) & Jarak vertikal dipadatkan (gap-6 -> gap-3)
+                let colHTML = `<div class="flex flex-col gap-3 justify-center min-w-[200px] bracket-col relative">`;
+                
+                // PERBAIKAN 4: Tulisan "Babak" diangkat ke atas (melayang) agar tidak membuang ruang di dalam
+                colHTML += `<div class="absolute -top-6 w-full text-center text-[10px] font-black uppercase text-slate-500 tracking-widest">Babak ${colNum}</div>`;
                 
                 colMatches.forEach(m => {
                     let displayNum = m.matchNum % 50 === 0 ? 50 : m.matchNum % 50; 
                     let pMerah = STATE.participants.find(p => p.id === m.merahId);
                     let pPutih = STATE.participants.find(p => p.id === m.putihId);
                     
-                    // 1. DEKLARASI PERTAMA VARIABEL
                     let nMerahRaw = m.merahId === -1 ? "BYE" : (pMerah ? (pMerah.nama.includes(',') ? pMerah.kontingen : pMerah.nama) : (m.merahId ? "Hantu" : "Menunggu..."));
                     let nPutihRaw = m.putihId === -1 ? "BYE" : (pPutih ? (pPutih.nama.includes(',') ? pPutih.kontingen : pPutih.nama) : (m.putihId ? "Hantu" : "Menunggu..."));
                     
@@ -949,7 +955,6 @@ function renderVisualBracket(catName) {
 
                     let isInteractive = (m.col === 1 && (m.status === 'pending' || m.status === 'auto-win'));
                     
-                    // 2. PERBAIKAN BUG: Tanpa kata 'let' lagi saat menambahkan ikon panah Swap
                     if (isInteractive) {
                         nMerahRaw = `<i class="fas fa-exchange-alt text-[8px] text-yellow-500 mr-1"></i>` + nMerahRaw;
                         nPutihRaw = `<i class="fas fa-exchange-alt text-[8px] text-yellow-500 mr-1"></i>` + nPutihRaw;
@@ -963,53 +968,55 @@ function renderVisualBracket(catName) {
                     let nMerahHTML = `
                         <div class="group relative flex-1 min-w-0 mr-2 flex items-center">
                             <span class="${wMerah} truncate block w-full ${cursorM}" ${isInteractive ? `onclick="handleSwap(${m.id}, 'merah', ${m.merahId}, event)" title="Klik untuk Tukar"` : ''}>${nMerahRaw}</span>
-                            ${pMerah ? `<div class="absolute bottom-full left-0 mb-2 hidden group-hover:block z-[60] bg-slate-900 border border-slate-600 text-yellow-400 text-xs font-bold px-3 py-1.5 rounded-lg shadow-[0_5px_15px_rgba(0,0,0,0.5)] whitespace-nowrap pointer-events-none">
-                                ${pMerah.nama}
-                            </div>` : ''}
+                            ${pMerah ? `<div class="absolute bottom-full left-0 mb-2 hidden group-hover:block z-[60] bg-slate-900 border border-slate-600 text-yellow-400 text-[10px] font-bold px-2 py-1 rounded shadow-lg whitespace-nowrap pointer-events-none">${pMerah.nama}</div>` : ''}
                         </div>`;
                         
                     let nPutihHTML = `
                         <div class="group relative flex-1 min-w-0 mr-2 flex items-center">
                             <span class="${wPutih} truncate block w-full ${cursorP}" ${isInteractive ? `onclick="handleSwap(${m.id}, 'putih', ${m.putihId}, event)" title="Klik untuk Tukar"` : ''}>${nPutihRaw}</span>
-                            ${pPutih ? `<div class="absolute bottom-full left-0 mb-2 hidden group-hover:block z-[60] bg-slate-900 border border-slate-600 text-yellow-400 text-xs font-bold px-3 py-1.5 rounded-lg shadow-[0_5px_15px_rgba(0,0,0,0.5)] whitespace-nowrap pointer-events-none">
-                                ${pPutih.nama}
-                            </div>` : ''}
+                            ${pPutih ? `<div class="absolute bottom-full left-0 mb-2 hidden group-hover:block z-[60] bg-slate-900 border border-slate-600 text-yellow-400 text-[10px] font-bold px-2 py-1 rounded shadow-lg whitespace-nowrap pointer-events-none">${pPutih.nama}</div>` : ''}
                         </div>`;
 
-                    let undoBtn = m.status === 'done' ? `<button onclick="undoMatchResult(${m.id})" class="absolute -bottom-2 -right-2 bg-red-600 hover:bg-red-500 text-white text-[10px] w-7 h-7 rounded-full shadow-lg border border-slate-800 z-10 flex items-center justify-center transition-transform hover:scale-110" title="Batalkan Hasil Partai Ini"><i class="fas fa-undo"></i></button>` : '';
+                    let undoBtn = m.status === 'done' ? `<button onclick="undoMatchResult(${m.id})" class="absolute -bottom-2 -right-2 bg-red-600 hover:bg-red-500 text-white text-[9px] w-6 h-6 rounded-full shadow-lg border border-slate-800 z-10 flex items-center justify-center transition-transform hover:scale-110"><i class="fas fa-undo"></i></button>` : '';
 
                     let dMerah = m.skorMerah > 0 ? m.skorMerah : '';
                     let dPutih = m.skorPutih > 0 ? m.skorPutih : '';
 
                     if (m.status === 'done' && m.skorMerah > 0 && m.skorMerah === m.skorPutih) {
                         if (m.tbMerahW1 !== undefined && m.tbPutihW1 !== undefined) {
-                            dMerah += `/${m.tbMerahW1}`;
-                            dPutih += `/${m.tbPutihW1}`;
+                            dMerah += `/${m.tbMerahW1}`; dPutih += `/${m.tbPutihW1}`;
                             if (m.tbMerahW1 === m.tbPutihW1 && m.tbMerahAll !== undefined) {
-                                dMerah += `/${m.tbMerahAll || 0}`;
-                                dPutih += `/${m.tbPutihAll || 0}`;
+                                dMerah += `/${m.tbMerahAll || 0}`; dPutih += `/${m.tbPutihAll || 0}`;
                             }
                         }
                     }
 
+                    // Tentukan kelas CSS untuk menggambar garis
+                    let lineClasses = "";
+                    if (!isLastCol && m.nextW) lineClasses += " has-next";
+                    if (!isFirstCol) lineClasses += " not-first";
+
+                    // PERBAIKAN 5: Padding kotak dipangkas (p-3 -> p-2), font atlet dikecilkan (text-sm -> text-[11px])
                     colHTML += `
-                        <div class="bracket-match p-3 rounded-lg border-2 ${bgStyle} relative shadow-lg transition-all">
-                            <span class="absolute -top-3 -left-3 bg-slate-700 text-[10px] w-6 h-6 flex items-center justify-center rounded-full font-black border border-slate-500">G${displayNum}</span>
+                        <div class="bracket-match p-2 rounded-md border border-slate-600 ${bgStyle} relative shadow-sm transition-all ${lineClasses}">
+                            <span class="absolute -top-2.5 -left-2.5 bg-slate-700 text-[8px] w-5 h-5 flex items-center justify-center rounded-full font-black border border-slate-500 shadow">G${displayNum}</span>
                             ${undoBtn}
-                            <span class="text-[9px] uppercase text-slate-400 block mb-2 font-bold">${m.babak}</span>
-                            <div class="flex justify-between items-center text-sm font-bold border-b border-slate-700 pb-1 mb-1">
+                            <div class="flex justify-between items-center text-[11px] font-bold border-b border-slate-700 pb-1 mb-1">
                                 ${nMerahHTML}
-                                <span class="text-xs text-slate-500 shrink-0">${dMerah}</span>
+                                <span class="text-[10px] text-slate-300 shrink-0">${dMerah}</span>
                             </div>
-                            <div class="flex justify-between items-center text-sm font-bold">
+                            <div class="flex justify-between items-center text-[11px] font-bold">
                                 ${nPutihHTML}
-                                <span class="text-xs text-slate-500 shrink-0">${dPutih}</span>
+                                <span class="text-[10px] text-slate-300 shrink-0">${dPutih}</span>
                             </div>
                         </div>
                     `;
                 });
                 colHTML += `</div>`;
-                if(colNum < maxCol) colHTML += `<div class="flex flex-col justify-center"><div class="w-8 border-b-2 border-slate-600"></div></div>`;
+                
+                // PERBAIKAN 6: Saya telah MEMBANTAI elemen pembatas ini yang memakan ruang secara ilegal!
+                // if(colNum < maxCol) colHTML += `<div class="w-8"></div>`; 
+                
                 poolHTML += colHTML;
             });
             poolHTML += `</div></div>`;
