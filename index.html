@@ -18,8 +18,8 @@
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #475569; }
 
-        /* Mengunci jarak gap persis 48px (3rem) */
-        .bracket-container { display: flex; gap: 3rem; padding: 1.5rem 0; overflow-x: auto; align-items: stretch; }
+        /* Mengunci jarak gap persis 48px (3rem) dan tambah padding kiri agar label G tidak terpotong */
+        .bracket-container { display: flex; gap: 3rem; padding: 1.5rem 2rem; overflow-x: auto; align-items: stretch; }
         .bracket-col { position: relative; display: flex; flex-direction: column; justify-content: center; }
         .bracket-match { position: relative; z-index: 10; }
         
