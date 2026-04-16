@@ -2730,3 +2730,35 @@ function finalizeEmbuMatch() {
         }).catch(err => alert("Gagal Simpan: " + err));
     }
 }
+let riwayatPoin = []; // Array kosong saat partai dimulai
+
+function tambahPoin(sudut, jenis, nilai) {
+    // 1. Eksekusi penambahan skor di UI
+    // ... kode tambah skor Anda ...
+
+    // 2. Simpan ke riwayat
+    riwayatPoin.push({ sudut: sudut, jenis: jenis, nilai: nilai });
+
+    // 3. Update teks log (Garis Biru)
+    let namaSudut = sudut === 'merah' ? 'Pita Merah' : 'Pita Putih';
+    let warnaTeks = sudut === 'merah' ? 'text-red-400' : 'text-slate-200';
+    document.getElementById('log-kejadian-randori').innerHTML = 
+        `<span class="${warnaTeks} font-bold">${namaSudut}</span>: ${jenis} (+${nilai})`;
+}
+
+function undoPoinTerakhir() {
+    if (riwayatPoin.length === 0) {
+        alert("Tidak ada tindakan yang bisa di-undo.");
+        return;
+    }
+
+    // Ambil kejadian terakhir dan keluarkan dari array
+    let kejadianTerakhir = riwayatPoin.pop();
+
+    // 1. Kurangi skor sesuai data kejadianTerakhir
+    // ... kode pengurang skor Anda ...
+
+    // 2. Update teks log
+    document.getElementById('log-kejadian-randori').innerHTML = 
+        riwayatPoin.length > 0 ? `<span class="text-slate-400">Tindakan terakhir dibatalkan.</span>` : `<span class="text-slate-500 italic">Belum ada poin tercatat...</span>`;
+}
