@@ -1938,7 +1938,7 @@ function downloadCSV(filename, rows) {
 }
 
 // =========================================================
-// FUNGSI UNDUH JADWAL (UPDATE 11 KOLOM EMBU & EXCEL READY)
+// FUNGSI UNDUH JADWAL (CSV EXCEL INDONESIA - VLOOKUP READY)
 // =========================================================
 function exportDrawingCSV(filterCatName = null) {
     let categoriesToExport = filterCatName ? STATE.categories.filter(c => c.name === filterCatName) : STATE.categories;
@@ -1949,7 +1949,7 @@ function exportDrawingCSV(filterCatName = null) {
     }
 
     let csvContent = "";
-    const separator = ";"; // Rahasia agar Excel Indonesia memisahkan kolom dengan rapi
+    const separator = ";"; 
 
     categoriesToExport.forEach(cat => {
         let catMatches = STATE.matches.filter(m => m.kategori === cat.name).sort((a,b) => a.matchNum - b.matchNum);
@@ -1957,7 +1957,7 @@ function exportDrawingCSV(filterCatName = null) {
 
         // --- JIKA KATEGORI ADALAH EMBU ---
         if (cat.discipline === 'embu') {
-            // Header 11 Kolom (Sesuai permintaan Anda)
+            // Header 11 Kolom
             let header = ["Disiplin", "Kategori", "Pool", "No. Partai", "Sudut Merah (nama)", "Kontingen Merah", "Nilai Merah", "Sudut Putih (nama)", "Kontingen Putih", "Nilai Putih", "Status"];
             csvContent += header.join(separator) + "\n";
 
@@ -1973,24 +1973,22 @@ function exportDrawingCSV(filterCatName = null) {
                 let displayNum = m.matchNum % 50 === 0 ? 50 : m.matchNum % 50;
                 let poolLabel = m.pool !== '-' ? `Pool ${m.pool}` : 'Utama';
 
-                // Gabung Nilai Utama dan Tie Breaker (Tetap pertahankan koma desimal Indonesia)
                 let nMrhFinal = m.status === 'done' && m.skorMerah > 0 ? String(m.skorMerah).replace('.', ',') : "-";
                 let nPthFinal = m.status === 'done' && m.skorPutih > 0 ? String(m.skorPutih).replace('.', ',') : "-";
 
-                // Jika seri dan ada Tie Breaker, gabungkan dengan garis miring
                 if (m.status === 'done' && m.skorMerah === m.skorPutih && m.skorMerah > 0) {
                     if (m.tbMerahW1 !== undefined) nMrhFinal += ` / ${String(m.tbMerahW1).replace('.', ',')}`;
                     if (m.tbPutihW1 !== undefined) nPthFinal += ` / ${String(m.tbPutihW1).replace('.', ',')}`;
                 }
 
-                // Handle Auto Win / WO
                 if (m.status === 'auto-win') {
                     nMrhFinal = m.winnerId === m.merahId ? "WO" : "-";
                     nPthFinal = m.winnerId === m.putihId ? "WO" : "-";
                 }
 
+                // PERUBAHAN DI SINI: Hanya menggunakan `"G-${displayNum}"` tanpa nama babak
                 let row = [
-                    `"${cat.discipline.toUpperCase()}"`, `"${cat.name}"`, `"${poolLabel}"`, `"${m.babak} (G-${displayNum})"`,
+                    `"${cat.discipline.toUpperCase()}"`, `"${cat.name}"`, `"${poolLabel}"`, `"G-${displayNum}"`,
                     `"${nMrh}"`, `"${kMrh}"`, `"${nMrhFinal}"`,
                     `"${nPth}"`, `"${kPth}"`, `"${nPthFinal}"`,
                     `"${m.status === 'done' ? 'Selesai' : (m.status === 'auto-win' ? 'Auto Win' : 'Pending')}"`
@@ -2015,6 +2013,7 @@ function exportDrawingCSV(filterCatName = null) {
                 let nWnnr = wnnr ? wnnr.nama : "-";
                 let displayNum = m.matchNum % 50 === 0 ? 50 : m.matchNum % 50;
 
+                // Format No Partai juga VLOOKUP Friendly
                 let row = [
                     `"${cat.name}"`, `"${m.pool !== '-' ? 'Pool ' + m.pool : 'Utama'}"`, `"${m.babak}"`, `"G-${displayNum}"`,
                     `"${nMrh}"`, `"${kMrh}"`,
@@ -2024,14 +2023,12 @@ function exportDrawingCSV(filterCatName = null) {
                 csvContent += row.join(separator) + "\n";
             });
         }
-        csvContent += "\n"; // Tambah jeda baris jika mengunduh semua kategori sekaligus
+        csvContent += "\n";
     });
 
-    // Proses Eksekusi Unduh Langsung (Bypass fungsi downloadCSV lama)
     let prefix = filterCatName ? `Jadwal_${filterCatName.replace(/[^a-zA-Z0-9]/g, '_')}` : `Semua_Jadwal_Pertandingan`;
     let filename = `${prefix}_${new Date().toISOString().slice(0,10)}.csv`;
     
-    // Tambahkan BOM (\ufeff) agar karakter terjaga dan ubah jadi Blob
     const blob = new Blob(["\ufeff", csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -2481,7 +2478,8 @@ function setEmbuCorner(corner) {
     let techRawData = corner === 'merah' ? tempEmbuScores.merahTechRaw : tempEmbuScores.putihTechRaw;
     let savedTime = corner === 'merah' ? tempEmbuScores.merahTime : tempEmbuScores.putihTime;
 
-    for(let i=1; i<=STATE.settings.numJudges; i++) {
+    // PERBAIKAN BUG: Paksa looping sampai angka 5 untuk menyapu bersih semua kotak wasit
+    for(let i=1; i<=5; i++) {
         let sEl = document.getElementById(`score-${i}`);
         let tEl = document.getElementById(`tech-${i}`);
         if(sEl) sEl.value = (rawData && rawData[i-1] > 0) ? rawData[i-1] : '';
