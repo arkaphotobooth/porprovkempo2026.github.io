@@ -1239,24 +1239,21 @@ function loadRandoriMatch() {
 }
 
 function resetRandoriBoard() { RANDORI_STATE = { merah: { score: 0 }, putih: { score: 0 } }; updateRandoriUI(); }
-// 1. TAMBAHKAN ARRAY INI DI LUAR FUNGSI (Misal di bagian atas script Anda)
 let riwayatPoin = [];
-
-// 2. CARI FUNGSI INI DI SCRIPT.JS ANDA
 function addRandoriScore(sudut, point) {
-    // ... (Ini adalah kode asli Anda yang menghitung skor, BIARKAN SAJA) ...
-    // STATE.skorMerah += point; atau semacamnya
-    // updateUIDisplay();
-
-    // ========================================================
-    // 3. TAMBAHKAN KODE INI TEPAT SEBELUM KURUNG TUTUP FUNGSI
-    // ========================================================
-    let jenisPoin = point === 5 ? "Poin (+5)" : point === 10 ? "Ippon (+10)" : "Koreksi";
+    // 1. AMBIL ANGKANYA LANGSUNG DARI LAYAR DAN TAMBAHKAN
+    let idSkor = sudut === 'merah' ? 'score-merah' : 'score-putih';
+    let elSkor = document.getElementById(idSkor);
+    let skorSekarang = parseInt(elSkor.innerText) || 0;
     
-    // Simpan ke riwayat untuk fitur Undo
+    // Update angka di layar
+    elSkor.innerText = skorSekarang + point;
+
+    // 2. SIMPAN RIWAYAT UNTUK UNDO
+    let jenisPoin = point === 5 ? "Poin (+5)" : point === 10 ? "Ippon (+10)" : "Koreksi";
     riwayatPoin.push({ sudut: sudut, nilai: point, jenis: jenisPoin });
 
-    // Update teks Log di UI (Garis Biru)
+    // 3. TAMPILKAN KE LOG (GARIS BIRU)
     let namaSudut = sudut === 'merah' ? 'PITA MERAH' : 'PITA PUTIH';
     let warnaTeks = sudut === 'merah' ? 'text-red-400' : 'text-slate-200';
     let logEl = document.getElementById('log-kejadian-randori');
@@ -1265,32 +1262,28 @@ function addRandoriScore(sudut, point) {
     }
 }
 
-// 4. PASTIKAN FUNGSI UNDO INI JUGA ADA DI SCRIPT.JS ANDA
 function undoPoinTerakhir() {
     if (riwayatPoin.length === 0) {
-        alert("Belum ada tindakan yang bisa dibatalkan.");
+        alert("Belum ada poin yang tercatat untuk dibatalkan.");
         return;
     }
 
-    // Ambil tindakan terakhir
+    // 1. AMBIL TINDAKAN TERAKHIR DARI ARRAY
     let terakhir = riwayatPoin.pop();
 
-    // Kurangi skor yang tadi barusan ditambah
-    // SESUAIKAN DENGAN NAMA VARIABEL SKOR ANDA
-    if (terakhir.sudut === 'merah') {
-        // STATE.skorMerah -= terakhir.nilai; 
-    } else {
-        // STATE.skorPutih -= terakhir.nilai;
-    }
+    // 2. KURANGI SKORNYA DARI LAYAR
+    let idSkor = terakhir.sudut === 'merah' ? 'score-merah' : 'score-putih';
+    let elSkor = document.getElementById(idSkor);
+    let skorSekarang = parseInt(elSkor.innerText) || 0;
     
-    // Panggil fungsi render/update UI skor Anda di sini
-    // renderScoringRandori(); 
+    // Update angka di layar (kembali seperti semula)
+    elSkor.innerText = skorSekarang - terakhir.nilai;
 
-    // Update tulisan log
+    // 3. UPDATE TULISAN LOG
     let logEl = document.getElementById('log-kejadian-randori');
     if(logEl) {
         logEl.innerHTML = riwayatPoin.length > 0 
-            ? `<span class="text-slate-400 italic">Tindakan terakhir dibatalkan.</span>` 
+            ? `<span class="text-slate-400 italic">Tindakan terakhir berhasil dibatalkan.</span>` 
             : `<span class="text-slate-500 italic">Belum ada poin tercatat...</span>`;
     }
 }
