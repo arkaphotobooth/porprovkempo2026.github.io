@@ -1181,23 +1181,33 @@ function filterPesertaScoring() {
     if (selectEl.options.length > 0) document.getElementById('scoring-athlete-name').innerText = selectEl.options[selectEl.selectedIndex].text;
 
     const btnSelesaiEmbu = document.getElementById('btn-selesai-embu');
-    // UBAH TARGET ID KE SIDEBAR KIRI
+    const btnSelesaiRandori = document.getElementById('btn-selesai-randori'); // <-- TOMBOL BARU ANDA
     const juriToggle = document.getElementById('juri-toggle-sidebar');
 
     // TAMPILKAN PANEL SESUAI DISIPLIN
     if(categoryObj.discipline === 'randori') {
-        panelEmbu.classList.add('hidden'); panelRandori.classList.remove('hidden'); 
-        badgeEmbu.classList.add('hidden'); badgeRandori.classList.remove('hidden');
+        panelEmbu.classList.add('hidden'); 
+        panelRandori.classList.remove('hidden'); 
+        badgeEmbu.classList.add('hidden'); 
+        badgeRandori.classList.remove('hidden');
+        
         if(panelWaktu) panelWaktu.classList.add('hidden'); 
         if(btnSelesaiEmbu) btnSelesaiEmbu.classList.add('hidden');
-        if(juriToggle) juriToggle.classList.add('hidden'); // Sembunyi di Randori
+        if(btnSelesaiRandori) btnSelesaiRandori.classList.remove('hidden'); // <-- MUNCUL DI RANDORI
+        if(juriToggle) juriToggle.classList.add('hidden'); 
+        
         loadRandoriMatch(); 
     } else {
-        panelEmbu.classList.remove('hidden'); panelRandori.classList.add('hidden'); 
-        badgeEmbu.classList.remove('hidden'); badgeRandori.classList.add('hidden');
+        panelEmbu.classList.remove('hidden'); 
+        panelRandori.classList.add('hidden'); 
+        badgeEmbu.classList.remove('hidden'); 
+        badgeRandori.classList.add('hidden');
+        
         if(panelWaktu) panelWaktu.classList.remove('hidden'); 
         if(btnSelesaiEmbu) btnSelesaiEmbu.classList.remove('hidden');
-        if(juriToggle) juriToggle.classList.remove('hidden'); // Muncul di Embu Kiri
+        if(btnSelesaiRandori) btnSelesaiRandori.classList.add('hidden'); // <-- SEMBUNYI DI EMBU
+        if(juriToggle) juriToggle.classList.remove('hidden'); 
+        
         loadEmbuMatch(); 
     }
 }
