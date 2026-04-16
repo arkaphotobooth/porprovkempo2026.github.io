@@ -1938,7 +1938,7 @@ function downloadCSV(filename, rows) {
 }
 
 // =========================================================
-// FUNGSI UNDUH JADWAL (CSV EXCEL INDONESIA - VLOOKUP READY)
+// FUNGSI UNDUH JADWAL (EMBU: KONTINGEN DULU, LALU ATLET)
 // =========================================================
 function exportDrawingCSV(filterCatName = null) {
     let categoriesToExport = filterCatName ? STATE.categories.filter(c => c.name === filterCatName) : STATE.categories;
@@ -1957,8 +1957,8 @@ function exportDrawingCSV(filterCatName = null) {
 
         // --- JIKA KATEGORI ADALAH EMBU ---
         if (cat.discipline === 'embu') {
-            // Header 11 Kolom
-            let header = ["Disiplin", "Kategori", "Pool", "No. Partai", "Sudut Merah (nama)", "Kontingen Merah", "Nilai Merah", "Sudut Putih (nama)", "Kontingen Putih", "Nilai Putih", "Status"];
+            // PERUBAHAN DI SINI: Header Kontingen di depan Sudut (nama)
+            let header = ["Disiplin", "Kategori", "Pool", "No. Partai", "Kontingen Merah", "Sudut Merah (nama)", "Nilai Merah", "Kontingen Putih", "Sudut Putih (nama)", "Nilai Putih", "Status"];
             csvContent += header.join(separator) + "\n";
 
             catMatches.forEach(m => {
@@ -1986,17 +1986,17 @@ function exportDrawingCSV(filterCatName = null) {
                     nPthFinal = m.winnerId === m.putihId ? "WO" : "-";
                 }
 
-                // PERUBAHAN DI SINI: Hanya menggunakan `"G-${displayNum}"` tanpa nama babak
+                // PERUBAHAN DI SINI: kMrh (Kontingen Merah) ditaruh sebelum nMrh (Nama Merah)
                 let row = [
                     `"${cat.discipline.toUpperCase()}"`, `"${cat.name}"`, `"${poolLabel}"`, `"G-${displayNum}"`,
-                    `"${nMrh}"`, `"${kMrh}"`, `"${nMrhFinal}"`,
-                    `"${nPth}"`, `"${kPth}"`, `"${nPthFinal}"`,
+                    `"${kMrh}"`, `"${nMrh}"`, `"${nMrhFinal}"`,
+                    `"${kPth}"`, `"${nPth}"`, `"${nPthFinal}"`,
                     `"${m.status === 'done' ? 'Selesai' : (m.status === 'auto-win' ? 'Auto Win' : 'Pending')}"`
                 ];
                 csvContent += row.join(separator) + "\n";
             });
         } 
-        // --- JIKA KATEGORI ADALAH RANDORI ---
+        // --- JIKA KATEGORI ADALAH RANDORI (TIDAK DIUBAH) ---
         else {
             let header = ["Kategori", "Pool", "Babak", "No. Partai", "Sudut Merah", "Kontingen Merah", "Sudut Putih", "Kontingen Putih", "Pemenang", "Skor"];
             csvContent += header.join(separator) + "\n";
@@ -2013,7 +2013,6 @@ function exportDrawingCSV(filterCatName = null) {
                 let nWnnr = wnnr ? wnnr.nama : "-";
                 let displayNum = m.matchNum % 50 === 0 ? 50 : m.matchNum % 50;
 
-                // Format No Partai juga VLOOKUP Friendly
                 let row = [
                     `"${cat.name}"`, `"${m.pool !== '-' ? 'Pool ' + m.pool : 'Utama'}"`, `"${m.babak}"`, `"G-${displayNum}"`,
                     `"${nMrh}"`, `"${kMrh}"`,
