@@ -1096,13 +1096,15 @@ function renderVisualBracket(catName) {
         pools.forEach(poolName => {
             let poolMatches = catMatches.filter(m => m.pool === poolName);
             
-            // Gap dikunci di gap-12 (48px) agar pas dengan garis CSS 24px + 24px
-            let poolHTML = `<div class="mb-6 w-full min-w-max">
+            let poolHTML = `<div class="mb-10 w-full min-w-max">
                 <div class="flex items-center gap-3 mb-4 border-b border-slate-700 pb-2">
                     <h3 class="text-xl font-black text-yellow-400 m-0">BAGAN ${poolName !== '-' ? 'POOL ' + poolName : 'UTAMA'}</h3>
-                    <span class="text-[11px] text-slate-500 font-mono ml-2 border-l border-slate-700 pl-3">Swap: Klik Nama | Undo: Klik <i class="fas fa-undo text-red-400 mx-1"></i></span>
+                    <span class="text-[10px] text-slate-500 font-mono ml-2 border-l border-slate-700 pl-3">Swap: Klik Nama | Undo: Klik <i class="fas fa-undo text-red-400 mx-1"></i></span>
+                    <button onclick="resetNilaiKategoriLokal()" class="ml-auto bg-red-900/50 border border-red-700 text-red-400 hover:bg-red-500 hover:text-white w-7 h-7 rounded flex items-center justify-center transition-colors" title="Kosongkan Nilai Saja (Bagan Tetap)">
+                        <i class="fas fa-eraser text-xs"></i>
+                    </button>
                 </div>
-                <div class="flex gap-12 pb-4 pt-4 items-stretch">`;
+                <div class="flex gap-8 pb-4 items-stretch">`;
             
             let columns = [];
             poolMatches.forEach(m => { if(columns.indexOf(m.col) === -1) columns.push(m.col); });
@@ -1113,14 +1115,12 @@ function renderVisualBracket(catName) {
                 let colMatches = poolMatches.filter(m => m.col === colNum).sort((a,b) => a.matchNum - b.matchNum);
                 if(colMatches.length === 0) return;
 
-                let isFirstCol = (colNum === columns[0]);
-                let isLastCol = (colNum === maxCol);
-
-                // Lebar kolom dibuat 220px, ditambahkan class bracket-col
-                let colHTML = `<div class="flex flex-col gap-4 justify-center min-w-[220px] bracket-col relative">`;
+                // PERBAIKAN 2: Kolom dipisah. Judul "Babak" dikunci (shrink-0) agar selalu di atas.
+                let colHTML = `<div class="flex flex-col min-w-[240px]">`;
+                colHTML += `<h4 class="text-center text-xs font-bold uppercase text-slate-500 mb-6 shrink-0">Babak ${colNum}</h4>`;
                 
-                // Tulisan babak melayang di atas agar tidak memakan ruang dalam kolom
-                colHTML += `<div class="absolute -top-6 w-full text-center text-xs font-black uppercase text-slate-500 tracking-widest">Babak ${colNum}</div>`;
+                // PERBAIKAN 3: Kotak pertandingan dibungkus wadah baru yang memusat (flex-1 justify-center)
+                colHTML += `<div class="flex flex-col gap-6 justify-center flex-1">`;
                 
                 colMatches.forEach(m => {
                     let displayNum = m.matchNum % 50 === 0 ? 50 : m.matchNum % 50; 
@@ -1130,15 +1130,15 @@ function renderVisualBracket(catName) {
                     let nMerahRaw = m.merahId === -1 ? "BYE" : (pMerah ? (pMerah.nama.includes(',') ? pMerah.kontingen : pMerah.nama) : (m.merahId ? "Hantu" : "Menunggu..."));
                     let nPutihRaw = m.putihId === -1 ? "BYE" : (pPutih ? (pPutih.nama.includes(',') ? pPutih.kontingen : pPutih.nama) : (m.putihId ? "Hantu" : "Menunggu..."));
                     
-                    let bgStyle = m.status === 'done' ? 'border-green-500 bg-slate-800' : m.status === 'auto-win' ? 'border-slate-600 bg-slate-900 opacity-60' : 'border-blue-500 bg-slate-800';
+                    let bgStyle = m.status === 'done' ? 'border-green-500 bg-slate-800' : m.status === 'auto-win' ? 'border-slate-600 bg-slate-900 opacity-50' : 'border-blue-500 bg-slate-800';
                     let wMerah = m.winnerId === m.merahId ? 'text-green-400' : m.winnerId && m.winnerId !== m.merahId ? 'text-slate-500 line-through' : 'text-red-400';
                     let wPutih = m.winnerId === m.putihId ? 'text-green-400' : m.winnerId && m.winnerId !== m.putihId ? 'text-slate-500 line-through' : 'text-white';
 
                     let isInteractive = (m.col === 1 && (m.status === 'pending' || m.status === 'auto-win'));
                     
                     if (isInteractive) {
-                        nMerahRaw = `<i class="fas fa-exchange-alt text-[10px] text-yellow-500 mr-1.5"></i>` + nMerahRaw;
-                        nPutihRaw = `<i class="fas fa-exchange-alt text-[10px] text-yellow-500 mr-1.5"></i>` + nPutihRaw;
+                        nMerahRaw = `<i class="fas fa-exchange-alt text-[8px] text-yellow-500 mr-1"></i>` + nMerahRaw;
+                        nPutihRaw = `<i class="fas fa-exchange-alt text-[8px] text-yellow-500 mr-1"></i>` + nPutihRaw;
                     }
 
                     let activeM = (SWAP_SELECTION && SWAP_SELECTION.matchId === m.id && SWAP_SELECTION.corner === 'merah') ? 'bg-yellow-600/80 px-1 rounded text-white shadow-[0_0_10px_rgba(234,179,8,0.5)]' : '';
@@ -1149,54 +1149,55 @@ function renderVisualBracket(catName) {
                     let nMerahHTML = `
                         <div class="group relative flex-1 min-w-0 mr-2 flex items-center">
                             <span class="${wMerah} truncate block w-full ${cursorM}" ${isInteractive ? `onclick="handleSwap(${m.id}, 'merah', ${m.merahId}, event)" title="Klik untuk Tukar"` : ''}>${nMerahRaw}</span>
+                            ${pMerah ? `<div class="absolute bottom-full left-0 mb-2 hidden group-hover:block z-[60] bg-slate-900 border border-slate-600 text-yellow-400 text-xs font-bold px-3 py-1.5 rounded-lg shadow-[0_5px_15px_rgba(0,0,0,0.5)] whitespace-nowrap pointer-events-none">
+                                ${pMerah.nama}
+                            </div>` : ''}
                         </div>`;
                         
                     let nPutihHTML = `
                         <div class="group relative flex-1 min-w-0 mr-2 flex items-center">
                             <span class="${wPutih} truncate block w-full ${cursorP}" ${isInteractive ? `onclick="handleSwap(${m.id}, 'putih', ${m.putihId}, event)" title="Klik untuk Tukar"` : ''}>${nPutihRaw}</span>
+                            ${pPutih ? `<div class="absolute bottom-full left-0 mb-2 hidden group-hover:block z-[60] bg-slate-900 border border-slate-600 text-yellow-400 text-xs font-bold px-3 py-1.5 rounded-lg shadow-[0_5px_15px_rgba(0,0,0,0.5)] whitespace-nowrap pointer-events-none">
+                                ${pPutih.nama}
+                            </div>` : ''}
                         </div>`;
 
-                    let undoBtn = m.status === 'done' ? `<button onclick="undoMatchResult(${m.id})" class="absolute -bottom-2 -right-2 bg-red-600 hover:bg-red-500 text-white text-[10px] w-7 h-7 rounded-full shadow-lg border border-slate-800 z-10 flex items-center justify-center transition-transform hover:scale-110"><i class="fas fa-undo"></i></button>` : '';
+                    let undoBtn = m.status === 'done' ? `<button onclick="undoMatchResult(${m.id})" class="absolute -bottom-2 -right-2 bg-red-600 hover:bg-red-500 text-white text-[10px] w-7 h-7 rounded-full shadow-lg border border-slate-800 z-10 flex items-center justify-center transition-transform hover:scale-110" title="Batalkan Hasil Partai Ini"><i class="fas fa-undo"></i></button>` : '';
 
                     let dMerah = m.skorMerah > 0 ? m.skorMerah : '';
                     let dPutih = m.skorPutih > 0 ? m.skorPutih : '';
 
                     if (m.status === 'done' && m.skorMerah > 0 && m.skorMerah === m.skorPutih) {
                         if (m.tbMerahW1 !== undefined && m.tbPutihW1 !== undefined) {
-                            dMerah += `/${m.tbMerahW1}`; dPutih += `/${m.tbPutihW1}`;
+                            dMerah += `/${m.tbMerahW1}`;
+                            dPutih += `/${m.tbPutihW1}`;
                             if (m.tbMerahW1 === m.tbPutihW1 && m.tbMerahAll !== undefined) {
-                                dMerah += `/${m.tbMerahAll || 0}`; dPutih += `/${m.tbPutihAll || 0}`;
+                                dMerah += `/${m.tbMerahAll || 0}`;
+                                dPutih += `/${m.tbPutihAll || 0}`;
                             }
                         }
                     }
 
-                    // Tentukan kelas CSS untuk menggambar garis
-                    let lineClasses = "";
-                    if (!isLastCol && m.nextW) lineClasses += " has-next";
-                    if (!isFirstCol) lineClasses += " not-first";
-
+                    // PERBAIKAN 4: Kotak diberi class "flex-none" agar kebal terhadap tarikan
                     colHTML += `
-                        <div class="bracket-match p-3 rounded-lg border-2 ${bgStyle} relative shadow-md transition-all ${lineClasses}">
-                            <span class="absolute -top-3 -left-3 bg-slate-700 text-[10px] w-6 h-6 flex items-center justify-center rounded-full font-black border border-slate-500 shadow z-20">G${displayNum}</span>
-                            
+                        <div class="bracket-match p-3 rounded-lg border-2 ${bgStyle} relative shadow-lg transition-all flex-none">
+                            <span class="absolute -top-3 -left-3 bg-slate-700 text-[10px] w-6 h-6 flex items-center justify-center rounded-full font-black border border-slate-500">G${displayNum}</span>
                             ${undoBtn}
-
-                            <span class="text-[9px] uppercase text-slate-500 block mb-2 font-black tracking-wider leading-none">${m.babak}</span>
-
-                            <div class="flex justify-between items-center text-sm font-bold border-b border-slate-700 pb-1.5 mb-1.5">
+                            <span class="text-[9px] uppercase text-slate-400 block mb-2 font-bold">${m.babak}</span>
+                            <div class="flex justify-between items-center text-sm font-bold border-b border-slate-700 pb-1 mb-1">
                                 ${nMerahHTML}
-                                <span class="text-sm font-black text-slate-300 shrink-0">${dMerah}</span>
+                                <span class="text-xs text-slate-500 shrink-0">${dMerah}</span>
                             </div>
                             <div class="flex justify-between items-center text-sm font-bold">
                                 ${nPutihHTML}
-                                <span class="text-sm font-black text-slate-300 shrink-0">${dPutih}</span>
+                                <span class="text-xs text-slate-500 shrink-0">${dPutih}</span>
                             </div>
                         </div>
                     `;
                 });
-                colHTML += `</div>`;
+                colHTML += `</div></div>`; // Menutup container kotak dan kolom utama
                 
-                // ELEMEN PEMBATAS ILEGAL YANG BIKIN RUSAK SUDAH SAYA HAPUS DARI SINI
+                if(colNum < maxCol) colHTML += `<div class="flex flex-col justify-center"><div class="w-8 border-b-2 border-slate-600"></div></div>`;
                 
                 poolHTML += colHTML;
             });
