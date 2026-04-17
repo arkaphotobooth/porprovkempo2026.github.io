@@ -1159,29 +1159,25 @@ function renderVisualBracket(catName) {
                     if (colNum < maxCol) wrapperClasses += " has-next";
                     if (colNum > 1) wrapperClasses += " not-first";
 
+                   // PERBAIKAN: Keterangan babak dimunculkan kembali & ukuran skor diperkecil (text-sm)
                     colHTML += `
-                        <div class="${wrapperClasses}">
-                            <div class="relative w-full h-fit shrink-0 rounded-lg border ${bgStyle} p-2 pt-2.5 transition-all duration-300 hover:border-slate-400">
-                                
-                                <span class="absolute -top-2 -left-2 bg-slate-800 text-slate-300 text-[8px] w-5 h-5 flex items-center justify-center rounded-full font-black border border-slate-600 shadow-md z-30">G${displayNum}</span>
-                                ${undoBtn}
-                                
-                                <span class="text-[8px] uppercase text-slate-500 block mb-1 font-black tracking-widest leading-none pl-2">${m.babak}</span>
-                                
-                                <div class="flex flex-col gap-0.5 mt-0.5">
-                                    <div class="flex justify-between items-center border-b border-dashed border-slate-600/50 pb-0.5">
-                                        ${nMerahHTML}
-                                        <span class="text-[11px] text-slate-400 font-mono font-bold ml-1">${m.skorMerah > 0 ? m.skorMerah : ''}</span>
-                                    </div>
-                                    <div class="flex justify-between items-center pt-0.5">
-                                        ${nPutihHTML}
-                                        <span class="text-[11px] text-slate-400 font-mono font-bold ml-1">${m.skorPutih > 0 ? m.skorPutih : ''}</span>
-                                    </div>
-                                </div>
+                        <div class="bracket-match p-3 rounded-lg border-2 ${bgStyle} relative shadow-md transition-all ${lineClasses}">
+                            <span class="absolute -top-3 -left-3 bg-slate-700 text-[10px] w-6 h-6 flex items-center justify-center rounded-full font-black border border-slate-500 shadow z-20">G${displayNum}</span>
+                            
+                            ${undoBtn}
+
+                            <span class="text-[9px] uppercase text-slate-500 block mb-2 font-black tracking-wider leading-none">${m.babak}</span>
+
+                            <div class="flex justify-between items-center text-sm font-bold border-b border-slate-700 pb-1.5 mb-1.5">
+                                ${nMerahHTML}
+                                <span class="text-sm font-black text-slate-300 shrink-0">${dMerah}</span>
+                            </div>
+                            <div class="flex justify-between items-center text-sm font-bold">
+                                ${nPutihHTML}
+                                <span class="text-sm font-black text-slate-300 shrink-0">${dPutih}</span>
                             </div>
                         </div>
                     `;
-                });
                 colHTML += `</div>`;
                 poolHTML += colHTML;
             });
