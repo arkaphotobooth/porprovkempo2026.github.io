@@ -244,29 +244,29 @@ async function prosesExcelBagan() {
 
 
             // =======================================================
-            // 🔥 PERBAIKAN: DETEKSI KOLOM DINAMIS (RANDORI VS EMBU)
+            // 🔥 PERBAIKAN FINAL: KOORDINAT DIGESER MULAI DARI R3
             // =======================================================
-            // Kolom Statis (Sama di kedua template)
-            const COL_DISIPLIN    = 17; // Q
-            const COL_KATEGORI    = 18; // R
-            const COL_POOL        = 19; // S
-            const COL_PARTAI      = 20; // T
-            const COL_SKOR_MERAH  = 23; // W
-            const COL_SKOR_PUTIH  = 26; // Z
-            const COL_STATUS      = 27; // AA
+            // Kolom Statis (Bergeser +1 dari sebelumnya)
+            const COL_DISIPLIN    = 18; // R
+            const COL_KATEGORI    = 19; // S
+            const COL_POOL        = 20; // T
+            const COL_PARTAI      = 21; // U
+            const COL_SKOR_MERAH  = 24; // X
+            const COL_SKOR_PUTIH  = 27; // AA
+            const COL_STATUS      = 28; // AB
             
             // Cek Disiplin untuk menukar koordinat Nama & Kontingen
             const isRandori = cat.discipline === 'randori';
             
-            // Jika Randori: Nama di U(21), Kontingen di V(22)
-            // Jika Embu: Kontingen di U(21), Nama di V(22)
-            const COL_NAMA_MERAH = isRandori ? 21 : 22; 
-            const COL_KONT_MERAH = isRandori ? 22 : 21; 
+            // Jika Randori: Nama di V(22), Kontingen di W(23)
+            // Jika Embu: Kontingen di V(22), Nama di W(23)
+            const COL_NAMA_MERAH = isRandori ? 22 : 23; 
+            const COL_KONT_MERAH = isRandori ? 23 : 22; 
             
-            // Jika Randori: Nama di X(24), Kontingen di Y(25)
-            // Jika Embu: Kontingen di X(24), Nama di Y(25)
-            const COL_NAMA_PUTIH = isRandori ? 24 : 25; 
-            const COL_KONT_PUTIH = isRandori ? 25 : 24; 
+            // Jika Randori: Nama di Y(25), Kontingen di Z(26)
+            // Jika Embu: Kontingen di Y(25), Nama di Z(26)
+            const COL_NAMA_PUTIH = isRandori ? 25 : 26; 
+            const COL_KONT_PUTIH = isRandori ? 26 : 25; 
 
             let startRow = 3; // Data pertama jatuh di baris 3
             
