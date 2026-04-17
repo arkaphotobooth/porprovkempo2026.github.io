@@ -1153,27 +1153,29 @@ function renderVisualBracket(catName) {
 
                     let undoBtn = m.status === 'done' ? `<button onclick="undoMatchResult(${m.id})" class="absolute -top-2.5 -right-2.5 bg-red-600 text-white text-[10px] w-6 h-6 rounded-full z-30 flex items-center justify-center transition-all hover:scale-110 shadow-lg" title="Batal Hasil"><i class="fas fa-undo"></i></button>` : '';
 
-                    // FIX UTAMA: Hapus 'flex-1' dan kurangi padding luar agar tidak melar!
-                    let wrapperClasses = `bracket-match flex flex-col justify-center py-1.5`;
+                    // BUNGKUSAN AJAIB: Menahan flex stretch dari CSS pusat
+                    // FIX RAMPING 1: Hapus flex-1, ubah py-4 px-2 menjadi py-1.5 px-0
+                    let wrapperClasses = `bracket-match flex flex-col justify-center py-1.5 px-0`;
                     if (colNum < maxCol) wrapperClasses += " has-next";
                     if (colNum > 1) wrapperClasses += " not-first";
 
                     colHTML += `
                         <div class="${wrapperClasses}">
-                            <div class="relative w-full h-fit shrink-0 rounded-xl border ${bgStyle} p-3 pt-4 transition-all duration-300 hover:border-slate-500">
-                                <span class="absolute -top-3 -left-3 bg-slate-800 text-slate-300 text-[10px] w-6 h-6 flex items-center justify-center rounded-full font-black border border-slate-600 shadow-md z-30">G${displayNum}</span>
+                            <div class="relative w-full h-fit shrink-0 rounded-lg border ${bgStyle} p-2 pt-2.5 transition-all duration-300 hover:border-slate-400">
+                                
+                                <span class="absolute -top-2 -left-2 bg-slate-800 text-slate-300 text-[8px] w-5 h-5 flex items-center justify-center rounded-full font-black border border-slate-600 shadow-md z-30">G${displayNum}</span>
                                 ${undoBtn}
                                 
-                                <span class="text-[9px] uppercase text-slate-500 block mb-2 font-black tracking-widest">${m.babak}</span>
+                                <span class="text-[8px] uppercase text-slate-500 block mb-1 font-black tracking-widest leading-none pl-2">${m.babak}</span>
                                 
-                                <div class="flex flex-col gap-1">
-                                    <div class="flex justify-between items-center border-b border-dashed border-slate-600/50 pb-1.5">
+                                <div class="flex flex-col gap-0.5 mt-0.5">
+                                    <div class="flex justify-between items-center border-b border-dashed border-slate-600/50 pb-0.5">
                                         ${nMerahHTML}
-                                        <span class="text-xs text-slate-400 font-mono font-bold ml-2">${m.skorMerah > 0 ? m.skorMerah : ''}</span>
+                                        <span class="text-[11px] text-slate-400 font-mono font-bold ml-1">${m.skorMerah > 0 ? m.skorMerah : ''}</span>
                                     </div>
                                     <div class="flex justify-between items-center pt-0.5">
                                         ${nPutihHTML}
-                                        <span class="text-xs text-slate-400 font-mono font-bold ml-2">${m.skorPutih > 0 ? m.skorPutih : ''}</span>
+                                        <span class="text-[11px] text-slate-400 font-mono font-bold ml-1">${m.skorPutih > 0 ? m.skorPutih : ''}</span>
                                     </div>
                                 </div>
                             </div>
