@@ -114,44 +114,199 @@ function injectAdminExportButtons() {
     if (adminExportSection) {
         let currentMode = (STATE.settings && STATE.settings.tournamentMode) ? STATE.settings.tournamentMode : 'double';
         let currentFinalMode = (STATE.settings && STATE.settings.finalRandoriMode) ? STATE.settings.finalRandoriMode : 'single';
-        let currentEmbuMode = (STATE.settings && STATE.settings.embuB2Mode) ? STATE.settings.embuB2Mode : 'reverse';
-        
+
         adminExportSection.innerHTML = `
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 text-left shadow-lg">
                     <h3 class="text-md font-black text-red-400 mb-2"><i class="fas fa-cogs mr-2"></i>SISTEM RANDORI (UTAMA)</h3>
                     <p class="text-[10px] text-slate-400 mb-3">Aturan bagan untuk penyisihan Pool.</p>
-                    <select id="setting-tournament-mode" onchange="saveTournamentMode()" class="w-full text-sm bg-slate-900 border border-slate-600 rounded p-2 text-white font-bold cursor-pointer hover:border-red-500 transition-colors mb-4">
+                    <select id="setting-tournament-mode" onchange="saveTournamentMode()" class="w-full text-sm bg-slate-900 border border-slate-600 rounded p-2 text-white font-bold cursor-pointer hover:border-red-500 transition-colors">
                         <option value="double" ${currentMode === 'double' ? 'selected' : ''}>Double Elimination (Perkemi)</option>
                         <option value="single" ${currentMode === 'single' ? 'selected' : ''}>Single Elimination (Gugur Biasa)</option>
                     </select>
-                    
-                    <h3 class="text-md font-black text-orange-400 mb-2 border-t border-slate-700 pt-3"><i class="fas fa-project-diagram mr-2"></i>SISTEM FINAL RANDORI</h3>
+                </div>
+                <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 text-left shadow-lg">
+                    <h3 class="text-md font-black text-orange-400 mb-2"><i class="fas fa-project-diagram mr-2"></i>SISTEM FINAL RANDORI</h3>
                     <p class="text-[10px] text-slate-400 mb-3">Aturan khusus bagan "FINAL" (Crossover).</p>
                     <select id="setting-final-mode" onchange="saveFinalMode()" class="w-full text-sm bg-slate-900 border border-slate-600 rounded p-2 text-white font-bold cursor-pointer hover:border-orange-500 transition-colors">
                         <option value="single" ${currentFinalMode === 'single' ? 'selected' : ''}>Gugur Biasa (Crossover Standar)</option>
                         <option value="double" ${currentFinalMode === 'double' ? 'selected' : ''}>Double Elimination (Perkemi Crossover)</option>
                     </select>
                 </div>
-                <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 text-left shadow-lg">
-                    <h3 class="text-md font-black text-blue-400 mb-2"><i class="fas fa-sync-alt mr-2"></i>URUTAN EMBU B2</h3>
-                    <p class="text-[10px] text-slate-400 mb-3">Sistem urut Babak 2 (Khusus Single Pool).</p>
-                    <select id="setting-embu-mode" onchange="saveEmbuB2Mode()" class="w-full text-sm bg-slate-900 border border-slate-600 rounded p-2 text-white font-bold cursor-pointer hover:border-blue-500 transition-colors">
-                        <option value="reverse" ${currentEmbuMode === 'reverse' ? 'selected' : ''}>Dibalik dari Babak 1 (Baku)</option>
-                        <option value="redraw" ${currentEmbuMode === 'redraw' ? 'selected' : ''}>Diacak Ulang (Re-Draw)</option>
-                        <option value="highscore" ${currentEmbuMode === 'highscore' ? 'selected' : ''}>Peringkat Nilai B1 (Tertinggi Tampil Terakhir)</option>
-                    </select>
+            </div>
+            
+            <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 text-left shadow-lg mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div>
+                    <h3 class="text-md font-black text-green-400 mb-1"><i class="fas fa-file-excel mr-2"></i>TEMPLATE EXCEL BAGAN (MASTER)</h3>
+                    <p class="text-[10px] text-slate-400">Unggah file template Excel (.xlsx) Anda di sini. Sistem akan menyuntikkan jadwal pertandingan ke dalamnya.</p>
+                </div>
+                <div class="w-full md:w-auto flex items-center gap-3 bg-slate-900 p-2 rounded-lg border border-slate-600 shadow-inner">
+                    <input type="file" id="excel-template-upload" accept=".xlsx" class="hidden" onchange="document.getElementById('excel-filename').innerText = this.files[0].name">
+                    <i class="fas fa-file-excel text-green-500 ml-2 text-lg"></i>
+                    <span id="excel-filename" class="text-xs text-slate-400 font-mono truncate max-w-[150px] md:max-w-[200px]">Belum ada file...</span>
+                    <button onclick="document.getElementById('excel-template-upload').click()" class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-1.5 px-4 rounded text-xs transition-colors shrink-0">
+                        PILIH FILE
+                    </button>
                 </div>
             </div>
             
             <h2 class="text-xl font-black text-white mb-2"><i class="fas fa-download text-green-500 mr-2"></i>Pusat Export Data (Makro)</h2>
-            <p class="text-sm text-slate-400 mb-6">Unduh seluruh rekapitulasi data global (semua kategori).</p>
+            <p class="text-sm text-slate-400 mb-6">Suntik data langsung ke Template Excel atau unduh rekapitulasi data global.</p>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <button onclick="exportDrawingCSV()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-4 rounded-xl shadow-lg text-sm flex flex-col items-center justify-center gap-2"><i class="fas fa-sitemap text-2xl"></i><span>Semua Jadwal & Drawing</span></button>
+                <button onclick="prosesExcelBagan()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-4 rounded-xl shadow-lg text-sm flex flex-col items-center justify-center gap-2 transition-transform hover:scale-105"><i class="fas fa-sitemap text-2xl"></i><span>Semua Jadwal & Drawing</span></button>
+                
                 <button onclick="exportRekapJuaraCSV()" class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 px-4 rounded-xl shadow-lg text-sm flex flex-col items-center justify-center gap-2"><i class="fas fa-trophy text-2xl"></i><span>Rekapitulasi Pemenang</span></button>
                 <button onclick="exportMedaliCSV()" class="bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-4 px-4 rounded-xl shadow-lg text-sm flex flex-col items-center justify-center gap-2"><i class="fas fa-medal text-2xl"></i><span>Klasemen Medali Akhir</span></button>
             </div>
         `;
+    }
+}
+
+// =========================================================
+// CORE ENGINE: ROBOT GENERATOR BAGAN EXCEL OTOMATIS
+// =========================================================
+async function prosesExcelBagan() {
+    const fileInput = document.getElementById('excel-template-upload');
+    
+    // 1. Validasi File Upload
+    if (!fileInput || !fileInput.files[0]) {
+        if(confirm("⚠️ Anda belum mengunggah Template Excel di atas.\n\nApakah Anda ingin mengunduh format CSV biasa saja?")) {
+            exportDrawingCSV(); 
+        }
+        return;
+    }
+
+    // 2. Validasi Data Turnamen
+    if (STATE.categories.length === 0 || STATE.matches.length === 0) {
+        return alert("❌ Data kategori atau pertandingan masih kosong! Harap generate bagan terlebih dahulu.");
+    }
+
+    // Ganti kursor jadi loading agar panitia tahu sistem sedang bekerja
+    document.body.style.cursor = 'wait';
+    
+    try {
+        // 3. Baca File Excel Mentah
+        const file = fileInput.files[0];
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(arrayBuffer);
+
+        // 4. Cari Sheet Template Dasar
+        // (Pastikan nama sheet di Excel Anda persis seperti ini)
+        const tempRandori = workbook.getWorksheet('Template Randori');
+        const tempEmbu = workbook.getWorksheet('Template Embu');
+
+        if (!tempRandori && !tempEmbu) {
+            throw new Error("Sheet template tidak ditemukan! Pastikan nama sheet di dalam Excel Anda adalah 'Template Randori' atau 'Template Embu'.");
+        }
+
+        // 5. Looping Setiap Kategori di Database MASS KEMPO
+        for (const cat of STATE.categories) {
+            const catMatches = STATE.matches.filter(m => m.kategori === cat.name).sort((a,b) => a.matchNum - b.matchNum);
+            if (catMatches.length === 0) continue; // Skip jika kategori belum di-drawing
+
+            let sourceSheet = cat.discipline === 'randori' ? tempRandori : tempEmbu;
+            if (!sourceSheet) continue; 
+
+            // A. KLONING SHEET (Menduplikasi desain, lebar kolom, dan warna)
+            let safeCatName = cat.name.substring(0, 31).replace(/[:\/\?\*\[\]]/g, ''); // Nama sheet excel max 31 huruf & anti simbol aneh
+            let newSheet = workbook.addWorksheet(safeCatName);
+            
+            // Mengcopy Lebar Kolom
+            sourceSheet.columns.forEach((col, idx) => {
+                let newCol = newSheet.getColumn(idx + 1);
+                if(col.width) newCol.width = col.width;
+                if(col.style) newCol.style = col.style;
+            });
+
+            // Mengcopy Baris, Sel, dan Gaya (Font, Border, dll)
+            sourceSheet.eachRow({ includeEmpty: true }, (row, rowNum) => {
+                let newRow = newSheet.getRow(rowNum);
+                if(row.height) newRow.height = row.height;
+                
+                row.eachCell({ includeEmpty: true }, (cell, colNum) => {
+                    let newCell = newRow.getCell(colNum);
+                    newCell.value = cell.value;
+                    newCell.style = cell.style;
+                });
+            });
+
+            // Mengcopy Merge Cells (Gabungan Sel Kop Surat dsb)
+            if (sourceSheet._merges) {
+                Object.values(sourceSheet._merges).forEach(merge => {
+                    newSheet.mergeCells(merge.model.top, merge.model.left, merge.model.bottom, merge.model.right);
+                });
+            }
+
+            // B. SUNTIKKAN DATA JADWAL KE AREA HIJAU (Mulai Baris 3, Kolom Q)
+            let startRow = 3; 
+            
+            catMatches.forEach((m, index) => {
+                let mrh = STATE.participants.find(x => x.id === m.merahId);
+                let pth = STATE.participants.find(x => x.id === m.putihId);
+
+                let nMrh = m.merahId === -1 ? "BYE" : (mrh ? mrh.nama : "Menunggu...");
+                let kMrh = m.merahId === -1 ? "-" : (mrh ? mrh.kontingen : "-");
+                let nPth = m.putihId === -1 ? "BYE" : (pth ? pth.nama : "Menunggu...");
+                let kPth = m.putihId === -1 ? "-" : (pth ? pth.kontingen : "-");
+                let displayNum = m.matchNum % 50 === 0 ? 50 : m.matchNum % 50;
+                let poolLabel = m.pool !== '-' ? `Pool ${m.pool}` : 'Utama';
+
+                let nMrhFinal = "-";
+                let nPthFinal = "-";
+
+                // Tarik Nilai Jika Sudah Ada
+                if (m.status === 'done') {
+                    nMrhFinal = m.skorMerah > 0 ? m.skorMerah : 0;
+                    nPthFinal = m.skorPutih > 0 ? m.skorPutih : 0;
+                } else if (m.status === 'auto-win') {
+                    nMrhFinal = m.winnerId === m.merahId ? "WO" : "-";
+                    nPthFinal = m.winnerId === m.putihId ? "WO" : "-";
+                }
+                
+                let statusTxt = m.status === 'done' ? 'Selesai' : (m.status === 'auto-win' ? 'Auto Win' : 'Pending');
+
+                let currentRow = startRow + index;
+                
+                // KOORDINAT: Kolom Q adalah kolom ke-17 di Excel
+                newSheet.getCell(currentRow, 17).value = cat.discipline.toUpperCase(); // Q (17)
+                newSheet.getCell(currentRow, 18).value = cat.name;                     // R (18)
+                newSheet.getCell(currentRow, 19).value = poolLabel;                    // S (19)
+                newSheet.getCell(currentRow, 20).value = `G-${displayNum}`;            // T (20)
+                newSheet.getCell(currentRow, 21).value = kMrh;                         // U (21) Kontingen Merah
+                newSheet.getCell(currentRow, 22).value = nMrh;                         // V (22) Nama Merah
+                newSheet.getCell(currentRow, 23).value = nMrhFinal;                    // W (23) Nilai Merah
+                newSheet.getCell(currentRow, 24).value = kPth;                         // X (24) Kontingen Putih
+                newSheet.getCell(currentRow, 25).value = nPth;                         // Y (25) Nama Putih
+                newSheet.getCell(currentRow, 26).value = nPthFinal;                    // Z (26) Nilai Putih
+                newSheet.getCell(currentRow, 27).value = statusTxt;                    // AA (27) Status
+            });
+        }
+
+        // 6. Rapikan File (Hapus Sheet Template Dasar)
+        if(tempRandori) workbook.removeWorksheet(tempRandori.id);
+        if(tempEmbu) workbook.removeWorksheet(tempEmbu.id);
+
+        // 7. Render & Download File Excel Jadi
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `Bagan_Otomatis_Porprov_${new Date().toISOString().slice(0,10)}.xlsx`;
+        document.body.appendChild(a); // Diperlukan untuk firefox
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        alert("✅ PROSES SELESAI!\nFile Excel Bagan lengkap berhasil diunduh.");
+
+    } catch (error) {
+        console.error(error);
+        alert("❌ Terjadi Kesalahan Memproses Excel:\n" + error.message);
+    } finally {
+        // Matikan efek loading kursor
+        document.body.style.cursor = 'default';
     }
 }
 function saveTournamentMode() {
