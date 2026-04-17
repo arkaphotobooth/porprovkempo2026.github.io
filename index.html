@@ -40,32 +40,29 @@
 
 <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-50 shadow-md">
         <div class="container mx-auto px-4">
-            <div class="flex flex-col md:flex-row justify-between items-center py-3 gap-4">
+            <div class="flex flex-col md:flex-row justify-between items-center py-2 gap-3">
                 
                 <div class="flex items-center gap-3">
+                    <img src="logo-saya.svg" class="w-10 h-10 object-contain" alt="Logo Kejuaraan">
                     
-                   <img src="logo-saya.svg" class="w-12 h-12 object-contain" alt="Logo Kejuaraan">
-                    
-                    <div>
+                    <div class="flex flex-col justify-center mt-1">
                         <h1 class="text-xl font-black tracking-tight text-white m-0 leading-none">MASS <span class="text-blue-500">KEMPO</span></h1>
                         
-                        <span class="text-[10px] text-slate-400 font-mono tracking-widest uppercase block mt-1">Martial Arts System V1.00</span>
-                        
-                        <div class="flex items-center gap-1.5 mt-1.5">
-                            <div id="koneksi-dot" class="w-2.5 h-2.5 bg-red-500 rounded-full transition-colors duration-300"></div>
+                        <div class="flex items-center gap-1.5 mt-1">
+                            <div id="koneksi-dot" class="w-2 h-2 bg-red-500 rounded-full transition-colors duration-300"></div>
                             <span id="koneksi-text" class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Menghubungkan...</span>
                         </div>
                     </div>
-
                 </div>
-                <nav class="flex overflow-x-auto w-full md:w-auto hide-scrollbar gap-1 text-sm font-bold pb-1 md:pb-0">
-                    <button onclick="switchTab('kategori')" id="tab-kategori" class="active-tab text-blue-500 px-4 py-2 rounded-t-lg transition-colors whitespace-nowrap hover:bg-slate-800"><i class="fas fa-tags mr-2"></i>Kategori</button>
-                    <button onclick="switchTab('atlet')" id="tab-atlet" class="text-slate-400 px-4 py-2 rounded-t-lg transition-colors whitespace-nowrap hover:bg-slate-800 hover:text-blue-400"><i class="fas fa-users mr-2"></i>Atlet</button>
-                    <button onclick="switchTab('drawing')" id="tab-drawing" class="text-slate-400 px-4 py-2 rounded-t-lg transition-colors whitespace-nowrap hover:bg-slate-800 hover:text-blue-400"><i class="fas fa-sitemap mr-2"></i>Drawing</button>
-                    <button onclick="switchTab('scoring')" id="tab-scoring" class="text-slate-400 px-4 py-2 rounded-t-lg transition-colors whitespace-nowrap hover:bg-slate-800 hover:text-blue-400"><i class="fas fa-gavel mr-2"></i>Scoring</button>
-                    <button onclick="switchTab('ranking')" id="tab-ranking" class="text-slate-400 px-4 py-2 rounded-t-lg transition-colors whitespace-nowrap hover:bg-slate-800 hover:text-blue-400"><i class="fas fa-trophy mr-2"></i>Ranking</button>
-                    <button onclick="switchTab('juara')" id="tab-juara" class="text-yellow-500 px-4 py-2 rounded-t-lg transition-colors whitespace-nowrap hover:bg-slate-800"><i class="fas fa-crown mr-2"></i>Juara Umum</button>
-                    <button onclick="switchTab('admin')" id="tab-admin" class="text-red-400 px-4 py-2 rounded-t-lg transition-colors whitespace-nowrap hover:bg-slate-800"><i class="fas fa-cog mr-2"></i>Admin</button>
+
+                <nav class="flex overflow-x-auto w-full md:w-auto hide-scrollbar gap-1 text-xs font-bold mt-1 md:mt-0">
+                    <button onclick="switchTab('kategori')" id="tab-kategori" class="active-tab text-blue-500 px-3 py-1.5 rounded-t-lg transition-colors whitespace-nowrap hover:bg-slate-800"><i class="fas fa-tags mr-1.5"></i>Kategori</button>
+                    <button onclick="switchTab('atlet')" id="tab-atlet" class="text-slate-400 px-3 py-1.5 rounded-t-lg transition-colors whitespace-nowrap hover:bg-slate-800 hover:text-blue-400"><i class="fas fa-users mr-1.5"></i>Atlet</button>
+                    <button onclick="switchTab('drawing')" id="tab-drawing" class="text-slate-400 px-3 py-1.5 rounded-t-lg transition-colors whitespace-nowrap hover:bg-slate-800 hover:text-blue-400"><i class="fas fa-sitemap mr-1.5"></i>Drawing</button>
+                    <button onclick="switchTab('scoring')" id="tab-scoring" class="text-slate-400 px-3 py-1.5 rounded-t-lg transition-colors whitespace-nowrap hover:bg-slate-800 hover:text-blue-400"><i class="fas fa-gavel mr-1.5"></i>Scoring</button>
+                    <button onclick="switchTab('ranking')" id="tab-ranking" class="text-slate-400 px-3 py-1.5 rounded-t-lg transition-colors whitespace-nowrap hover:bg-slate-800 hover:text-blue-400"><i class="fas fa-trophy mr-1.5"></i>Ranking</button>
+                    <button onclick="switchTab('juara')" id="tab-juara" class="text-yellow-500 px-3 py-1.5 rounded-t-lg transition-colors whitespace-nowrap hover:bg-slate-800"><i class="fas fa-crown mr-1.5"></i>Juara Umum</button>
+                    <button onclick="switchTab('admin')" id="tab-admin" class="text-red-400 px-3 py-1.5 rounded-t-lg transition-colors whitespace-nowrap hover:bg-slate-800"><i class="fas fa-cog mr-1.5"></i>Admin</button>
                 </nav>
             </div>
         </div>
