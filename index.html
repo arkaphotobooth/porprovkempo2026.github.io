@@ -18,22 +18,24 @@
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #475569; }
 
-        /* Mengunci jarak gap persis 48px (3rem) dan tambah padding kiri agar label G tidak terpotong */
-        .bracket-container { display: flex; gap: 3rem; padding: 1.5rem 2rem; overflow-x: auto; align-items: stretch; }
-        .bracket-col { position: relative; display: flex; flex-direction: column; justify-content: center; }
-        .bracket-match { position: relative; z-index: 10; }
+        /* Randori Bracket Styling (ULTRA COMPACT) */
+        .bracket-container { display: flex; gap: 3rem; padding: 0.5rem 1rem 3rem 1rem; overflow-x: auto; align-items: stretch; }
+        .bracket-col { position: relative; display: flex; flex-direction: column; justify-content: center; min-w: 240px; }
         
-        /* Garis Keluar (Ke Kanan) -> Setengah gap = 24px */
+        /* KUNCI RAPAT: flex:1 untuk auto-align, padding sangat kecil (4px) */
+        .bracket-match { position: relative; z-index: 10; flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 0.25rem 0; }
+        
+        /* Garis Keluar (Ke Kanan) */
         .bracket-match.has-next::after {
             content: ''; position: absolute; top: 50%; right: -24px; width: 24px; height: 2px; background-color: #475569; z-index: -1;}
         
-        /* Garis Masuk (Dari Kiri) -> Setengah gap = 24px */
+        /* Garis Masuk (Dari Kiri) */
         .bracket-match.not-first::before {
             content: ''; position: absolute; top: 50%; left: -24px; width: 24px; height: 2px; background-color: #475569; z-index: -1;}
         
-        /* Garis Vertikal (Menyambungkan dahan atas-bawah) */
+        /* Garis Vertikal */
         .bracket-col:not(:last-child)::after {
-            content: ''; position: absolute; top: 15%; bottom: 15%; right: -24px; width: 2px; background-color: #475569; z-index: -1;}
+            content: ''; position: absolute; top: 25%; bottom: 25%; right: -24px; width: 2px; background-color: #475569; z-index: -1;}
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
