@@ -181,7 +181,6 @@ async function prosesExcelBagan() {
         return alert("❌ Data kategori atau pertandingan masih kosong! Harap generate bagan terlebih dahulu.");
     }
 
-    // Ganti kursor jadi loading agar panitia tahu sistem sedang bekerja
     document.body.style.cursor = 'wait';
     
     try {
@@ -191,39 +190,36 @@ async function prosesExcelBagan() {
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.load(arrayBuffer);
 
-        // 4. Cari Sheet Template Dasar
-        // (Pastikan nama sheet di Excel Anda persis seperti ini)
         const tempRandori = workbook.getWorksheet('Template Randori');
         const tempEmbu = workbook.getWorksheet('Template Embu');
 
         if (!tempRandori && !tempEmbu) {
-            throw new Error("Sheet template tidak ditemukan! Pastikan nama sheet di dalam Excel Anda adalah 'Template Randori' atau 'Template Embu'.");
+            throw new Error("Sheet template tidak ditemukan! Pastikan nama sheet adalah 'Template Randori' atau 'Template Embu'.");
         }
 
-        // 5. Looping Setiap Kategori di Database MASS KEMPO
+        // 4. Looping Setiap Kategori
         for (const cat of STATE.categories) {
             const catMatches = STATE.matches.filter(m => m.kategori === cat.name).sort((a,b) => a.matchNum - b.matchNum);
-            if (catMatches.length === 0) continue; // Skip jika kategori belum di-drawing
+            if (catMatches.length === 0) continue; 
 
             let sourceSheet = cat.discipline === 'randori' ? tempRandori : tempEmbu;
             if (!sourceSheet) continue; 
 
-            // A. KLONING SHEET (Menduplikasi desain, lebar kolom, dan warna)
-            let safeCatName = cat.name.substring(0, 31).replace(/[:\/\?\*\[\]]/g, ''); // Nama sheet excel max 31 huruf & anti simbol aneh
+            // A. KLONING SHEET FISIK
+            let safeCatName = cat.name.substring(0, 31).replace(/[:\/\?\*\[\]]/g, ''); 
             let newSheet = workbook.addWorksheet(safeCatName);
             
-            // Mengcopy Lebar Kolom
+            // Copy Lebar Kolom
             sourceSheet.columns.forEach((col, idx) => {
                 let newCol = newSheet.getColumn(idx + 1);
                 if(col.width) newCol.width = col.width;
                 if(col.style) newCol.style = col.style;
             });
 
-            // Mengcopy Baris, Sel, dan Gaya (Font, Border, dll)
+            // Copy Baris, Sel, dan Gaya (Font, Border)
             sourceSheet.eachRow({ includeEmpty: true }, (row, rowNum) => {
                 let newRow = newSheet.getRow(rowNum);
                 if(row.height) newRow.height = row.height;
-                
                 row.eachCell({ includeEmpty: true }, (cell, colNum) => {
                     let newCell = newRow.getCell(colNum);
                     newCell.value = cell.value;
@@ -231,15 +227,48 @@ async function prosesExcelBagan() {
                 });
             });
 
-            // Mengcopy Merge Cells (Gabungan Sel Kop Surat dsb)
+            // Copy Merge Cells
             if (sourceSheet._merges) {
                 Object.values(sourceSheet._merges).forEach(merge => {
                     newSheet.mergeCells(merge.model.top, merge.model.left, merge.model.bottom, merge.model.right);
                 });
             }
 
-            // B. SUNTIKKAN DATA JADWAL KE AREA HIJAU (Mulai Baris 3, Kolom Q)
-            let startRow = 3; 
+            // Copy Area Print & Setting Kertas
+            if (sourceSheet.pageSetup) {
+                newSheet.pageSetup = Object.assign({}, sourceSheet.pageSetup);
+            }
+            if (sourceSheet.views) {
+                newSheet.views = JSON.parse(JSON.stringify(sourceSheet.views));
+            }
+
+
+            // =======================================================
+            // 🔥 PERBAIKAN: DETEKSI KOLOM DINAMIS (RANDORI VS EMBU)
+            // =======================================================
+            // Kolom Statis (Sama di kedua template)
+            const COL_DISIPLIN    = 17; // Q
+            const COL_KATEGORI    = 18; // R
+            const COL_POOL        = 19; // S
+            const COL_PARTAI      = 20; // T
+            const COL_SKOR_MERAH  = 23; // W
+            const COL_SKOR_PUTIH  = 26; // Z
+            const COL_STATUS      = 27; // AA
+            
+            // Cek Disiplin untuk menukar koordinat Nama & Kontingen
+            const isRandori = cat.discipline === 'randori';
+            
+            // Jika Randori: Nama di U(21), Kontingen di V(22)
+            // Jika Embu: Kontingen di U(21), Nama di V(22)
+            const COL_NAMA_MERAH = isRandori ? 21 : 22; 
+            const COL_KONT_MERAH = isRandori ? 22 : 21; 
+            
+            // Jika Randori: Nama di X(24), Kontingen di Y(25)
+            // Jika Embu: Kontingen di X(24), Nama di Y(25)
+            const COL_NAMA_PUTIH = isRandori ? 24 : 25; 
+            const COL_KONT_PUTIH = isRandori ? 25 : 24; 
+
+            let startRow = 3; // Data pertama jatuh di baris 3
             
             catMatches.forEach((m, index) => {
                 let mrh = STATE.participants.find(x => x.id === m.merahId);
@@ -255,7 +284,6 @@ async function prosesExcelBagan() {
                 let nMrhFinal = "-";
                 let nPthFinal = "-";
 
-                // Tarik Nilai Jika Sudah Ada
                 if (m.status === 'done') {
                     nMrhFinal = m.skorMerah > 0 ? m.skorMerah : 0;
                     nPthFinal = m.skorPutih > 0 ? m.skorPutih : 0;
@@ -265,47 +293,48 @@ async function prosesExcelBagan() {
                 }
                 
                 let statusTxt = m.status === 'done' ? 'Selesai' : (m.status === 'auto-win' ? 'Auto Win' : 'Pending');
-
                 let currentRow = startRow + index;
                 
-                // KOORDINAT: Kolom Q adalah kolom ke-17 di Excel
-                newSheet.getCell(currentRow, 17).value = cat.discipline.toUpperCase(); // Q (17)
-                newSheet.getCell(currentRow, 18).value = cat.name;                     // R (18)
-                newSheet.getCell(currentRow, 19).value = poolLabel;                    // S (19)
-                newSheet.getCell(currentRow, 20).value = `G-${displayNum}`;            // T (20)
-                newSheet.getCell(currentRow, 21).value = kMrh;                         // U (21) Kontingen Merah
-                newSheet.getCell(currentRow, 22).value = nMrh;                         // V (22) Nama Merah
-                newSheet.getCell(currentRow, 23).value = nMrhFinal;                    // W (23) Nilai Merah
-                newSheet.getCell(currentRow, 24).value = kPth;                         // X (24) Kontingen Putih
-                newSheet.getCell(currentRow, 25).value = nPth;                         // Y (25) Nama Putih
-                newSheet.getCell(currentRow, 26).value = nPthFinal;                    // Z (26) Nilai Putih
-                newSheet.getCell(currentRow, 27).value = statusTxt;                    // AA (27) Status
+                // Menulis data sesuai koordinat yang didapat dari IF/ELSE di atas
+                newSheet.getCell(currentRow, COL_DISIPLIN).value = cat.discipline.toUpperCase();
+                newSheet.getCell(currentRow, COL_KATEGORI).value = cat.name;
+                newSheet.getCell(currentRow, COL_POOL).value = poolLabel;
+                newSheet.getCell(currentRow, COL_PARTAI).value = `G-${displayNum}`;
+                
+                newSheet.getCell(currentRow, COL_NAMA_MERAH).value = nMrh;
+                newSheet.getCell(currentRow, COL_KONT_MERAH).value = kMrh;
+                newSheet.getCell(currentRow, COL_SKOR_MERAH).value = nMrhFinal;
+                
+                newSheet.getCell(currentRow, COL_NAMA_PUTIH).value = nPth;
+                newSheet.getCell(currentRow, COL_KONT_PUTIH).value = kPth;
+                newSheet.getCell(currentRow, COL_SKOR_PUTIH).value = nPthFinal;
+                
+                newSheet.getCell(currentRow, COL_STATUS).value = statusTxt;
             });
         }
 
-        // 6. Rapikan File (Hapus Sheet Template Dasar)
+        // 5. Hapus Sheet Template Dasar agar file lebih rapi (bersih)
         if(tempRandori) workbook.removeWorksheet(tempRandori.id);
         if(tempEmbu) workbook.removeWorksheet(tempEmbu.id);
 
-        // 7. Render & Download File Excel Jadi
+        // 6. Download File
         const buffer = await workbook.xlsx.writeBuffer();
         const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `Bagan_Otomatis_Porprov_${new Date().toISOString().slice(0,10)}.xlsx`;
-        document.body.appendChild(a); // Diperlukan untuk firefox
+        a.download = `Bagan_Otomatis_${new Date().toISOString().slice(0,10)}.xlsx`;
+        document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
         
-        alert("✅ PROSES SELESAI!\nFile Excel Bagan lengkap berhasil diunduh.");
+        alert("✅ PROSES SELESAI!\nFile Excel Bagan lengkap berhasil diunduh dengan Print Area yang aman.");
 
     } catch (error) {
         console.error(error);
-        alert("❌ Terjadi Kesalahan Memproses Excel:\n" + error.message);
+        alert("❌ Terjadi Kesalahan:\n" + error.message);
     } finally {
-        // Matikan efek loading kursor
         document.body.style.cursor = 'default';
     }
 }
