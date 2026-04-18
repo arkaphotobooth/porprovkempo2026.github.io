@@ -48,7 +48,7 @@
                     <img src="logo-saya.svg" class="w-10 h-10 object-contain" alt="Logo Kejuaraan">
                     
                     <div class="flex flex-col justify-center mt-1">
-                        <h1 class="text-xl font-black tracking-tight text-white m-0 leading-none">MASS <span class="text-blue-500">KEMPO</span></h1>
+                        <h1 class="text-xl font-black tracking-tight text-white m-0 leading-none">PORPROV 2026 <span class="text-blue-500">KEMPO</span></h1>
                         
                         <div class="flex items-center gap-1.5 mt-1">
                             <div id="koneksi-dot" class="w-2 h-2 bg-red-500 rounded-full transition-colors duration-300"></div>
@@ -72,9 +72,11 @@
     
     <main class="flex-grow container mx-auto px-4 py-8">
 
-        <section id="section-kategori" class="block animate-fade-in">
+       <section id="section-kategori" class="block animate-fade-in">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="col-span-1">
+                
+                <div class="col-span-1 flex flex-col gap-6">
+                    
                     <div class="bg-dark-card p-6 rounded-2xl border border-slate-800 shadow-xl">
                         <h2 class="text-lg font-black text-white mb-4 border-b border-slate-700 pb-2"><i class="fas fa-plus-circle text-blue-500 mr-2"></i>Tambah Nomor Pertandingan Baru</h2>
                         <form id="form-kategori" class="space-y-4">
@@ -100,15 +102,18 @@
                             <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition-colors shadow-[0_4px_14px_0_rgba(37,99,235,0.39)]">SIMPAN NOMOR PERTANDINGAN</button>
                         </form>
                     </div>
+
+                    <div class="bg-dark-card p-6 rounded-2xl border border-slate-800 shadow-xl border-dashed">
+                        <h2 class="text-md font-black text-green-400 mb-2"><i class="fas fa-file-csv mr-2"></i>Import dari CSV</h2>
+                        <p class="text-[10px] text-slate-400 mb-4 leading-relaxed">Format: <b>Disiplin,Nama Nomor,Format Atlet</b><br>Contoh: <i>Randori,Randori Putra Kelas A,1</i></p>
+                        <input type="file" id="csv-kategori-upload" accept=".csv" class="hidden" onchange="handleCategoryCSVUpload(event)">
+                        <button onclick="document.getElementById('csv-kategori-upload').click()" class="w-full bg-slate-800 border border-green-500/50 hover:bg-green-600 hover:border-green-500 text-green-400 hover:text-white font-bold py-3 rounded-lg transition-all flex items-center justify-center gap-2">
+                            <i class="fas fa-upload"></i> Pilih File CSV Nomor Pertandingan
+                        </button>
+                    </div>
+
                 </div>
-                <div class="bg-dark-card p-6 rounded-2xl border border-slate-800 shadow-xl border-dashed mt-6">
-    <h2 class="text-md font-black text-green-400 mb-2"><i class="fas fa-file-csv mr-2"></i>Import dari CSV</h2>
-    <p class="text-[10px] text-slate-400 mb-4 leading-relaxed">Format: <b>Disiplin,Nama Nomor,Format Atlet</b><br>Contoh: <i>Randori,Randori Putra Kelas A,1</i></p>
-    <input type="file" id="csv-kategori-upload" accept=".csv" class="hidden" onchange="handleCategoryCSVUpload(event)">
-    <button onclick="document.getElementById('csv-kategori-upload').click()" class="w-full bg-slate-800 border border-green-500/50 hover:bg-green-600 hover:border-green-500 text-green-400 hover:text-white font-bold py-3 rounded-lg transition-all flex items-center justify-center gap-2">
-        <i class="fas fa-upload"></i> Pilih File CSV Nomor Pertandingan
-    </button>
-</div>
+
                 <div class="col-span-1 lg:col-span-2">
                     <div class="bg-dark-card p-6 rounded-2xl border border-slate-800 shadow-xl h-full">
                         <h2 class="text-lg font-black text-white mb-4 border-b border-slate-700 pb-2"><i class="fas fa-list text-blue-500 mr-2"></i>Daftar Nomor Pertandingan Tersimpan</h2>
@@ -116,9 +121,10 @@
                             </div>
                     </div>
                 </div>
+
             </div>
         </section>
-
+       
         <section id="section-atlet" class="hidden animate-fade-in">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div class="col-span-1 flex flex-col gap-6">
