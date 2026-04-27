@@ -3087,7 +3087,7 @@ function broadcastEmbuState(action, corner, scoreData = null, winnerData = null)
         payload.winner_data = winnerData;
     }
 
-    database.ref(`live_broadcast/${DEVICE_ROLE}`).set(payload);
+    database.ref(`live_broadcast/${DEVICE_COURT}`).set(payload);
 }
 // ==========================================
 // KENDALI BROADCAST TV MANUAL
