@@ -442,44 +442,49 @@
 
         <section id="section-admin" class="hidden animate-fade-in">
            <div class="bg-dark-card p-6 rounded-2xl border border-slate-800 shadow-xl mb-6">
-                    <h2 class="text-xl font-black text-white mb-4 border-b border-slate-700 pb-2"><i class="fas fa-tv text-blue-500 mr-2"></i>Pengaturan Broadcast TV</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-400 mb-1 uppercase">Ubah Peran (Role)</label>
-                            <select id="setting-role" class="w-full bg-slate-900 border border-slate-600 p-2.5 rounded text-white font-bold focus:border-blue-500 outline-none">
-                                <option value="admin">Laptop Admin (Hanya Input)</option>
-                                <option value="tatami">Court / Tatami (Bisa Live TV)</option>
+                    <h2 class="text-xl font-black text-white mb-2"><i class="fas fa-satellite-dish text-indigo-500 mr-2"></i>Peran Perangkat & TV Broadcast</h2>
+                    <p class="text-sm text-slate-400 mb-4">Pilih peran laptop ini. Hanya "Tatami / Court" yang akan menembakkan data *live* ke layar TV.</p>
+                    <div class="flex flex-col md:flex-row gap-4">
+                        <div class="flex-1">
+                            <select id="setting-role-court" onchange="saveRoleSetting()" class="w-full bg-slate-900 border border-slate-600 p-3 rounded-lg text-white font-bold focus:border-indigo-500 outline-none transition-colors">
+                                <option value="admin">Laptop Admin (Hanya Input Data)</option>
+                                <option value="court_1">Court 1</option>
+                                <option value="court_2">Court 2</option>
+                                <option value="court_3">Court 3</option>
                             </select>
                         </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-400 mb-1 uppercase">Pilih Tatami / Court</label>
-                            <select id="setting-court" class="w-full bg-slate-900 border border-slate-600 p-2.5 rounded text-white font-bold focus:border-blue-500 outline-none">
-                                <option value="court_1">COURT 1 / TATAMI A</option>
-                                <option value="court_2">COURT 2 / TATAMI B</option>
-                                <option value="court_3">COURT 3 / TATAMI C</option>
-                            </select>
-                        </div>
+                        <button onclick="openTVCourt()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black tracking-wider py-3 px-6 rounded-lg transition-colors shadow-[0_0_15px_rgba(79,70,229,0.4)] flex items-center justify-center gap-2 whitespace-nowrap">
+                            <i class="fas fa-desktop"></i> BUKA TV COURT INI
+                        </button>
                     </div>
-                    <div class="mb-4">
-                        <label class="block text-xs font-bold text-slate-400 mb-1 uppercase">Judul Broadcast TV</label>
-                        <input type="text" id="setting-judul-tv" class="w-full bg-slate-900 border border-slate-600 p-2.5 rounded text-white font-bold focus:border-blue-500 outline-none uppercase" placeholder="Contoh: PORPROV KEMPO 2026">
-                    </div>
-                    <button onclick="saveTVSettings()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition-colors shadow-md"><i class="fas fa-save mr-2"></i>SIMPAN PENGATURAN TV</button>
                 </div>
-            <div class="max-w-3xl mx-auto space-y-6">
+
                 <div class="bg-dark-card p-6 rounded-2xl border border-slate-800 shadow-xl mb-6">
-    <h2 class="text-xl font-black text-white mb-4 border-b border-slate-700 pb-2"><i class="fas fa-sliders-h text-blue-500 mr-2"></i>Pengaturan Sistem</h2>
-    <div class="flex flex-col md:flex-row items-center justify-between gap-4">
-        <div>
-            <h3 class="font-bold text-slate-300">Syarat Minimal Peserta (Juara Umum)</h3>
-            <p class="text-xs text-slate-500">Nomor dengan peserta kurang dari angka ini tidak akan menyumbang medali di klasemen Juara Umum.</p>
-        </div>
-        <div class="flex items-center gap-2 w-full md:w-auto">
-            <input type="number" id="setting-min-peserta" value="1" min="1" class="w-20 bg-slate-900 border border-slate-600 p-2 rounded text-white text-center font-bold focus:border-blue-500 outline-none">
-            <button onclick="saveMinPesertaSetting()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-md">Simpan</button>
-        </div>
-    </div>
-</div>
+                    <h2 class="text-xl font-black text-white mb-4 border-b border-slate-700 pb-2"><i class="fas fa-sliders-h text-blue-500 mr-2"></i>Pengaturan Sistem</h2>
+                    
+                    <div class="flex flex-col md:flex-row items-end justify-between gap-4 border-b border-slate-700 pb-5 mb-5">
+                        <div class="flex-1 w-full">
+                            <h3 class="font-bold text-slate-300">Judul Kejuaraan (Layar TV)</h3>
+                            <p class="text-xs text-slate-500 mb-2">Ganti teks judul event secara real-time di layar penonton.</p>
+                            <input type="text" id="setting-judul-tv" class="w-full bg-slate-900 border border-slate-600 p-2.5 rounded-lg text-white font-bold focus:border-blue-500 outline-none uppercase" placeholder="Contoh: KEJUARAAN NASIONAL BELADIRI SENI 2024">
+                        </div>
+                        <button onclick="saveJudulTV()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-6 rounded-lg transition-colors shadow-md whitespace-nowrap">
+                            <i class="fas fa-tv mr-2"></i> Terapkan ke TV
+                        </button>
+                    </div>
+
+                    <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div>
+                            <h3 class="font-bold text-slate-300">Syarat Minimal Peserta (Juara Umum)</h3>
+                            <p class="text-xs text-slate-500">Nomor dengan peserta kurang dari angka ini tidak akan menyumbang medali di klasemen Juara Umum.</p>
+                        </div>
+                        <div class="flex items-center gap-2 w-full md:w-auto">
+                            <input type="number" id="setting-min-peserta" value="1" min="1" class="w-20 bg-slate-900 border border-slate-600 p-2.5 rounded-lg text-white text-center font-bold focus:border-blue-500 outline-none">
+                            <button onclick="saveMinPesertaSetting()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-6 rounded-lg transition-colors shadow-md">Simpan</button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="bg-dark-card p-6 rounded-2xl border border-slate-800 shadow-xl mb-6">
                     <h2 class="text-xl font-black text-blue-400 mb-2"><i class="fas fa-server mr-2"></i>Manajemen Database (Backup)</h2>
                     <p class="text-sm text-slate-400 mb-6">Simpan seluruh data turnamen (Kategori, Atlet, Bagan, Nilai) ke dalam satu file mentah JSON untuk diarsipkan, atau pulihkan data dari file cadangan.</p>
