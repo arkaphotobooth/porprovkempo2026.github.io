@@ -3036,6 +3036,7 @@ function finalizeEmbuMatch() {
             filterPesertaScoring(); checkExistingDrawing();
         }).catch(err => alert("Gagal Simpan: " + err));
     }
+}
 // =========================================================
 // PORPROV 2026: MASTER TV BROADCASTER UNTUK EMBU HEAD-TO-HEAD
 // =========================================================
