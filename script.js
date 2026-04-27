@@ -2756,8 +2756,6 @@ function setEmbuCorner(corner) {
     const tabPutih = document.getElementById('embu-tab-putih');
     const namaPutih = document.getElementById('embu-nama-putih');
     const skorPutih = document.getElementById('embu-skor-putih');
-    
-    // FIX FATAL ERROR: Tarik elemen via ID, bukan Class Tailwind!
     const labelPutih = document.getElementById('embu-label-putih');
     const labelMerah = document.getElementById('embu-label-merah');
 
@@ -2781,7 +2779,6 @@ function setEmbuCorner(corner) {
     let techRawData = corner === 'merah' ? tempEmbuScores.merahTechRaw : tempEmbuScores.putihTechRaw;
     let savedTime = corner === 'merah' ? tempEmbuScores.merahTime : tempEmbuScores.putihTime;
 
-    // PERBAIKAN BUG: Paksa looping sampai angka 5 untuk menyapu bersih semua kotak wasit
     for(let i=1; i<=5; i++) {
         let sEl = document.getElementById(`score-${i}`);
         let tEl = document.getElementById(`tech-${i}`);
@@ -2792,6 +2789,9 @@ function setEmbuCorner(corner) {
     UI.timerSeconds = savedTime || 0; 
     updateTimerUI();
     calculateLive();
+
+    // SUNTIKAN TV: Otomatis tampilkan kotak kosong (Preview) sudut yang dipilih ke TV
+    broadcastEmbuState('preview', corner);
 }
 function setJudges(n) { 
     STATE.settings.numJudges = n; 
@@ -2889,6 +2889,10 @@ function saveEmbuCornerScore() {
     }
 
     const calc = calculateLive();
+    
+    // Gembok Tombol Agar Tidak Kena Spam Klik
+    let btn = document.querySelector('button[onclick="saveEmbuCornerScore()"]');
+
     if(activeEmbuCorner === 'merah') {
         tempEmbuScores.merah = calc.final;
         tempEmbuScores.merahTechW1 = calc.techWasit1;
@@ -2898,8 +2902,21 @@ function saveEmbuCornerScore() {
         tempEmbuScores.merahTime = UI.timerSeconds;
         document.getElementById('embu-skor-merah').innerText = calc.final.toFixed(1);
         
-        alert("NILAI TERSIMPAN SEMENTARA.\nSilakan tekan 'LANJUT' atau klik Tab Putih untuk isikan nilai Sudut PUTIH.");
-        setEmbuCorner('putih'); 
+        // Tembak nilai Merah ke TV
+        broadcastEmbuState('show_score', 'merah', {
+            raw: calc.raw, penalty: calc.penalty, final: calc.final, time: UI.timerSeconds
+        });
+
+        // Tahan Laptop 10 Detik
+        document.body.style.cursor = 'wait';
+        if(btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>MENAMPILKAN DI TV (10s)...'; }
+
+        setTimeout(() => {
+            document.body.style.cursor = 'default';
+            if(btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save mr-2"></i>SIMPAN NILAI SUDUT INI'; }
+            setEmbuCorner('putih'); // Laptop dan TV langsung pindah ke sudut putih!
+        }, 10000);
+
     } else {
         tempEmbuScores.putih = calc.final;
         tempEmbuScores.putihTechW1 = calc.techWasit1;
@@ -2909,10 +2926,22 @@ function saveEmbuCornerScore() {
         tempEmbuScores.putihTime = UI.timerSeconds;
         document.getElementById('embu-skor-putih').innerText = calc.final.toFixed(1);
         
-        alert("NILAI TERSIMPAN.\nSilakan tekan tombol hijau 'SELESAIKAN PARTAI' di bawah untuk menentukan pemenang.");
+        // Tembak nilai Putih ke TV
+        broadcastEmbuState('show_score', 'putih', {
+            raw: calc.raw, penalty: calc.penalty, final: calc.final, time: UI.timerSeconds
+        });
+
+        // Tahan Laptop 10 Detik
+        document.body.style.cursor = 'wait';
+        if(btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>MENAMPILKAN DI TV (10s)...'; }
+
+        setTimeout(() => {
+            document.body.style.cursor = 'default';
+            if(btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save mr-2"></i>SIMPAN NILAI SUDUT INI'; }
+            alert("Layar TV selesai ditampilkan selama 10 detik.\nSilakan tekan tombol hijau 'SELESAIKAN EMBU' untuk memunculkan pemenang di layar TV.");
+        }, 10000);
     }
 }
-
 function finalizeEmbuMatch() {
     if(!currentEmbuMatchId) return alert("Pilih partai!");
     const match = STATE.matches.find(m => m.id === currentEmbuMatchId);
@@ -2965,20 +2994,11 @@ function finalizeEmbuMatch() {
 
     if(confirm(`Konfirmasi Pemenang EMBU: ${winnerName}\nSkor Akhir: ${displayMerah} vs ${displayPutih}\n\nSimpan ke Bagan?`)) {
         match.skorMerah = sMerah; match.skorPutih = sPutih;
-        
-        match.tbMerahW1 = tempEmbuScores.merahTechW1;
-        match.tbPutihW1 = tempEmbuScores.putihTechW1;
-        match.tbMerahAll = tempEmbuScores.merahTechAll;
-        match.tbPutihAll = tempEmbuScores.putihTechAll;
-
-        // TAMBAHAN BARU: Simpan nilai mentah ke database agar bisa diekspor ke Excel
-        match.merahRaw = tempEmbuScores.merahRaw;
-        match.putihRaw = tempEmbuScores.putihRaw;
-        match.merahTechRaw = tempEmbuScores.merahTechRaw;
-        match.putihTechRaw = tempEmbuScores.putihTechRaw;
-
-        match.winnerId = winnerId; match.loserId = loserId;
-        match.status = 'done';
+        match.tbMerahW1 = tempEmbuScores.merahTechW1; match.tbPutihW1 = tempEmbuScores.putihTechW1;
+        match.tbMerahAll = tempEmbuScores.merahTechAll; match.tbPutihAll = tempEmbuScores.putihTechAll;
+        match.merahRaw = tempEmbuScores.merahRaw; match.putihRaw = tempEmbuScores.putihRaw;
+        match.merahTechRaw = tempEmbuScores.merahTechRaw; match.putihTechRaw = tempEmbuScores.putihTechRaw;
+        match.winnerId = winnerId; match.loserId = loserId; match.status = 'done';
 
         recalculateAllLosses(match.kategori);
 
@@ -2995,7 +3015,6 @@ function finalizeEmbuMatch() {
             forwardParticipant(match.nextW, winnerId, match.kategori, match.pool, match.nextWSlot);
             if(match.nextL) forwardParticipant(match.nextL, loserId, match.kategori, match.pool, match.nextLSlot);
         }
-
         processAutoWins(match.kategori);
 
         let updates = {};
@@ -3003,8 +3022,59 @@ function finalizeEmbuMatch() {
         updates['turnamen_data/participants'] = STATE.participants;
 
         database.ref().update(updates).then(() => {
+            // SUNTIKAN TV: Tampilkan layar Pemenang (Opsi B) yang megah!
+            if (winnerP) {
+                let winnerScore = winnerId === match.merahId ? displayMerah : displayPutih;
+                broadcastEmbuState('show_winner', null, null, {
+                    nama: winnerP.nama.split(/[,+&]/).map(n => n.trim()).join(" & "),
+                    kontingen: winnerP.kontingen,
+                    skor: winnerScore
+                });
+            }
+
             alert("✅ Partai Embu Selesai! Pemenang dicatat di bagan.");
             filterPesertaScoring(); checkExistingDrawing();
         }).catch(err => alert("Gagal Simpan: " + err));
     }
+// =========================================================
+// PORPROV 2026: MASTER TV BROADCASTER UNTUK EMBU HEAD-TO-HEAD
+// =========================================================
+function broadcastEmbuState(action, corner, scoreData = null, winnerData = null) {
+    if (typeof IS_TV_LIVE === 'undefined' || !IS_TV_LIVE || DEVICE_ROLE === 'admin') return;
+
+    const val = document.getElementById('select-peserta').value;
+    if(!val || !val.startsWith('match-')) return;
+    const matchId = parseInt(val.replace('match-', ''));
+    const match = STATE.matches.find(m => m.id === matchId);
+    if(!match) return;
+
+    let payload = { type: 'embu', current_action: action, corner: corner };
+
+    if (action === 'preview' || action === 'show_score') {
+        let targetPId = corner === 'merah' ? match.merahId : match.putihId;
+        let targetP = STATE.participants.find(p => p.id === targetPId);
+        if (!targetP) return;
+
+        let baseData = {
+            kategori: match.kategori,
+            kontingen: targetP.kontingen,
+            nama: targetP.nama.split(/[,+&]/).map(n => n.trim()).join(" & ")
+        };
+
+        if (action === 'preview') {
+            payload.preview_data = baseData;
+        } else if (action === 'show_score' && scoreData) {
+            payload.score_data = {
+                ...baseData,
+                rawScores: scoreData.raw,
+                waktu: `${Math.floor(scoreData.time / 60).toString().padStart(2, '0')}:${(scoreData.time % 60).toString().padStart(2, '0')}`,
+                denda: scoreData.penalty,
+                nilaiAkhir: scoreData.final.toFixed(1) 
+            };
+        }
+    } else if (action === 'show_winner' && winnerData) {
+        payload.winner_data = winnerData;
+    }
+
+    database.ref(`live_broadcast/${DEVICE_ROLE}`).set(payload);
 }
