@@ -1568,14 +1568,19 @@ function saveRandoriMatchResult() {
     }
 }
 
+// =========================================================
+// PENGENDALI DROPDOWN PESERTA & PENGAMAN ABSOLUT TV
+// =========================================================
 document.getElementById('select-peserta').addEventListener('change', (e) => { 
     if(e.target.selectedIndex >= 0) { 
         
-        // --- PENGAMAN TV OTOMATIS MATI SAAT GANTI PARTAI ---
-        if(typeof IS_TV_LIVE !== 'undefined' && IS_TV_LIVE) {
-            IS_TV_LIVE = false;
-            updateBroadcastUI();
-            if(typeof DEVICE_COURT !== 'undefined') {
+        // --- 1. PENGAMAN ABSOLUT: SAPU BERSIH MEMORI TV ---
+        if(typeof IS_TV_LIVE !== 'undefined') {
+            IS_TV_LIVE = false; // Matikan tombol LIVE di layar laptop
+            if(typeof updateBroadcastUI === 'function') updateBroadcastUI();
+            
+            // WAJIB: Selalu tembak 'idle' ke Firebase untuk membunuh "hantu" data lama!
+            if(typeof DEVICE_COURT !== 'undefined' && DEVICE_COURT !== 'admin' && DEVICE_COURT !== 'none') {
                 database.ref(`live_broadcast/${DEVICE_COURT}`).set({ current_action: 'idle' });
             }
         }
@@ -1583,21 +1588,32 @@ document.getElementById('select-peserta').addEventListener('change', (e) => {
             clearTimeout(tvDelayTimer); 
             tvDelayTimer = null; 
         }
-        // ---------------------------------------------------
+        // --------------------------------------------------
 
+        // --- 2. MUAT DATA PERTANDINGAN ---
         if(e.target.value.startsWith('match-')) {
             document.getElementById('scoring-athlete-name').innerText = e.target.options[e.target.selectedIndex].text; 
             let gridEl = document.getElementById('scoring-athlete-grid');
             if(gridEl) gridEl.className = 'hidden'; 
-            loadRandoriMatch(); 
+            
+            // Cerdas mendeteksi ini Randori atau Embu
+            const catName = document.getElementById('select-kategori').value;
+            const categoryObj = STATE.categories.find(c => c.name === catName);
+            if(categoryObj && categoryObj.discipline === 'randori') loadRandoriMatch(); 
+            else loadEmbuMatch();
+            
         } else { 
+            // Jika dikembalikan ke "Pilih Partai" (Kosong)
             document.getElementById('randori-nama-merah').innerText = "-"; 
             document.getElementById('randori-kont-merah').innerText = "-";
             document.getElementById('randori-nama-putih').innerText = "-"; 
             document.getElementById('randori-kont-putih').innerText = "-";
-            currentRandoriMatchId = null;
-            resetRandoriBoard(); 
-            updateScoringButtonsUI(); 
+            
+            if (typeof currentRandoriMatchId !== 'undefined') currentRandoriMatchId = null;
+            if (typeof currentEmbuMatchId !== 'undefined') currentEmbuMatchId = null;
+            
+            if (typeof resetRandoriBoard === 'function') resetRandoriBoard(); 
+            if (typeof updateScoringButtonsUI === 'function') updateScoringButtonsUI(); 
         }
     }
 });
@@ -3260,15 +3276,16 @@ function pushRandoriToTV() {
 
 function saveRoleSetting() {
     let val = document.getElementById('setting-role-court').value;
-    
-    // Logika Pintar: Jika admin, role='admin'. Jika court_X, role='tatami' & court='court_X'
     DEVICE_ROLE = (val === 'admin') ? 'admin' : 'tatami';
     DEVICE_COURT = (val === 'admin') ? 'none' : val;
-    
     localStorage.setItem('mass_device_role', DEVICE_ROLE);
     localStorage.setItem('mass_device_court', DEVICE_COURT);
     
-    // Feedback visual tipis agar user tahu setting sudah tersimpan otomatis
+    // --- TAMBAHAN BARU: Reset TV saat ganti peran ---
+    if (DEVICE_COURT !== 'none' && DEVICE_COURT !== 'admin') {
+        database.ref(`live_broadcast/${DEVICE_COURT}`).set({ current_action: 'idle' });
+    }
+    
     console.log("Peran diubah menjadi:", val);
 }
 
