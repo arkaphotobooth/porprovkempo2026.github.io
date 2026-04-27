@@ -388,12 +388,19 @@ function switchTab(targetTab) {
         
         let modeEl = document.getElementById('setting-tournament-mode');
         if(modeEl) modeEl.value = (STATE.settings && STATE.settings.tournamentMode) ? STATE.settings.tournamentMode : 'double';
-    let roleEl = document.getElementById('setting-role'); if(roleEl) roleEl.value = DEVICE_ROLE;
-    let courtEl = document.getElementById('setting-court'); if(courtEl) courtEl.value = DEVICE_COURT;
-    database.ref('turnamen_data/settings/judulTV').once('value').then(snap => {
-        let judulEl = document.getElementById('setting-judul-tv');
-        if(judulEl) judulEl.value = snap.val() || "PORPROV KEMPO 2026";
-    });
+
+        // UPDATE DROPDOWN ROLE/COURT
+        let roleDropdown = document.getElementById('setting-role-court');
+        if(roleDropdown) {
+            if(DEVICE_ROLE === 'admin') roleDropdown.value = 'admin';
+            else roleDropdown.value = DEVICE_COURT;
+        }
+        
+        // AMBIL JUDUL TV TERAKHIR DARI FIREBASE
+        database.ref('turnamen_data/settings/judulTV').once('value').then(snap => {
+            let judulEl = document.getElementById('setting-judul-tv');
+            if(judulEl) judulEl.value = snap.val() || "PORPROV KEMPO 2026";
+        });
     }
 }
 document.getElementById('form-kategori').addEventListener('submit', (e) => { e.preventDefault(); const name = document.getElementById('cat-name').value.trim(); const type = parseInt(document.getElementById('cat-type').value); const discipline = document.getElementById('cat-discipline').value; if(!name) return; if(STATE.categories.some(c => c.name.toLowerCase() === name.toLowerCase())) return alert("Kategori sudah ada!"); STATE.categories.push({ id: Date.now(), name, type, discipline }); saveToLocalStorage(); refreshAllData(); e.target.reset(); });
@@ -3105,7 +3112,7 @@ function saveTVSettings() {
 }
 
 function toggleBroadcast() {
-    if (DEVICE_ROLE === 'admin') return alert('Ubah peran ke Tatami/Court di Tab Admin terlebih dahulu agar bisa menyiarkan ke TV!');
+    if (DEVICE_ROLE === 'admin') return alert('Ubah peran ke Court (misal: Court 1) di Tab Admin terlebih dahulu agar bisa menyiarkan ke TV!');
     
     const val = document.getElementById('select-peserta').value; 
     if(!val) return alert('Pilih pertandingan/atlet terlebih dahulu!');
@@ -3165,4 +3172,41 @@ function pushRandoriToTV() {
             skor: document.getElementById('score-putih').innerText || "0"
         }
     });
+}
+// ==========================================
+// KENDALI BROADCAST TV & ADMIN PANEL (GAYA MASS PRO)
+// ==========================================
+
+function saveRoleSetting() {
+    let val = document.getElementById('setting-role-court').value;
+    
+    // Logika Pintar: Jika admin, role='admin'. Jika court_X, role='tatami' & court='court_X'
+    DEVICE_ROLE = (val === 'admin') ? 'admin' : 'tatami';
+    DEVICE_COURT = (val === 'admin') ? 'none' : val;
+    
+    localStorage.setItem('mass_device_role', DEVICE_ROLE);
+    localStorage.setItem('mass_device_court', DEVICE_COURT);
+    
+    // Feedback visual tipis agar user tahu setting sudah tersimpan otomatis
+    console.log("Peran diubah menjadi:", val);
+}
+
+function openTVCourt() {
+    let val = document.getElementById('setting-role-court').value;
+    if (val === 'admin') {
+        alert("Pilih peran 'Court' terlebih dahulu (misal: Court 1) untuk membuka layar TV.");
+        return;
+    }
+    // Buka TV di Tab Baru secara otomatis
+    window.open(`display.html?court=${val}`, '_blank');
+}
+
+function saveJudulTV() {
+    const judulVal = document.getElementById('setting-judul-tv').value;
+    if(judulVal) {
+        database.ref('turnamen_data/settings/judulTV').set(judulVal.toUpperCase());
+        alert("Sip! Judul TV Berhasil Diterapkan ke Layar: " + judulVal.toUpperCase());
+    } else {
+        alert("Judul tidak boleh kosong!");
+    }
 }
