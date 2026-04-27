@@ -3152,6 +3152,8 @@ function finalizeEmbuMatch() {
             alert("✅ Partai Embu Selesai! Pemenang dicatat di bagan.");
             filterPesertaScoring(); checkExistingDrawing();
         }).catch(err => alert("Gagal Simpan: " + err));
+    }
+}
 // =========================================================
 // PORPROV 2026: MASTER TV BROADCASTER UNTUK EMBU HEAD-TO-HEAD
 // =========================================================
