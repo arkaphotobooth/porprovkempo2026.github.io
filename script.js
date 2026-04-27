@@ -26,7 +26,7 @@ let EMBU_SWAP_SELECTION = null; // Memori untuk menyimpan atlet pertama yang dik
 let IS_TV_LIVE = false;
 let DEVICE_ROLE = localStorage.getItem('mass_device_role') || 'admin';
 let DEVICE_COURT = localStorage.getItem('mass_device_court') || 'court_1';
-
+let tvDelayTimer = null;
 // --- SENSOR KONEKSI FIREBASE ---
 const statusDot = document.getElementById('koneksi-dot');
 const statusText = document.getElementById('koneksi-text');
@@ -1570,6 +1570,21 @@ function saveRandoriMatchResult() {
 
 document.getElementById('select-peserta').addEventListener('change', (e) => { 
     if(e.target.selectedIndex >= 0) { 
+        
+        // --- PENGAMAN TV OTOMATIS MATI SAAT GANTI PARTAI ---
+        if(typeof IS_TV_LIVE !== 'undefined' && IS_TV_LIVE) {
+            IS_TV_LIVE = false;
+            updateBroadcastUI();
+            if(typeof DEVICE_COURT !== 'undefined') {
+                database.ref(`live_broadcast/${DEVICE_COURT}`).set({ current_action: 'idle' });
+            }
+        }
+        if(typeof tvDelayTimer !== 'undefined' && tvDelayTimer) { 
+            clearTimeout(tvDelayTimer); 
+            tvDelayTimer = null; 
+        }
+        // ---------------------------------------------------
+
         if(e.target.value.startsWith('match-')) {
             document.getElementById('scoring-athlete-name').innerText = e.target.options[e.target.selectedIndex].text; 
             let gridEl = document.getElementById('scoring-athlete-grid');
@@ -2807,7 +2822,9 @@ function setEmbuCorner(corner, skipBroadcast = false) {
     updateTimerUI();
     calculateLive();
 
+    // Jika panitia menekan tab manual, TV harus INSTAN ikut berubah (Tanpa delay)
     if (!skipBroadcast) {
+        if(tvDelayTimer) { clearTimeout(tvDelayTimer); tvDelayTimer = null; }
         broadcastEmbuState('preview', corner);
     }
 }
@@ -2976,25 +2993,20 @@ function saveEmbuCornerScore() {
         tempEmbuScores.merahTime = UI.timerSeconds;
         document.getElementById('embu-skor-merah').innerText = calc.final.toFixed(1);
         
-        // 1. Tembak Skor Merah ke TV (TV akan menahannya 10 detik)
+        // 1. Tembakkan Skor Merah ke TV
         broadcastEmbuState('show_score', 'merah', {
             raw: calc.raw, penalty: calc.penalty, final: calc.final, time: UI.timerSeconds
         });
 
-        // 2. Siapkan data Putih di Firebase diam-diam (untuk dipanggil TV setelah 10 dtk)
-        const match = STATE.matches.find(m => m.id === currentEmbuMatchId);
-        const putih = STATE.participants.find(p => p.id === match.putihId);
-        if(putih) {
-            let displayNamaP = putih.nama.split(/[,+&]/).map(n => n.trim()).join(" & ");
-            database.ref(`live_broadcast/${DEVICE_COURT}/preview_data`).update({
-                kategori: match.kategori, nama: displayNamaP, kontingen: putih.kontingen
-            });
-            database.ref(`live_broadcast/${DEVICE_COURT}/corner`).set('putih');
-        }
-
-        // 3. Laptop PINDAH INSTAN tanpa harus loading!
+        // 2. Laptop PINDAH INSTAN TANPA LOADING!
         setEmbuCorner('putih', true); 
         resetTimer();
+
+        // 3. Laptop mengendalikan timer: Setelah 10 detik, paksa TV pindah ke Putih
+        if(tvDelayTimer) clearTimeout(tvDelayTimer);
+        tvDelayTimer = setTimeout(() => {
+            broadcastEmbuState('preview', 'putih');
+        }, 10000);
 
     } else {
         tempEmbuScores.putih = calc.final;
@@ -3005,6 +3017,7 @@ function saveEmbuCornerScore() {
         tempEmbuScores.putihTime = UI.timerSeconds;
         document.getElementById('embu-skor-putih').innerText = calc.final.toFixed(1);
         
+        // Tembakkan Skor Putih ke TV
         broadcastEmbuState('show_score', 'putih', {
             raw: calc.raw, penalty: calc.penalty, final: calc.final, time: UI.timerSeconds
         });
@@ -3091,20 +3104,29 @@ function finalizeEmbuMatch() {
         updates['turnamen_data/participants'] = STATE.participants;
 
         database.ref().update(updates).then(() => {
-            // SUNTIKAN TV: Tampilkan layar Pemenang (Opsi B) yang megah!
             if (winnerP) {
                 let winnerScore = winnerId === match.merahId ? displayMerah : displayPutih;
+                
+                // 1. Tembak Layar Pemenang ke TV
                 broadcastEmbuState('show_winner', null, null, {
                     nama: winnerP.nama.split(/[,+&]/).map(n => n.trim()).join(" & "),
                     kontingen: winnerP.kontingen,
                     skor: winnerScore
                 });
+
+                // 2. Laptop menyalakan timer: Setelah 10 dtk, tutup layar pemenang (kembali ke Offline)
+                if(tvDelayTimer) clearTimeout(tvDelayTimer);
+                tvDelayTimer = setTimeout(() => {
+                    if (IS_TV_LIVE) {
+                        database.ref(`live_broadcast/${DEVICE_COURT}`).set({ current_action: 'idle' });
+                    }
+                }, 10000);
             }
 
             alert("✅ Partai Embu Selesai! Pemenang dicatat di bagan.");
             filterPesertaScoring(); checkExistingDrawing();
         }).catch(err => alert("Gagal Simpan: " + err));
-    }
+    // } (tutup kurung if confirm)
 }
 // =========================================================
 // PORPROV 2026: MASTER TV BROADCASTER UNTUK EMBU HEAD-TO-HEAD
@@ -3112,38 +3134,40 @@ function finalizeEmbuMatch() {
 function broadcastEmbuState(action, corner, scoreData = null, winnerData = null) {
     if (typeof IS_TV_LIVE === 'undefined' || !IS_TV_LIVE || DEVICE_ROLE === 'admin') return;
 
+    let payload = { type: 'embu', current_action: action, corner: corner };
+
+    if (action === 'show_winner' && winnerData) {
+        payload.winner_data = winnerData;
+        database.ref(`live_broadcast/${DEVICE_COURT}`).set(payload);
+        return;
+    }
+
     const val = document.getElementById('select-peserta').value;
     if(!val || !val.startsWith('match-')) return;
     const matchId = parseInt(val.replace('match-', ''));
     const match = STATE.matches.find(m => m.id === matchId);
     if(!match) return;
 
-    let payload = { type: 'embu', current_action: action, corner: corner };
+    let targetPId = corner === 'merah' ? match.merahId : match.putihId;
+    let targetP = STATE.participants.find(p => p.id === targetPId);
+    if (!targetP) return;
 
-    if (action === 'preview' || action === 'show_score') {
-        let targetPId = corner === 'merah' ? match.merahId : match.putihId;
-        let targetP = STATE.participants.find(p => p.id === targetPId);
-        if (!targetP) return;
+    let baseData = {
+        kategori: match.kategori,
+        kontingen: targetP.kontingen,
+        nama: targetP.nama.split(/[,+&]/).map(n => n.trim()).join(" & ")
+    };
 
-        let baseData = {
-            kategori: match.kategori,
-            kontingen: targetP.kontingen,
-            nama: targetP.nama.split(/[,+&]/).map(n => n.trim()).join(" & ")
+    if (action === 'preview') {
+        payload.preview_data = baseData;
+    } else if (action === 'show_score' && scoreData) {
+        payload.score_data = {
+            ...baseData,
+            rawScores: scoreData.raw,
+            waktu: `${Math.floor(scoreData.time / 60).toString().padStart(2, '0')}:${(scoreData.time % 60).toString().padStart(2, '0')}`,
+            denda: scoreData.penalty,
+            nilaiAkhir: scoreData.final.toFixed(1) 
         };
-
-        if (action === 'preview') {
-            payload.preview_data = baseData;
-        } else if (action === 'show_score' && scoreData) {
-            payload.score_data = {
-                ...baseData,
-                rawScores: scoreData.raw,
-                waktu: `${Math.floor(scoreData.time / 60).toString().padStart(2, '0')}:${(scoreData.time % 60).toString().padStart(2, '0')}`,
-                denda: scoreData.penalty,
-                nilaiAkhir: scoreData.final.toFixed(1) 
-            };
-        }
-    } else if (action === 'show_winner' && winnerData) {
-        payload.winner_data = winnerData;
     }
 
     database.ref(`live_broadcast/${DEVICE_COURT}`).set(payload);
