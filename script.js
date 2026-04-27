@@ -1574,36 +1574,27 @@ function saveRandoriMatchResult() {
 document.getElementById('select-peserta').addEventListener('change', (e) => { 
     if(e.target.selectedIndex >= 0) { 
         
-        // --- 1. PENGAMAN ABSOLUT: SAPU BERSIH MEMORI TV ---
-        if(typeof IS_TV_LIVE !== 'undefined') {
-            IS_TV_LIVE = false; // Matikan tombol LIVE di layar laptop
-            if(typeof updateBroadcastUI === 'function') updateBroadcastUI();
-            
-            // WAJIB: Selalu tembak 'idle' ke Firebase untuk membunuh "hantu" data lama!
-            if(typeof DEVICE_COURT !== 'undefined' && DEVICE_COURT !== 'admin' && DEVICE_COURT !== 'none') {
-                database.ref(`live_broadcast/${DEVICE_COURT}`).set({ current_action: 'idle' });
-            }
-        }
+        // JIKA PANITIA PINDAH MANUAL: Matikan timer penahan, biarkan TV langsung update!
+        // Kita TIDAK mematikan tombol LIVE agar TV terus menyala menyiarkan partai baru.
         if(typeof tvDelayTimer !== 'undefined' && tvDelayTimer) { 
             clearTimeout(tvDelayTimer); 
             tvDelayTimer = null; 
         }
-        // --------------------------------------------------
 
-        // --- 2. MUAT DATA PERTANDINGAN ---
         if(e.target.value.startsWith('match-')) {
             document.getElementById('scoring-athlete-name').innerText = e.target.options[e.target.selectedIndex].text; 
             let gridEl = document.getElementById('scoring-athlete-grid');
             if(gridEl) gridEl.className = 'hidden'; 
             
-            // Cerdas mendeteksi ini Randori atau Embu
             const catName = document.getElementById('select-kategori').value;
             const categoryObj = STATE.categories.find(c => c.name === catName);
-            if(categoryObj && categoryObj.discipline === 'randori') loadRandoriMatch(); 
-            else loadEmbuMatch();
-            
+            if(categoryObj && categoryObj.discipline === 'randori') {
+                loadRandoriMatch(); 
+                if (typeof IS_TV_LIVE !== 'undefined' && IS_TV_LIVE && typeof pushRandoriToTV === 'function') pushRandoriToTV();
+            } else {
+                loadEmbuMatch();
+            }
         } else { 
-            // Jika dikembalikan ke "Pilih Partai" (Kosong)
             document.getElementById('randori-nama-merah').innerText = "-"; 
             document.getElementById('randori-kont-merah').innerText = "-";
             document.getElementById('randori-nama-putih').innerText = "-"; 
@@ -1614,6 +1605,11 @@ document.getElementById('select-peserta').addEventListener('change', (e) => {
             
             if (typeof resetRandoriBoard === 'function') resetRandoriBoard(); 
             if (typeof updateScoringButtonsUI === 'function') updateScoringButtonsUI(); 
+            
+            // Jika pilih "Pilih Partai" (kosong), barulah TV di-Offline-kan
+            if (typeof IS_TV_LIVE !== 'undefined' && IS_TV_LIVE && typeof DEVICE_COURT !== 'undefined') {
+                database.ref(`live_broadcast/${DEVICE_COURT}`).set({ current_action: 'idle' });
+            }
         }
     }
 });
@@ -3021,7 +3017,10 @@ function saveEmbuCornerScore() {
         // 3. Laptop mengendalikan timer: Setelah 10 detik, paksa TV pindah ke Putih
         if(tvDelayTimer) clearTimeout(tvDelayTimer);
         tvDelayTimer = setTimeout(() => {
-            broadcastEmbuState('preview', 'putih');
+            tvDelayTimer = null; // BUKA GEMBOK DULU
+            if (typeof IS_TV_LIVE !== 'undefined' && IS_TV_LIVE) {
+                broadcastEmbuState('preview', 'putih');
+            }
         }, 10000);
 
     } else {
@@ -3120,9 +3119,7 @@ function finalizeEmbuMatch() {
         updates['turnamen_data/participants'] = STATE.participants;
 
         database.ref().update(updates).then(() => {
-            // ==========================================
-            // LOGIKA TV: TAMPILKAN PEMENANG 10 DETIK
-            // ==========================================
+            // Tembak layar pemenang ke TV
             if (winnerP) {
                 let winnerScore = winnerId === match.merahId ? displayMerah : displayPutih;
                 
@@ -3137,8 +3134,16 @@ function finalizeEmbuMatch() {
                 if(typeof tvDelayTimer !== 'undefined') {
                     if(tvDelayTimer) clearTimeout(tvDelayTimer);
                     tvDelayTimer = setTimeout(() => {
+                        tvDelayTimer = null; // BUKA GEMBOK TV
                         if (typeof IS_TV_LIVE !== 'undefined' && IS_TV_LIVE && typeof DEVICE_COURT !== 'undefined') {
-                            database.ref(`live_broadcast/${DEVICE_COURT}`).set({ current_action: 'idle' });
+                            
+                            // LANJUT KE PARTAI BERIKUTNYA DI TV (Bukan Offline!)
+                            let val = document.getElementById('select-peserta').value;
+                            if(val && val.startsWith('match-')) {
+                                broadcastEmbuState('preview', 'merah'); 
+                            } else {
+                                database.ref(`live_broadcast/${DEVICE_COURT}`).set({ current_action: 'idle' });
+                            }
                         }
                     }, 10000);
                 }
@@ -3147,13 +3152,16 @@ function finalizeEmbuMatch() {
             alert("✅ Partai Embu Selesai! Pemenang dicatat di bagan.");
             filterPesertaScoring(); checkExistingDrawing();
         }).catch(err => alert("Gagal Simpan: " + err));
-    }
-}
 // =========================================================
 // PORPROV 2026: MASTER TV BROADCASTER UNTUK EMBU HEAD-TO-HEAD
 // =========================================================
 function broadcastEmbuState(action, corner, scoreData = null, winnerData = null) {
     if (typeof IS_TV_LIVE === 'undefined' || !IS_TV_LIVE || DEVICE_ROLE === 'admin') return;
+
+    // CEGAH TABRAKAN: Jika TV sedang menahan layar Pemenang/Skor, abaikan perintah preview dari laptop!
+    if (action === 'preview' && typeof tvDelayTimer !== 'undefined' && tvDelayTimer !== null) {
+        return; 
+    }
 
     let payload = { type: 'embu', current_action: action, corner: corner };
 
