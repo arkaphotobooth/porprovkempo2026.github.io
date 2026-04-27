@@ -54,7 +54,6 @@
                     <div class="border-b border-[#444] text-center py-2 text-xs md:text-sm font-bold tracking-widest text-slate-400 flex-none">ATLET</div>
                     <div id="tv-score-name-container" class="custom-scrollbar flex-1 overflow-y-auto px-4 md:px-6 py-2 flex flex-col justify-start gap-1"></div>
                 </div>
-
                 <div class="border border-[#444] flex flex-col flex-1 relative items-center justify-center bg-black/10" style="clip-path: polygon(0 0, 100% 0, 100% calc(100% - 40px), calc(100% - 40px) 100%, 0 100%);">
                     <div class="text-xl md:text-3xl font-bold tracking-widest text-slate-400 z-10 mb-2 md:mb-4 drop-shadow-md">NILAI AKHIR</div>
                     <div id="tv-score-final" class="font-black text-slate-700 z-10 drop-shadow-lg font-display skor-embu">-</div>
@@ -127,7 +126,7 @@
             document.getElementById('tv-randori-global-judul').innerText = judulText;
         });
 
-        // TAMPILAN NAMA 1 KOLOM KE BAWAH (Sesuai keinginan Anda)
+        // 1 KOLOM KE BAWAH (Persis seperti yang Anda inginkan)
         function injectNamesToTV(namaString) {
             let names = namaString.split('&').map(n => n.trim());
             let containerEl = document.getElementById('tv-score-name-container');
@@ -176,20 +175,16 @@
             switchView('score');
         }
 
-        let displayTimer = null; 
-
         database.ref(`live_broadcast/${courtId}`).on('value', (snapshot) => {
             const data = snapshot.val();
             
-            // LOGIKA OFFLINE/IDLE (Jika tombol LIVE dimatikan, layar instan Offline)
+            // TV BENAR-BENAR MENURUTI LAPTOP, TANPA TIMEOUT INTERNAL!
             if (!data || data.current_action === 'idle') {
-                if(displayTimer) { clearTimeout(displayTimer); displayTimer = null; }
                 switchView('idle');
                 return;
             }
 
             if (data.type === 'randori') {
-                if(displayTimer) { clearTimeout(displayTimer); displayTimer = null; }
                 switchView('randori');
                 document.getElementById('tv-randori-kategori').innerText = data.kategori || "-";
                 document.getElementById('tv-randori-waktu').innerText = data.waktu || "00:00";
@@ -204,21 +199,11 @@
             }
 
             if (data.type === 'embu') {
-                if(displayTimer) { clearTimeout(displayTimer); displayTimer = null; }
-
-                // TIMER 10 DETIK UNTUK PEMENANG
                 if (data.current_action === 'show_winner') {
                     switchView('winner');
                     document.getElementById('winner-kontingen').innerText = data.winner_data.kontingen;
                     document.getElementById('winner-nama').innerText = data.winner_data.nama;
                     document.getElementById('winner-skor').innerText = data.winner_data.skor;
-                    
-                    displayTimer = setTimeout(() => {
-                        database.ref(`live_broadcast/${courtId}/preview_data`).once('value').then(snap => {
-                            renderEmptyScoreLayout(snap.val());
-                        });
-                        displayTimer = null;
-                    }, 10000);
                     return; 
                 }
 
@@ -235,16 +220,8 @@
                 if (data.current_action === 'preview') {
                     renderEmptyScoreLayout(data.preview_data);
                 } 
-                // TIMER 10 DETIK UNTUK MENAHAN SKOR DI TV
                 else if (data.current_action === 'show_score' && data.score_data) {
                     renderFilledScoreLayout(data.score_data);
-                    
-                    displayTimer = setTimeout(() => {
-                        database.ref(`live_broadcast/${courtId}/preview_data`).once('value').then(snap => {
-                            renderEmptyScoreLayout(snap.val());
-                        });
-                        displayTimer = null; 
-                    }, 10000);
                 }
             }
         });
