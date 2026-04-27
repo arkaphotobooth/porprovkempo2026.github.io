@@ -3104,29 +3104,34 @@ function finalizeEmbuMatch() {
         updates['turnamen_data/participants'] = STATE.participants;
 
         database.ref().update(updates).then(() => {
+            // ==========================================
+            // LOGIKA TV: TAMPILKAN PEMENANG 10 DETIK
+            // ==========================================
             if (winnerP) {
                 let winnerScore = winnerId === match.merahId ? displayMerah : displayPutih;
                 
-                // 1. Tembak Layar Pemenang ke TV
-                broadcastEmbuState('show_winner', null, null, {
-                    nama: winnerP.nama.split(/[,+&]/).map(n => n.trim()).join(" & "),
-                    kontingen: winnerP.kontingen,
-                    skor: winnerScore
-                });
+                if (typeof broadcastEmbuState === 'function') {
+                    broadcastEmbuState('show_winner', null, null, {
+                        nama: winnerP.nama.split(/[,+&]/).map(n => n.trim()).join(" & "),
+                        kontingen: winnerP.kontingen,
+                        skor: winnerScore
+                    });
+                }
 
-                // 2. Laptop menyalakan timer: Setelah 10 dtk, tutup layar pemenang (kembali ke Offline)
-                if(tvDelayTimer) clearTimeout(tvDelayTimer);
-                tvDelayTimer = setTimeout(() => {
-                    if (IS_TV_LIVE) {
-                        database.ref(`live_broadcast/${DEVICE_COURT}`).set({ current_action: 'idle' });
-                    }
-                }, 10000);
+                if(typeof tvDelayTimer !== 'undefined') {
+                    if(tvDelayTimer) clearTimeout(tvDelayTimer);
+                    tvDelayTimer = setTimeout(() => {
+                        if (typeof IS_TV_LIVE !== 'undefined' && IS_TV_LIVE && typeof DEVICE_COURT !== 'undefined') {
+                            database.ref(`live_broadcast/${DEVICE_COURT}`).set({ current_action: 'idle' });
+                        }
+                    }, 10000);
+                }
             }
 
             alert("✅ Partai Embu Selesai! Pemenang dicatat di bagan.");
             filterPesertaScoring(); checkExistingDrawing();
         }).catch(err => alert("Gagal Simpan: " + err));
-    // } (tutup kurung if confirm)
+    }
 }
 // =========================================================
 // PORPROV 2026: MASTER TV BROADCASTER UNTUK EMBU HEAD-TO-HEAD
