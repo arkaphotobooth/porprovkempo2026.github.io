@@ -2754,7 +2754,7 @@ function loadEmbuMatch() {
     activeEmbuCorner = null; 
     setEmbuCorner('merah'); 
 }
-function setEmbuCorner(corner) {
+function setEmbuCorner(corner, skipBroadcast = false) {
     if (activeEmbuCorner) {
         let calc = calculateLive();
         if (activeEmbuCorner === 'merah') {
@@ -2807,9 +2807,11 @@ function setEmbuCorner(corner) {
     updateTimerUI();
     calculateLive();
 
-    // SUNTIKAN TV: Otomatis tampilkan kotak kosong (Preview) sudut yang dipilih ke TV
-    broadcastEmbuState('preview', corner);
+    if (!skipBroadcast) {
+        broadcastEmbuState('preview', corner);
+    }
 }
+
 function setJudges(n) { 
     STATE.settings.numJudges = n; 
     let btnJ3 = document.getElementById('btn-j3');
@@ -2906,9 +2908,6 @@ function saveEmbuCornerScore() {
     }
 
     const calc = calculateLive();
-    
-    // Gembok Tombol Agar Tidak Kena Spam Klik
-    let btn = document.querySelector('button[onclick="saveEmbuCornerScore()"]');
 
     if(activeEmbuCorner === 'merah') {
         tempEmbuScores.merah = calc.final;
@@ -2919,20 +2918,25 @@ function saveEmbuCornerScore() {
         tempEmbuScores.merahTime = UI.timerSeconds;
         document.getElementById('embu-skor-merah').innerText = calc.final.toFixed(1);
         
-        // Tembak nilai Merah ke TV
+        // 1. Tembak Skor Merah ke TV (TV akan menahannya 10 detik)
         broadcastEmbuState('show_score', 'merah', {
             raw: calc.raw, penalty: calc.penalty, final: calc.final, time: UI.timerSeconds
         });
 
-        // Tahan Laptop 10 Detik
-        document.body.style.cursor = 'wait';
-        if(btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>MENAMPILKAN DI TV (10s)...'; }
+        // 2. Siapkan data Putih di Firebase diam-diam (untuk dipanggil TV setelah 10 dtk)
+        const match = STATE.matches.find(m => m.id === currentEmbuMatchId);
+        const putih = STATE.participants.find(p => p.id === match.putihId);
+        if(putih) {
+            let displayNamaP = putih.nama.split(/[,+&]/).map(n => n.trim()).join(" & ");
+            database.ref(`live_broadcast/${DEVICE_COURT}/preview_data`).update({
+                kategori: match.kategori, nama: displayNamaP, kontingen: putih.kontingen
+            });
+            database.ref(`live_broadcast/${DEVICE_COURT}/corner`).set('putih');
+        }
 
-        setTimeout(() => {
-            document.body.style.cursor = 'default';
-            if(btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save mr-2"></i>SIMPAN NILAI SUDUT INI'; }
-            setEmbuCorner('putih'); // Laptop dan TV langsung pindah ke sudut putih!
-        }, 10000);
+        // 3. Laptop PINDAH INSTAN tanpa harus loading!
+        setEmbuCorner('putih', true); 
+        resetTimer();
 
     } else {
         tempEmbuScores.putih = calc.final;
@@ -2943,22 +2947,12 @@ function saveEmbuCornerScore() {
         tempEmbuScores.putihTime = UI.timerSeconds;
         document.getElementById('embu-skor-putih').innerText = calc.final.toFixed(1);
         
-        // Tembak nilai Putih ke TV
         broadcastEmbuState('show_score', 'putih', {
             raw: calc.raw, penalty: calc.penalty, final: calc.final, time: UI.timerSeconds
         });
-
-        // Tahan Laptop 10 Detik
-        document.body.style.cursor = 'wait';
-        if(btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>MENAMPILKAN DI TV (10s)...'; }
-
-        setTimeout(() => {
-            document.body.style.cursor = 'default';
-            if(btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save mr-2"></i>SIMPAN NILAI SUDUT INI'; }
-            alert("Layar TV selesai ditampilkan selama 10 detik.\nSilakan tekan tombol hijau 'SELESAIKAN EMBU' untuk memunculkan pemenang di layar TV.");
-        }, 10000);
     }
 }
+
 function finalizeEmbuMatch() {
     if(!currentEmbuMatchId) return alert("Pilih partai!");
     const match = STATE.matches.find(m => m.id === currentEmbuMatchId);
