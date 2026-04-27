@@ -2811,7 +2811,6 @@ function setEmbuCorner(corner, skipBroadcast = false) {
         broadcastEmbuState('preview', corner);
     }
 }
-
 function setJudges(n) { 
     STATE.settings.numJudges = n; 
     let btnJ3 = document.getElementById('btn-j3');
@@ -2897,6 +2896,65 @@ function calculateLive() {
         techWasit1: techWasit1, 
         techAll: totalTechAll 
     };
+}
+
+// Tambahkan skipBroadcast agar saat laptop pindah instan, TV tidak ikut kerubah duluan
+function setEmbuCorner(corner, skipBroadcast = false) {
+    if (activeEmbuCorner) {
+        let calc = calculateLive();
+        if (activeEmbuCorner === 'merah') {
+            tempEmbuScores.merahRaw = calc.raw;
+            tempEmbuScores.merahTechRaw = calc.techRaw;
+            tempEmbuScores.merahTime = UI.timerSeconds;
+        } else if (activeEmbuCorner === 'putih') {
+            tempEmbuScores.putihRaw = calc.raw;
+            tempEmbuScores.putihTechRaw = calc.techRaw;
+            tempEmbuScores.putihTime = UI.timerSeconds;
+        }
+    }
+
+    activeEmbuCorner = corner;
+    const tabMerah = document.getElementById('embu-tab-merah');
+    const tabPutih = document.getElementById('embu-tab-putih');
+    const namaPutih = document.getElementById('embu-nama-putih');
+    const skorPutih = document.getElementById('embu-skor-putih');
+    const labelPutih = document.getElementById('embu-label-putih');
+    const labelMerah = document.getElementById('embu-label-merah');
+
+    if(corner === 'merah') {
+        tabMerah.className = "flex-1 bg-red-900/50 border-2 border-red-500 p-4 rounded-xl cursor-pointer shadow-[0_0_15px_rgba(239,68,68,0.2)] transition-all relative overflow-hidden";
+        tabPutih.className = "flex-1 bg-slate-800 border border-slate-600 p-4 rounded-xl cursor-pointer opacity-50 hover:opacity-100 transition-all relative overflow-hidden";
+        namaPutih.classList.remove('text-slate-900'); namaPutih.classList.add('text-white');
+        skorPutih.classList.remove('text-slate-900'); skorPutih.classList.add('text-white');
+        if(labelPutih) { labelPutih.classList.remove('text-slate-600'); labelPutih.classList.add('text-slate-400'); }
+        if(labelMerah) { labelMerah.classList.remove('text-red-800'); labelMerah.classList.add('text-red-400'); }
+    } else {
+        tabPutih.className = "flex-1 bg-slate-200 border-2 border-white p-4 rounded-xl cursor-pointer shadow-[0_0_15px_rgba(255,255,255,0.3)] transition-all relative overflow-hidden";
+        tabMerah.className = "flex-1 bg-red-900/30 border border-red-800 p-4 rounded-xl cursor-pointer opacity-50 hover:opacity-100 transition-all relative overflow-hidden";
+        namaPutih.classList.remove('text-white'); namaPutih.classList.add('text-slate-900');
+        skorPutih.classList.remove('text-white'); skorPutih.classList.add('text-slate-900');
+        if(labelPutih) { labelPutih.classList.remove('text-slate-400'); labelPutih.classList.add('text-slate-600'); }
+        if(labelMerah) { labelMerah.classList.remove('text-red-400'); labelMerah.classList.add('text-red-800'); }
+    }
+
+    let rawData = corner === 'merah' ? tempEmbuScores.merahRaw : tempEmbuScores.putihRaw;
+    let techRawData = corner === 'merah' ? tempEmbuScores.merahTechRaw : tempEmbuScores.putihTechRaw;
+    let savedTime = corner === 'merah' ? tempEmbuScores.merahTime : tempEmbuScores.putihTime;
+
+    for(let i=1; i<=5; i++) {
+        let sEl = document.getElementById(`score-${i}`);
+        let tEl = document.getElementById(`tech-${i}`);
+        if(sEl) sEl.value = (rawData && rawData[i-1] > 0) ? rawData[i-1] : '';
+        if(tEl) tEl.value = (techRawData && techRawData[i-1] > 0) ? techRawData[i-1] : '';
+    }
+
+    UI.timerSeconds = savedTime || 0; 
+    updateTimerUI();
+    calculateLive();
+
+    if (!skipBroadcast) {
+        broadcastEmbuState('preview', corner);
+    }
 }
 
 function saveEmbuCornerScore() {
