@@ -1515,9 +1515,6 @@ function saveRandoriMatchResult() {
     const match = STATE.matches.find(m => m.id === currentRandoriMatchId);
     if(!match) return;
 
-    // ==============================================================
-    // PERBAIKAN FATAL: Baca skor LANGSUNG dari teks besar di layar!
-    // ==============================================================
     let sMerah = parseInt(document.getElementById('score-merah').innerText) || 0;
     let sPutih = parseInt(document.getElementById('score-putih').innerText) || 0;
 
@@ -1541,10 +1538,7 @@ function saveRandoriMatchResult() {
         if(mode === 'double' && isGrandFinal && isChallenger) {
             alert("TIE BREAKER GRAND FINAL!\nSistem membuka Partai Sudden Death!");
             STATE.matches = STATE.matches.filter(m => !(m.kategori === match.kategori && m.pool === match.pool && m.babak === "SUDDEN DEATH"));
-            
-            // --- POSISI DITUKAR DI SINI (merahId diisi putihId lama, putihId diisi merahId lama) ---
             STATE.matches.push({ id: Date.now(), kategori: match.kategori, pool: match.pool, matchNum: match.matchNum + 1, babak: "SUDDEN DEATH", col: match.col + 1, nextW: 'WINNER', nextL: 'SECOND', merahId: match.putihId, putihId: match.merahId, winnerId: null, status: 'pending', skorMerah: 0, skorPutih: 0 });
-            
         } else {
             forwardParticipant(match.nextW, winnerId, match.kategori, match.pool, match.nextWSlot); 
             if(match.nextL) forwardParticipant(match.nextL, loserId, match.kategori, match.pool, match.nextLSlot); 
@@ -1552,14 +1546,50 @@ function saveRandoriMatchResult() {
 
         processAutoWins(match.kategori); 
         
-        // --- STRATEGI B: BRANCH UPDATE ---
         let updates = {};
         updates['turnamen_data/matches'] = STATE.matches;
         updates['turnamen_data/participants'] = STATE.participants;
         
         database.ref().update(updates).then(() => {
-            alert("Partai Selesai! Pemenang dicatat."); 
-            filterPesertaScoring(); checkExistingDrawing();
+            // ==========================================
+            // LOGIKA TV: TAMPILKAN PEMENANG 10 DETIK
+            // ==========================================
+            if (winnerP) {
+                let winnerScore = winnerId === match.merahId ? sMerah : sPutih;
+                
+                if (typeof IS_TV_LIVE !== 'undefined' && IS_TV_LIVE && typeof DEVICE_COURT !== 'undefined') {
+                    // Tembakkan layar pemenang ke TV
+                    database.ref(`live_broadcast/${DEVICE_COURT}`).set({
+                        type: 'randori',
+                        current_action: 'show_winner',
+                        winner_data: {
+                            nama: winnerP.nama.split(/[,+&]/).map(n => n.trim()).join(" & "),
+                            kontingen: winnerP.kontingen,
+                            skor: winnerScore
+                        }
+                    });
+                }
+
+                if(typeof tvDelayTimer !== 'undefined') {
+                    if(tvDelayTimer) clearTimeout(tvDelayTimer);
+                    tvDelayTimer = setTimeout(() => {
+                        tvDelayTimer = null; // Buka gembok TV
+                        if (typeof IS_TV_LIVE !== 'undefined' && IS_TV_LIVE && typeof DEVICE_COURT !== 'undefined') {
+                            // SETELAH 10 DETIK, TV LANJUT MENAMPILKAN PARTAI BERIKUTNYA
+                            let val = document.getElementById('select-peserta').value;
+                            if(val && val.startsWith('match-')) {
+                                pushRandoriToTV(); 
+                            } else {
+                                database.ref(`live_broadcast/${DEVICE_COURT}`).set({ current_action: 'idle' });
+                            }
+                        }
+                    }, 10000);
+                }
+            }
+
+            // Hapus Alert yang membekukan, biarkan laptop pindah instan ke partai berikutnya!
+            filterPesertaScoring(true); 
+            checkExistingDrawing();
         }).catch(err => alert("Gagal Simpan: " + err));
     }
 }
@@ -3254,17 +3284,33 @@ function updateBroadcastUI() {
 }
 
 function pushRandoriToTV() {
-    if (!IS_TV_LIVE || DEVICE_ROLE === 'admin') return;
+    if (typeof IS_TV_LIVE === 'undefined' || !IS_TV_LIVE || typeof DEVICE_ROLE === 'undefined' || DEVICE_ROLE === 'admin') return;
+    
+    // CEGAH OVERWRITE: Jangan update TV jika sedang menayangkan Layar Pemenang!
+    if (typeof tvDelayTimer !== 'undefined' && tvDelayTimer !== null) return;
+
     const match = STATE.matches.find(m => m.id === currentRandoriMatchId);
     if(!match) return;
     const merah = STATE.participants.find(p => p.id === match.merahId);
     const putih = STATE.participants.find(p => p.id === match.putihId);
+
+    // Dapatkan Nomor Pertandingan (G-XX)
+    let displayNum = match.matchNum % 50 === 0 ? 50 : match.matchNum % 50;
+    
+    // Ubah Court 1/2/3 menjadi Huruf A/B/C
+    let courtLetter = 'A';
+    if (typeof DEVICE_COURT !== 'undefined') {
+        if (DEVICE_COURT === 'court_2') courtLetter = 'B';
+        if (DEVICE_COURT === 'court_3') courtLetter = 'C';
+    }
 
     database.ref(`live_broadcast/${DEVICE_COURT}`).set({
         type: 'randori',
         current_action: 'live',
         kategori: match.kategori,
         waktu: document.getElementById('timer-display').innerText,
+        partai: `G-${displayNum}`, // Kirim info partai
+        courtDisplay: `COURT ${courtLetter}`, // Kirim info abjad Court
         merah: {
             nama: merah ? (merah.nama.includes(',') ? merah.nama.split(',')[0] + " dkk" : merah.nama) : "-",
             kontingen: merah ? merah.kontingen : "-",
