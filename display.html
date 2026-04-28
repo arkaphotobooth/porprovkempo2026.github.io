@@ -188,6 +188,15 @@
                 return;
             }
 
+            // --- PERBAIKAN: TANGKAP LAYAR PEMENANG UNTUK EMBU & RANDORI ---
+            if (data.current_action === 'show_winner') {
+                switchView('winner');
+                document.getElementById('winner-kontingen').innerText = data.winner_data.kontingen;
+                document.getElementById('winner-nama').innerText = data.winner_data.nama;
+                document.getElementById('winner-skor').innerText = data.winner_data.skor;
+                return; 
+            }
+
             if (data.type === 'randori') {
                 switchView('randori');
                 document.getElementById('tv-randori-kategori').innerText = data.kategori || "-";
@@ -198,19 +207,16 @@
                 document.getElementById('tv-randori-nama-putih').innerText = data.putih.nama || "-";
                 document.getElementById('tv-randori-kont-putih').innerText = data.putih.kontingen || "-";
                 document.getElementById('tv-randori-skor-putih').innerText = data.putih.skor || "0";
-                document.getElementById('tv-randori-court').innerText = courtId.replace('_', ' ').toUpperCase();
+                
+                // --- PERBAIKAN: TULISAN COURT + PARTAI ---
+                let courtText = data.courtDisplay || courtId.replace('_', ' ').toUpperCase();
+                if (data.partai) courtText += ` - ${data.partai}`;
+                document.getElementById('tv-randori-court').innerText = courtText;
+                
                 return;
             }
 
             if (data.type === 'embu') {
-                if (data.current_action === 'show_winner') {
-                    switchView('winner');
-                    document.getElementById('winner-kontingen').innerText = data.winner_data.kontingen;
-                    document.getElementById('winner-nama').innerText = data.winner_data.nama;
-                    document.getElementById('winner-skor').innerText = data.winner_data.skor;
-                    return; 
-                }
-
                 // INDIKATOR WARNA PITA (DITUMPUK DI ATAS TIMER)
                 const badge = document.getElementById('tv-embu-corner-badge');
                 if (badge && data.corner) {
