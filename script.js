@@ -22,11 +22,19 @@ let STATE = { categories: [], participants: [], matches: [], settings: { numJudg
 const UI = { tabs: ['kategori', 'atlet', 'drawing', 'scoring', 'ranking', 'juara', 'admin'], timerInterval: null, timerSeconds: 0 };
 let RANDORI_STATE = { merah: { score: 0, warn1: false, warn2: false }, putih: { score: 0, warn1: false, warn2: false } };
 let SWAP_SELECTION = null;
-let EMBU_SWAP_SELECTION = null; // Memori untuk menyimpan atlet pertama yang diklik
+// --- VARIABEL BROADCAST TV & PENGAMAN REFRESH ---
 let IS_TV_LIVE = false;
 let DEVICE_ROLE = localStorage.getItem('mass_device_role') || 'admin';
 let DEVICE_COURT = localStorage.getItem('mass_device_court') || 'court_1';
 let tvDelayTimer = null;
+
+// OTOMATIS MATIKAN TV SAAT LAPTOP DIBUKA/REFRESH (Mencegah TV nyala sendiri)
+setTimeout(() => {
+    if (DEVICE_COURT && DEVICE_COURT !== 'admin' && DEVICE_COURT !== 'none') {
+        database.ref(`live_broadcast/${DEVICE_COURT}`).set({ current_action: 'idle' });
+    }
+}, 1500);
+
 // --- SENSOR KONEKSI FIREBASE ---
 const statusDot = document.getElementById('koneksi-dot');
 const statusText = document.getElementById('koneksi-text');
@@ -1597,9 +1605,13 @@ function saveRandoriMatchResult() {
 // =========================================================
 // PENGENDALI DROPDOWN PESERTA & PENGAMAN ABSOLUT TV
 // =========================================================
+// =========================================================
+// PENGENDALI MASTER DROPDOWN PESERTA (ANTI-STUCK)
+// =========================================================
 document.getElementById('select-peserta').addEventListener('change', (e) => { 
     if(e.target.selectedIndex >= 0) { 
-        // Jika pindah manual, gembok TV dicabut!
+        
+        // 1. Buka Gembok Timer TV agar TV bisa langsung pindah saat ganti partai
         if(typeof tvDelayTimer !== 'undefined' && tvDelayTimer) { 
             clearTimeout(tvDelayTimer); 
             tvDelayTimer = null; 
@@ -1612,12 +1624,22 @@ document.getElementById('select-peserta').addEventListener('change', (e) => {
             
             const catName = document.getElementById('select-kategori').value;
             const categoryObj = STATE.categories.find(c => c.name === catName);
+            
             if(categoryObj && categoryObj.discipline === 'randori') {
-                if(typeof loadRandoriMatch === 'function') loadRandoriMatch(false);
+                if (typeof currentRandoriMatchId !== 'undefined') currentRandoriMatchId = null;
+                loadRandoriMatch(); 
+                
+                // JIKA TV SEDANG LIVE, LANGSUNG UPDATE LAYAR TV KE PARTAI BARU INI!
+                if (typeof IS_TV_LIVE !== 'undefined' && IS_TV_LIVE && typeof pushRandoriToTV === 'function') {
+                    pushRandoriToTV();
+                }
             } else {
-                loadEmbuMatch(false); // Operasi Manual tidak men-skip TV
+                if (typeof currentEmbuMatchId !== 'undefined') currentEmbuMatchId = null;
+                loadEmbuMatch(); 
+                // Catatan: loadEmbuMatch sudah otomatis mengupdate TV jika sedang Live
             }
         } else { 
+            // Jika memilih opsi kosong / "-- Tidak ada Partai --"
             document.getElementById('randori-nama-merah').innerText = "-"; 
             document.getElementById('randori-kont-merah').innerText = "-";
             document.getElementById('randori-nama-putih').innerText = "-"; 
@@ -1629,6 +1651,7 @@ document.getElementById('select-peserta').addEventListener('change', (e) => {
             if (typeof resetRandoriBoard === 'function') resetRandoriBoard(); 
             if (typeof updateScoringButtonsUI === 'function') updateScoringButtonsUI(); 
             
+            // Matikan layar TV karena tidak ada partai yang dipilih
             if (typeof IS_TV_LIVE !== 'undefined' && IS_TV_LIVE && typeof DEVICE_COURT !== 'undefined') {
                 database.ref(`live_broadcast/${DEVICE_COURT}`).set({ current_action: 'idle' });
             }
@@ -2760,16 +2783,6 @@ let tempEmbuScores = {
     merahTechRaw: [], putihTechRaw: [],
     merahTime: 0, putihTime: 0
 };
-
-document.getElementById('select-peserta').addEventListener('change', (e) => { 
-    if(e.target.selectedIndex >= 0 && e.target.value.startsWith('match-')) {
-        document.getElementById('scoring-athlete-name').innerText = e.target.options[e.target.selectedIndex].text; 
-        const catName = document.getElementById('select-kategori').value;
-        const categoryObj = STATE.categories.find(c => c.name === catName);
-        if(categoryObj && categoryObj.discipline === 'randori') loadRandoriMatch(); 
-        else loadEmbuMatch();
-    }
-});
 
 function loadEmbuMatch(skipTvUpdate = false) {
     const val = document.getElementById('select-peserta').value;
