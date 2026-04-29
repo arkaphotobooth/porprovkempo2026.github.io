@@ -27,27 +27,28 @@
 
         <div id="view-score" class="absolute inset-0 z-40 flex-col bg-[#111] p-4 md:p-8 font-sans text-white hidden">
             
-            <div class="flex justify-between items-start gap-4 flex-none mb-4">
-                <div class="flex-1">
-                    <h1 id="tv-global-judul" class="text-sm md:text-lg font-bold text-slate-400 tracking-widest uppercase mb-1"></h1>
-                    <h2 id="tv-score-kategori-head" class="text-2xl md:text-4xl text-white font-light uppercase tracking-wide line-clamp-1">-</h2>
-                </div>
-                <div class="flex flex-col gap-2 items-end flex-none">
-                    <div id="tv-embu-corner-badge" class="hidden flex items-center justify-center py-1 px-6 border-2 rounded shadow-lg font-black text-[10px] md:text-xs tracking-widest uppercase w-full text-center">-</div>
-                    <div class="border border-[#444] flex items-center justify-center px-4 md:px-6 py-1.5 md:py-2 gap-3 bg-black/10">
-                        <span id="tv-score-waktu" class="text-3xl md:text-5xl font-bold tracking-wider font-mono">00:00</span>
-                        <i class="fas fa-stopwatch text-2xl md:text-4xl text-slate-400"></i>
+            <div class="flex justify-between items-end gap-4 flex-none mb-4">
+                
+                <div class="flex items-end gap-4 md:gap-8 flex-1 min-w-0">
+                    <div class="flex-none">
+                        <h1 id="tv-global-judul" class="text-xs md:text-sm font-bold text-slate-400 tracking-widest uppercase mb-1"></h1>
+                        <h2 id="tv-score-kategori-head" class="text-2xl md:text-4xl text-white font-light uppercase tracking-wide truncate">-</h2>
+                    </div>
+                    
+                    <div class="border border-[#444] flex items-center p-2 gap-3 bg-black/10 flex-none h-[50px] mb-1">
+                        <img id="tv-score-logo" src="logos/default-logo.svg" class="w-[35px] md:w-[40px] h-[35px] md:h-[40px] object-contain drop-shadow-md" onerror="this.onerror=null; this.src='logos/default-logo.svg';">
+                        <div class="flex flex-col justify-center pr-3">
+                            <span class="text-[8px] md:text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-0.5">KONTINGEN :</span>
+                            <span id="tv-score-kontingen" class="text-base md:text-xl font-black text-white uppercase tracking-wider leading-none truncate max-w-[200px] md:max-w-[300px]">-</span>
+                        </div>
                     </div>
                 </div>
-            </div>
-
-            <div class="flex items-start flex-none mb-4">
-                <div class="border border-[#444] flex items-center p-3 md:p-4 gap-4 min-w-[250px] md:min-w-[350px] bg-black/10 h-[50px] md:h-[65px]">
-                    <img id="tv-score-logo" src="logos/default-logo.svg" class="w-[45px] md:w-[60px] h-[45px] md:h-[60px] object-contain drop-shadow-md" onerror="this.onerror=null; this.src='logos/default-logo.svg';">
-                    
-                    <div class="flex flex-col justify-center">
-                        <span class="text-[9px] md:text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">KONTINGEN :</span>
-                        <span id="tv-score-kontingen" class="text-lg md:text-2xl font-black text-white uppercase tracking-wider leading-none">-</span>
+                
+                <div class="flex flex-col gap-2 items-end flex-none">
+                    <div id="tv-embu-corner-badge" class="hidden flex items-center justify-center py-1 px-6 border-2 rounded shadow-lg font-black text-[10px] md:text-xs tracking-widest uppercase w-full text-center">-</div>
+                    <div class="border border-[#444] flex items-center justify-center px-4 md:px-6 py-1 md:py-1.5 gap-3 bg-black/10">
+                        <span id="tv-score-waktu" class="text-3xl md:text-5xl font-bold tracking-wider font-mono">00:00</span>
+                        <i class="fas fa-stopwatch text-2xl md:text-4xl text-slate-400"></i>
                     </div>
                 </div>
             </div>
@@ -84,7 +85,6 @@
                 <div class="flex-1 flex flex-col gap-3 md:gap-4">
                     <div class="border border-[#444] flex items-center p-3 gap-4 bg-black/20 flex-none">
                         <img id="tv-randori-logo-merah" src="logos/default-logo.svg" class="w-[45px] md:w-[60px] h-[45px] md:h-[60px] object-contain drop-shadow-md" onerror="this.onerror=null; this.src='logos/default-logo.svg';">
-                        
                         <div class="flex flex-col justify-center"><span class="text-[9px] md:text-[11px] text-slate-400 font-bold uppercase tracking-widest mb-1">KONTINGEN :</span><span id="tv-randori-kont-merah" class="text-xl md:text-3xl font-black text-white uppercase tracking-wider leading-none">-</span></div>
                     </div>
                     <div class="border border-[#444] flex flex-col bg-black/20 flex-none"><div class="bg-red-800 text-center py-1 md:py-1.5 text-[10px] md:text-xs font-bold tracking-widest text-white uppercase">NAMA ATLET (AKA)</div><div class="py-1.5 md:py-2 px-4 flex items-center justify-center min-h-0"><span id="tv-randori-nama-merah" class="text-xl md:text-2xl font-medium text-white text-center leading-tight line-clamp-2 w-full">-</span></div></div>
@@ -93,7 +93,6 @@
                 <div class="flex-1 flex flex-col gap-3 md:gap-4">
                     <div class="border border-[#444] flex items-center p-3 gap-4 bg-black/20 flex-none">
                         <img id="tv-randori-logo-putih" src="logos/default-logo.svg" class="w-[45px] md:w-[60px] h-[45px] md:h-[60px] object-contain drop-shadow-md" onerror="this.onerror=null; this.src='logos/default-logo.svg';">
-                        
                         <div class="flex flex-col justify-center"><span class="text-[9px] md:text-[11px] text-slate-400 font-bold uppercase tracking-widest mb-1">KONTINGEN :</span><span id="tv-randori-kont-putih" class="text-xl md:text-3xl font-black text-white uppercase tracking-wider leading-none">-</span></div>
                     </div>
                     <div class="border border-[#444] flex flex-col bg-black/20 flex-none"><div class="bg-slate-200 text-center py-1 md:py-1.5 text-[10px] md:text-xs font-bold tracking-widest text-slate-900 uppercase">NAMA ATLET (SHIRO)</div><div class="py-1.5 md:py-2 px-4 flex items-center justify-center min-h-0"><span id="tv-randori-nama-putih" class="text-xl md:text-2xl font-medium text-white text-center leading-tight line-clamp-2 w-full">-</span></div></div>
@@ -270,8 +269,15 @@
                 // Terapkan Logo SVG Randori Putih
                 document.getElementById('tv-randori-logo-putih').src = `logos/${formatSlug(data.putih.kontingen)}.svg`;
                 
-                let courtText = data.courtDisplay || courtId.replace('_', ' ').toUpperCase();
-                if (data.partai) courtText += ` - ${data.partai}`;
+                // PENGAMAN ABSOLUT: PAKSA COURT 1 MENJADI A, 2 MENJADI B, DST.
+                let fallbackCourt = courtId;
+                if(courtId === 'court_1') fallbackCourt = 'COURT A';
+                else if(courtId === 'court_2') fallbackCourt = 'COURT B';
+                else if(courtId === 'court_3') fallbackCourt = 'COURT C';
+                else fallbackCourt = courtId.replace('_', ' ').toUpperCase();
+
+                let courtText = data.courtDisplay || fallbackCourt;
+                if (data.partai && !courtText.includes(data.partai)) courtText += ` - ${data.partai}`;
                 document.getElementById('tv-randori-court').innerText = courtText;
                 
                 return;
