@@ -246,7 +246,20 @@
             if (data.current_action === 'show_winner') {
                 switchView('winner');
                 document.getElementById('winner-kontingen').innerText = data.winner_data.kontingen;
-                document.getElementById('winner-nama').innerText = data.winner_data.nama;
+                
+                // --- LOGIKA SMART DKK MULAI DI SINI ---
+                let rawNames = data.winner_data.nama || "";
+                let nameArray = rawNames.split('&').map(n => n.trim()); // Memecah nama berdasarkan tanda &
+                
+                // Jika jumlah atlet lebih dari 2 orang (Beregu), pakai nama pertama + dkk.
+                if (nameArray.length > 2) {
+                    document.getElementById('winner-nama').innerText = nameArray[0] + " dkk.";
+                } else {
+                    // Jika Perorangan (1) atau Berpasangan (2), tampilkan lengkap
+                    document.getElementById('winner-nama').innerText = rawNames;
+                }
+                // --- LOGIKA SMART DKK SELESAI ---
+                
                 document.getElementById('winner-skor').innerText = data.winner_data.skor;
                 return; 
             }
