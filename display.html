@@ -26,26 +26,27 @@
         </div>
 
         <div id="view-score" class="absolute inset-0 z-40 flex-col bg-[#111] p-4 md:p-8 font-sans text-white hidden">
-            <div class="flex-none mb-4">
-                <h1 id="tv-global-judul" class="text-sm md:text-lg font-bold text-slate-400 tracking-widest uppercase mb-1"></h1>
-                <h2 id="tv-score-kategori-head" class="text-2xl md:text-4xl text-white font-light uppercase tracking-wide">-</h2>
-            </div>
-
+            
             <div class="flex justify-between items-start gap-4 flex-none mb-4">
-                <div class="border border-[#444] flex items-center p-3 md:p-4 gap-4 min-w-[250px] md:min-w-[350px] bg-black/10 h-[50px] md:h-[65px]">
-                    <img id="tv-score-logo" src="logos/default-logo.svg" class="w-[45px] md:w-[60px] h-[45px] md:h-[60px] object-contain drop-shadow-md" onerror="this.src='logos/default-logo.svg';">
-                    
-                    <div class="flex flex-col justify-center">
-                        <span class="text-[9px] md:text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">KONTINGEN :</span>
-                        <span id="tv-score-kontingen" class="text-lg md:text-2xl font-black text-white uppercase tracking-wider leading-none">-</span>
-                    </div>
+                <div class="flex-1">
+                    <h1 id="tv-global-judul" class="text-sm md:text-lg font-bold text-slate-400 tracking-widest uppercase mb-1"></h1>
+                    <h2 id="tv-score-kategori-head" class="text-2xl md:text-4xl text-white font-light uppercase tracking-wide line-clamp-1">-</h2>
                 </div>
-
-                <div class="flex flex-col gap-2 items-end">
-                    <div id="tv-embu-corner-badge" class="hidden flex items-center justify-center py-1 md:py-1.5 border-2 rounded shadow-lg font-black text-[10px] md:text-xs tracking-widest uppercase w-full text-center">-</div>
+                <div class="flex flex-col gap-2 items-end flex-none">
+                    <div id="tv-embu-corner-badge" class="hidden flex items-center justify-center py-1 px-6 border-2 rounded shadow-lg font-black text-[10px] md:text-xs tracking-widest uppercase w-full text-center">-</div>
                     <div class="border border-[#444] flex items-center justify-center px-4 md:px-6 py-1.5 md:py-2 gap-3 bg-black/10">
                         <span id="tv-score-waktu" class="text-3xl md:text-5xl font-bold tracking-wider font-mono">00:00</span>
                         <i class="fas fa-stopwatch text-2xl md:text-4xl text-slate-400"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-start flex-none mb-4">
+                <div class="border border-[#444] flex items-center p-3 md:p-4 gap-4 min-w-[250px] md:min-w-[350px] bg-black/10 h-[50px] md:h-[65px]">
+                    <img id="tv-score-logo" src="logos/default-logo.png" class="w-[45px] md:w-[60px] h-[45px] md:h-[60px] object-contain drop-shadow-md" onerror="this.src='logos/default-logo.png';">
+                    <div class="flex flex-col justify-center">
+                        <span class="text-[9px] md:text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">KONTINGEN :</span>
+                        <span id="tv-score-kontingen" class="text-lg md:text-2xl font-black text-white uppercase tracking-wider leading-none">-</span>
                     </div>
                 </div>
             </div>
@@ -81,18 +82,18 @@
             <div class="flex flex-1 gap-4 md:gap-6 min-h-0">
                 <div class="flex-1 flex flex-col gap-3 md:gap-4">
                     <div class="border border-[#444] flex items-center p-3 gap-4 bg-black/20 flex-none">
-                        <img id="tv-randori-logo-merah" src="logos/default-logo.svg" class="w-[45px] md:w-[60px] h-[45px] md:h-[60px] object-contain drop-shadow-md" onerror="this.src='logos/default-logo.svg';">
+                        <img id="tv-randori-logo-merah" src="logos/default-logo.png" class="w-[45px] md:w-[60px] h-[45px] md:h-[60px] object-contain drop-shadow-md" onerror="this.src='logos/default-logo.png';">
                         <div class="flex flex-col justify-center"><span class="text-[9px] md:text-[11px] text-slate-400 font-bold uppercase tracking-widest mb-1">KONTINGEN :</span><span id="tv-randori-kont-merah" class="text-xl md:text-3xl font-black text-white uppercase tracking-wider leading-none">-</span></div>
                     </div>
-                    <div class="border border-[#444] flex flex-col bg-black/20 flex-none"><div class="bg-red-800 text-center py-1 md:py-1.5 text-[10px] md:text-xs font-bold tracking-widest text-white uppercase">NAMA ATLET (PITA MERAH)</div><div class="py-1.5 md:py-2 px-4 flex items-center justify-center min-h-0"><span id="tv-randori-nama-merah" class="text-xl md:text-2xl font-medium text-white text-center leading-tight line-clamp-2 w-full">-</span></div></div>
+                    <div class="border border-[#444] flex flex-col bg-black/20 flex-none"><div class="bg-red-800 text-center py-1 md:py-1.5 text-[10px] md:text-xs font-bold tracking-widest text-white uppercase">NAMA ATLET (AKA)</div><div class="py-1.5 md:py-2 px-4 flex items-center justify-center min-h-0"><span id="tv-randori-nama-merah" class="text-xl md:text-2xl font-medium text-white text-center leading-tight line-clamp-2 w-full">-</span></div></div>
                     <div class="border border-[#444] flex-1 flex items-center justify-center bg-black/20 relative overflow-hidden"><span class="absolute top-2 left-4 text-slate-600 font-bold tracking-widest uppercase text-xs md:text-sm">SKOR</span><span id="tv-randori-skor-merah" class="font-black text-red-500 font-display drop-shadow-lg skor-raksasa">0</span></div>
                 </div>
                 <div class="flex-1 flex flex-col gap-3 md:gap-4">
                     <div class="border border-[#444] flex items-center p-3 gap-4 bg-black/20 flex-none">
-                        <img id="tv-randori-logo-putih" src="logos/default-logo.svg" class="w-[45px] md:w-[60px] h-[45px] md:h-[60px] object-contain drop-shadow-md" onerror="this.src='logos/default-logo.svg';">
+                        <img id="tv-randori-logo-putih" src="logos/default-logo.png" class="w-[45px] md:w-[60px] h-[45px] md:h-[60px] object-contain drop-shadow-md" onerror="this.src='logos/default-logo.png';">
                         <div class="flex flex-col justify-center"><span class="text-[9px] md:text-[11px] text-slate-400 font-bold uppercase tracking-widest mb-1">KONTINGEN :</span><span id="tv-randori-kont-putih" class="text-xl md:text-3xl font-black text-white uppercase tracking-wider leading-none">-</span></div>
                     </div>
-                    <div class="border border-[#444] flex flex-col bg-black/20 flex-none"><div class="bg-slate-200 text-center py-1 md:py-1.5 text-[10px] md:text-xs font-bold tracking-widest text-slate-900 uppercase">NAMA ATLET (PITA PUTIH)</div><div class="py-1.5 md:py-2 px-4 flex items-center justify-center min-h-0"><span id="tv-randori-nama-putih" class="text-xl md:text-2xl font-medium text-white text-center leading-tight line-clamp-2 w-full">-</span></div></div>
+                    <div class="border border-[#444] flex flex-col bg-black/20 flex-none"><div class="bg-slate-200 text-center py-1 md:py-1.5 text-[10px] md:text-xs font-bold tracking-widest text-slate-900 uppercase">NAMA ATLET (SHIRO)</div><div class="py-1.5 md:py-2 px-4 flex items-center justify-center min-h-0"><span id="tv-randori-nama-putih" class="text-xl md:text-2xl font-medium text-white text-center leading-tight line-clamp-2 w-full">-</span></div></div>
                     <div class="border border-[#444] flex-1 flex items-center justify-center bg-black/20 relative overflow-hidden"><span class="absolute top-2 left-4 text-slate-600 font-bold tracking-widest uppercase text-xs md:text-sm">SKOR</span><span id="tv-randori-skor-putih" class="font-black text-white font-display drop-shadow-lg skor-raksasa">0</span></div>
                 </div>
             </div>
@@ -114,7 +115,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script>
-        // FIREBASE PORPROV 2026
         const firebaseConfig = {
             apiKey: "AIzaSyDvFfjuXH3WWK0bP99HFcAKCHDPZrljwzw",
             authDomain: "porprovkempo2026.firebaseapp.com",
@@ -139,10 +139,42 @@
             document.getElementById('tv-randori-global-judul').innerText = judulText;
         });
 
-        // MESIN PENCARI NAMA FILE LOGO
         function formatSlug(text) {
             if (!text || text === "-") return 'default-logo';
             return text.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/^-+|-+$/g, '');
+        }
+
+        // =====================================
+        // SMART AUTO-SCROLL UNTUK NAMA ATLET
+        // =====================================
+        let scrollIntervalId = null;
+        function startAutoScroll(containerId) {
+            let container = document.getElementById(containerId);
+            if (!container) return;
+            
+            if (scrollIntervalId) clearInterval(scrollIntervalId);
+            container.scrollTop = 0; 
+            
+            // Cek apakah isi melebihi kotak
+            if (container.scrollHeight > container.clientHeight) {
+                let maxScroll = container.scrollHeight - container.clientHeight;
+                let currentScroll = 0;
+                let direction = 1;
+                
+                scrollIntervalId = setInterval(() => {
+                    currentScroll += direction * 0.5; // Kecepatan Scroll Halus
+                    container.scrollTop = currentScroll;
+                    
+                    if (currentScroll >= maxScroll + 15) { 
+                        direction = 0; // Berhenti sejenak di bawah
+                        setTimeout(() => { 
+                            currentScroll = 0; // Lompat ke atas
+                            container.scrollTop = 0;
+                            direction = 1; // Mulai scroll lagi
+                        }, 2000); // Tahan 2 detik sebelum Loop
+                    }
+                }, 30);
+            }
         }
 
         function injectNamesToTV(namaString) {
@@ -154,6 +186,9 @@
                 nameHTML += `<div class="flex items-start ${textSize} text-white font-light border-b border-[#333] pb-1.5 min-w-0 w-full mt-2"><span class="w-6 md:w-8 text-right mr-3 text-slate-500 font-mono tracking-wider flex-shrink-0 leading-tight">${idx+1}.</span><span class="tracking-wide block w-full leading-tight mb-0.5">${n}</span></div>`;
             });
             containerEl.innerHTML = nameHTML;
+            
+            // Picu pengecekan Auto-Scroll setelah nama dimuat
+            setTimeout(() => startAutoScroll('tv-score-name-container'), 500);
         }
 
         function renderEmptyScoreLayout(previewData) {
@@ -161,9 +196,7 @@
             document.getElementById('tv-score-kategori-head').innerText = previewData.kategori;
             document.getElementById('tv-score-waktu').innerText = '00:00';
             document.getElementById('tv-score-kontingen').innerText = previewData.kontingen;
-            
-            // Terapkan Logo Embu Preview (SVG)
-            document.getElementById('tv-score-logo').src = `logos/${formatSlug(previewData.kontingen)}.svg`;
+            document.getElementById('tv-score-logo').src = `logos/${formatSlug(previewData.kontingen)}.png`;
 
             document.getElementById('tv-score-final').innerText = "-";
             document.getElementById('tv-score-final').className = "font-black text-slate-700 z-10 drop-shadow-lg font-display skor-embu";
@@ -182,9 +215,7 @@
             document.getElementById('tv-score-kategori-head').innerText = sData.kategori;
             document.getElementById('tv-score-waktu').innerText = sData.waktu;
             document.getElementById('tv-score-kontingen').innerText = sData.kontingen;
-            
-            // Terapkan Logo Embu Live (SVG)
-            document.getElementById('tv-score-logo').src = `logos/${formatSlug(sData.kontingen)}.svg`;
+            document.getElementById('tv-score-logo').src = `logos/${formatSlug(sData.kontingen)}.png`;
 
             document.getElementById('tv-score-final').innerText = sData.nilaiAkhir;
             document.getElementById('tv-score-final').className = "font-black text-[#cca650] z-10 drop-shadow-lg font-display skor-embu";
@@ -224,16 +255,12 @@
                 document.getElementById('tv-randori-nama-merah').innerText = data.merah.nama || "-";
                 document.getElementById('tv-randori-kont-merah').innerText = data.merah.kontingen || "-";
                 document.getElementById('tv-randori-skor-merah').innerText = data.merah.skor || "0";
-                
-                // Terapkan Logo Randori Merah (SVG)
-                document.getElementById('tv-randori-logo-merah').src = `logos/${formatSlug(data.merah.kontingen)}.svg`;
+                document.getElementById('tv-randori-logo-merah').src = `logos/${formatSlug(data.merah.kontingen)}.png`;
 
                 document.getElementById('tv-randori-nama-putih').innerText = data.putih.nama || "-";
                 document.getElementById('tv-randori-kont-putih').innerText = data.putih.kontingen || "-";
                 document.getElementById('tv-randori-skor-putih').innerText = data.putih.skor || "0";
-                
-                // Terapkan Logo Randori Putih (SVG)
-                document.getElementById('tv-randori-logo-putih').src = `logos/${formatSlug(data.putih.kontingen)}.svg`;
+                document.getElementById('tv-randori-logo-putih').src = `logos/${formatSlug(data.putih.kontingen)}.png`;
                 
                 let courtText = data.courtDisplay || courtId.replace('_', ' ').toUpperCase();
                 if (data.partai) courtText += ` - ${data.partai}`;
@@ -248,8 +275,8 @@
                     badge.classList.remove('hidden');
                     badge.innerText = data.corner === 'merah' ? "PITA MERAH" : "PITA PUTIH";
                     badge.className = data.corner === 'merah'
-                        ? "flex items-center justify-center py-1 md:py-1.5 border-2 border-red-400 rounded shadow-[0_0_10px_rgba(220,38,38,0.5)] font-black text-[10px] md:text-xs tracking-widest uppercase bg-red-600 text-white w-full"
-                        : "flex items-center justify-center py-1 md:py-1.5 border-2 border-slate-300 rounded shadow-[0_0_10px_rgba(255,255,255,0.5)] font-black text-[10px] md:text-xs tracking-widest uppercase bg-white text-slate-900 w-full";
+                        ? "flex items-center justify-center py-1 md:py-1.5 px-6 border-2 border-red-400 rounded shadow-[0_0_10px_rgba(220,38,38,0.5)] font-black text-[10px] md:text-xs tracking-widest uppercase bg-red-600 text-white w-full"
+                        : "flex items-center justify-center py-1 md:py-1.5 px-6 border-2 border-slate-300 rounded shadow-[0_0_10px_rgba(255,255,255,0.5)] font-black text-[10px] md:text-xs tracking-widest uppercase bg-white text-slate-900 w-full";
                 }
 
                 if (data.current_action === 'preview') {
