@@ -27,26 +27,26 @@
 
         <div id="view-score" class="absolute inset-0 z-40 flex-col bg-[#111] p-4 md:p-8 font-sans text-white hidden">
             
-            <div class="flex justify-between items-end gap-4 flex-none mb-4">
+            <div class="flex justify-between items-start gap-4 flex-none mb-5">
                 
-                <div class="flex items-end gap-4 md:gap-8 flex-1 min-w-0">
-                    <div class="flex-none">
+                <div class="flex flex-col gap-3 flex-1 min-w-0">
+                    <div>
                         <h1 id="tv-global-judul" class="text-xs md:text-sm font-bold text-slate-400 tracking-widest uppercase mb-1"></h1>
-                        <h2 id="tv-score-kategori-head" class="text-2xl md:text-4xl text-white font-light uppercase tracking-wide truncate">-</h2>
+                        <h2 id="tv-score-kategori-head" class="text-2xl md:text-4xl text-white font-light uppercase tracking-wide truncate leading-none">-</h2>
                     </div>
                     
-                    <div class="border border-[#444] flex items-center p-2 gap-3 bg-black/10 flex-none h-[50px] mb-1">
-                        <img id="tv-score-logo" src="logos/default-logo.svg" class="w-[35px] md:w-[40px] h-[35px] md:h-[40px] object-contain drop-shadow-md" onerror="this.onerror=null; this.src='logos/default-logo.svg';">
-                        <div class="flex flex-col justify-center pr-3">
-                            <span class="text-[8px] md:text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-0.5">KONTINGEN :</span>
-                            <span id="tv-score-kontingen" class="text-base md:text-xl font-black text-white uppercase tracking-wider leading-none truncate max-w-[200px] md:max-w-[300px]">-</span>
+                    <div class="border border-[#444] flex items-center p-2 md:p-3 gap-4 bg-black/20 w-fit pr-8">
+                        <img id="tv-score-logo" src="logos/default-logo.svg" class="w-[40px] md:w-[50px] h-[40px] md:h-[50px] object-contain drop-shadow-md" onerror="this.onerror=null; this.src='logos/default-logo.svg';">
+                        <div class="flex flex-col justify-center">
+                            <span class="text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-widest mb-0.5">KONTINGEN :</span>
+                            <span id="tv-score-kontingen" class="text-xl md:text-3xl font-black text-white uppercase tracking-wider leading-none truncate max-w-[300px] md:max-w-[500px]">-</span>
                         </div>
                     </div>
                 </div>
                 
                 <div class="flex flex-col gap-2 items-end flex-none">
-                    <div id="tv-embu-corner-badge" class="hidden flex items-center justify-center py-1 px-6 border-2 rounded shadow-lg font-black text-[10px] md:text-xs tracking-widest uppercase w-full text-center">-</div>
-                    <div class="border border-[#444] flex items-center justify-center px-4 md:px-6 py-1 md:py-1.5 gap-3 bg-black/10">
+                    <div id="tv-embu-corner-badge" class="hidden flex items-center justify-center py-1.5 px-6 border-2 rounded shadow-lg font-black text-xs md:text-sm tracking-widest uppercase w-full text-center">-</div>
+                    <div class="border border-[#444] flex items-center justify-center px-4 md:px-6 py-1.5 md:py-2 gap-3 bg-black/20">
                         <span id="tv-score-waktu" class="text-3xl md:text-5xl font-bold tracking-wider font-mono">00:00</span>
                         <i class="fas fa-stopwatch text-2xl md:text-4xl text-slate-400"></i>
                     </div>
