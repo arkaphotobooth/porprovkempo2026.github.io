@@ -1971,13 +1971,11 @@ function calculateRandoriFinalists(catName) {
         let juara1 = STATE.participants.find(p => p.id === gf.winnerId);
         let juara2 = STATE.participants.find(p => p.id === gf.loserId);
         
-        // --- LOGIKA CERDAS PENENTUAN JUARA 3 BERSAMA ---
         let perungguArr = [];
         let mode = (STATE.settings && STATE.settings.tournamentMode) ? STATE.settings.tournamentMode : 'double';
         let finalMode = (STATE.settings && STATE.settings.finalRandoriMode) ? STATE.settings.finalRandoriMode : 'single';
         
         let isFinalCategory = catName.toUpperCase().includes('FINAL');
-        // Jika sedang menghitung juara di Kategori Final, gunakan Setting Final
         let activeMode = isFinalCategory ? finalMode : mode;
 
         if (activeMode === 'single') {
@@ -1990,15 +1988,11 @@ function calculateRandoriFinalists(catName) {
                 }
             });
         } else {
-            // MODE PERKEMI (DOUBLE): Ambil dari Looser Bracket
+            // MODE PERKEMI (DOUBLE): HANYA 1 JUARA 3 (Yang Kalah di Final Bawah)
             let finalBawah = poolMatches.find(m => m.babak.toUpperCase() === "FINAL BAWAH" || m.babak.toUpperCase() === "LB FINAL");
-            let juara3a = (finalBawah && finalBawah.status === 'done') ? STATE.participants.find(p => p.id === finalBawah.loserId) : null;
+            let juara3Tunggal = (finalBawah && finalBawah.status === 'done') ? STATE.participants.find(p => p.id === finalBawah.loserId) : null;
             
-            let lbSFinal = poolMatches.find(m => m.babak.toUpperCase() === "LB SEMI-FINAL" || m.babak.toUpperCase() === "LB S-FINAL" || m.babak.toUpperCase() === "LB SF" || m.babak.toUpperCase() === "LB R1");
-            let juara3b = (lbSFinal && lbSFinal.status === 'done') ? STATE.participants.find(p => p.id === lbSFinal.loserId) : null;
-            
-            if(juara3a) perungguArr.push({nama: juara3a.nama, kontingen: juara3a.kontingen});
-            if(juara3b) perungguArr.push({nama: juara3b.nama, kontingen: juara3b.kontingen});
+            if(juara3Tunggal) perungguArr.push({nama: juara3Tunggal.nama, kontingen: juara3Tunggal.kontingen});
         }
 
         results.push({
@@ -2175,12 +2169,12 @@ function renderRanking() {
     if (container) container.innerHTML = htmlOutput;
 }
 // =========================================================
-// CORE ENGINE: PENCARI PERINGKAT DOUBLE ELIMINATION (UPDATE G-..)
+// CORE ENGINE: PENCARI PERINGKAT DOUBLE ELIMINATION (UPDATE V2)
 // =========================================================
 function getRankingData(catName) {
     const allMatches = STATE.matches.filter(m => m.kategori === catName);
-    const finishedMatches = allMatches.filter(m => m.status !== 'pending');
-    if (finishedMatches.length === 0) return [];
+    const finishedMatches = allMatches.filter(m => m.status === 'done' || m.status === 'auto-win');
+    if (allMatches.length === 0) return [];
 
     let uniqueIds = new Set();
     allMatches.forEach(m => {
@@ -2188,41 +2182,80 @@ function getRankingData(catName) {
         if (m.putihId && m.putihId !== -1) uniqueIds.add(m.putihId);
     });
 
-    let sortedMatches = [...allMatches].sort((a,b) => b.matchNum - a.matchNum);
-    let lastMatch = sortedMatches[0];
-    let championId = (lastMatch && lastMatch.status !== 'pending') ? lastMatch.winnerId : null;
+    // 1. GEMBOK VALIDASI: Cari Partai Puncak (SUDDEN DEATH atau GRAND FINAL)
+    let gfMatch = allMatches.find(m => m.babak.toUpperCase() === "GRAND FINAL");
+    let sdMatch = allMatches.find(m => m.babak.toUpperCase() === "SUDDEN DEATH");
+    let puncakMatch = sdMatch || gfMatch;
+
+    // Turnamen dianggap selesai JIKA Partai Puncak sudah 'done'
+    let isTournamentDone = puncakMatch && puncakMatch.status === 'done';
+
+    // Variabel Pemegang Medali
+    let idJuara1 = null, idJuara2 = null, idJuara3 = null;
+
+    if (isTournamentDone) {
+        idJuara1 = puncakMatch.winnerId;
+        idJuara2 = puncakMatch.loserId;
+
+        // Cari Juara 3 Tunggal (Yang Kalah di FINAL BAWAH)
+        let finalBawahMatch = allMatches.find(m => m.babak.toUpperCase() === "FINAL BAWAH" || m.babak.toUpperCase() === "LB FINAL");
+        if (finalBawahMatch && finalBawahMatch.status === 'done') {
+            idJuara3 = finalBawahMatch.loserId;
+        }
+    }
 
     let elimList = [];
+
     uniqueIds.forEach(pId => {
         let pObj = STATE.participants.find(p => p.id === pId);
         if (!pObj) return;
 
-        if (pId === championId) {
-            elimList.push({ pObj, scoreWeight: 1000, matchNum: 0, isChamp: true });
-            return;
-        }
+        if (isTournamentDone) {
+            // --- SKENARIO A: TURNAMEN SELESAI (Bagi-bagi Gelar) ---
+            if (pId === idJuara1) {
+                elimList.push({ pObj, rankLvl: 1, text: "Juara 1", sortVal: 1000 });
+            } else if (pId === idJuara2) {
+                elimList.push({ pObj, rankLvl: 2, text: "Juara 2 (Kalah di Grand Final)", sortVal: 900 });
+            } else if (pId === idJuara3) {
+                elimList.push({ pObj, rankLvl: 3, text: "Juara 3 (Kalah di Final Bawah)", sortVal: 800 });
+            } else {
+                // Sisa peserta yang gugur
+                let losses = finishedMatches.filter(m => (m.merahId === pId || m.putihId === pId) && m.winnerId !== pId);
+                let finalLoss = losses.sort((a,b) => b.matchNum - a.matchNum)[0];
+                if (finalLoss) {
+                    let dNum = finalLoss.matchNum % 50 === 0 ? 50 : finalLoss.matchNum % 50;
+                    elimList.push({ pObj, rankLvl: 4, text: `Gugur di G-${dNum}`, sortVal: finalLoss.matchNum });
+                }
+            }
+        } else {
+            // --- SKENARIO B: TURNAMEN SEDANG BERJALAN (Klasemen Sementara) ---
+            let losses = finishedMatches.filter(m => (m.merahId === pId || m.putihId === pId) && m.winnerId !== pId);
+            let countLoss = losses.length;
 
-        let losses = finishedMatches.filter(m => (m.merahId === pId || m.putihId === pId) && m.winnerId !== pId);
-        if (losses.length > 0) {
-            let finalLoss = [...losses].sort((a,b) => b.matchNum - a.matchNum)[0];
-            elimList.push({ pObj, scoreWeight: finalLoss.col, matchNum: finalLoss.matchNum, isChamp: false });
+            if (countLoss >= 2) {
+                // Sudah pasti Gugur
+                let finalLoss = losses.sort((a,b) => b.matchNum - a.matchNum)[0];
+                let dNum = finalLoss.matchNum % 50 === 0 ? 50 : finalLoss.matchNum % 50;
+                elimList.push({ pObj, rankLvl: 99, text: `Gugur di G-${dNum}`, sortVal: finalLoss.matchNum });
+            } else {
+                // Masih Bertahan!
+                let ket = countLoss === 0 ? "Winner Bracket" : "Loser Bracket";
+                elimList.push({ pObj, rankLvl: 0, text: `Masih Bertahan (${ket})`, sortVal: 5000 - countLoss }); 
+            }
         }
     });
 
-    elimList.sort((a, b) => {
-        if (b.scoreWeight !== a.scoreWeight) return b.scoreWeight - a.scoreWeight;
-        return a.matchNum - b.matchNum; 
-    });
+    // Urutkan List berdasarkan Value (Juara di atas, disusul yang bertahan, lalu yang gugur terakhir)
+    elimList.sort((a, b) => b.sortVal - a.sortVal);
 
     return elimList.map((item, index) => {
-        let rank = index + 1;
-        let status = "";
-        if (rank === 1) status = "Juara 1";
-        else if (rank === 2) status = `Juara 2 (Kalah di G-${item.matchNum})`;
-        else if (rank === 3) status = `Juara 3 (Kalah di G-${item.matchNum})`;
-        else status = `Kalah di G-${item.matchNum}`;
-
-        return { rank, nama: item.pObj.nama, kontingen: item.pObj.kontingen, status };
+        let rank;
+        if (isTournamentDone) {
+            rank = item.rankLvl <= 3 ? item.rankLvl : index + 1;
+        } else {
+            rank = "-"; // Strip (-) karena turnamen belum selesai
+        }
+        return { rank: rank, nama: item.pObj.nama, kontingen: item.pObj.kontingen, status: item.text };
     });
 }
 function exportSKJuaraKategori(catName) {
