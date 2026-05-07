@@ -2131,20 +2131,31 @@ function renderRanking() {
         else if (r.rank === 3) rankColor = "text-amber-600 font-black text-xl drop-shadow-[0_0_8px_rgba(217,119,6,0.5)]";
 
         // ====================================================
-        // PERBAIKAN UI: WARNA EMAS KHUSUS JUARA 1
+        // PERBAIKAN UI: WARNA EMAS (JUARA 1), MERAH (LOSER), HIJAU (WINNER)
         // ====================================================
         let displayStatus = r.status;
         let badgeStyle = "";
+        
+        // Simpan teks asli huruf kecil untuk pengecekan agar lebih aman
+        let rawStatus = r.status.toLowerCase(); 
 
         if (r.rank === 1) {
-            // Khusus Juara 1: Teks lebih besar, warna EMAS, dan kotak bercahaya emas
+            // Khusus Juara 1: Teks EMAS dan kotak bercahaya
             displayStatus = `<span class="text-sm font-black tracking-widest text-yellow-400 drop-shadow-md">${displayStatus}</span>`;
             badgeStyle = "bg-yellow-900/20 border border-yellow-600 shadow-[0_0_12px_rgba(250,204,21,0.3)]";
         } else if (displayStatus.includes(' (')) {
-            // Juara 2 & 3: Warna hijau, dibelah dua baris
+            // Format terbelah dua baris untuk yang punya kurung buka
             let parts = displayStatus.split(' (');
             displayStatus = `<span class="text-xs font-black tracking-wider">${parts[0]}</span><span class="text-[9px] opacity-75 mt-1 tracking-widest font-semibold">(${parts[1]}</span>`;
-            badgeStyle = "bg-green-900/30 text-green-400 border border-green-800 shadow-[0_0_10px_rgba(21,128,61,0.2)]";
+            
+            // CEK APAKAH INI LOSER BRACKET?
+            if (rawStatus.includes('loser bracket')) {
+                // Beri warna MERAH (Punya 1 nyawa)
+                badgeStyle = "bg-red-900/30 text-red-400 border border-red-800 shadow-[0_0_10px_rgba(220,38,38,0.2)]";
+            } else {
+                // Winner Bracket atau Juara 2 & 3 (Tetap HIJAU)
+                badgeStyle = "bg-green-900/30 text-green-400 border border-green-800 shadow-[0_0_10px_rgba(21,128,61,0.2)]";
+            }
         } else {
             // Yang kalah di penyisihan: Teks dan kotak abu-abu standar
             displayStatus = `<span class="text-[10px] font-bold tracking-wider">${displayStatus}</span>`;
