@@ -253,6 +253,16 @@ async function prosesExcelBagan() {
                 newSheet.views = JSON.parse(JSON.stringify(sourceSheet.views));
             }
 
+            // =======================================================
+            // 🔥 TAMBAHAN BARU: COPY GAMBAR / KOP SURAT MELAYANG
+            // =======================================================
+            const sheetImages = sourceSheet.getImages();
+            if (sheetImages && sheetImages.length > 0) {
+                sheetImages.forEach(img => {
+                    // Menyuntikkan kembali gambar ke sheet baru dengan koordinat asli
+                    newSheet.addImage(img.imageId, img.range);
+                });
+            }
 
             // =======================================================
             // 🔥 PERBAIKAN FINAL: KOORDINAT DIGESER MULAI DARI R3
