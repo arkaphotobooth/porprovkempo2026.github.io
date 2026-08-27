@@ -8819,42 +8819,122 @@ function closeQrOperatorModal() {
 }
 
 // ==============================================================
-// LOGIKA DOWNLOAD APK SCANNER LOKAL
+// 📲 MODAL SCANNER ADAPTIF (WEB LINK CLOUD VS DOWNLOAD APK LAN)
 // ==============================================================
 async function bukaModalDownloadAPK() {
-    // Sembunyikan modal operator dulu agar layar tidak bertumpuk kotor
     closeQrOperatorModal();
 
-    document.getElementById("qr-apk-canvas").innerHTML = "";
-    document.getElementById('apk-download-modal').classList.remove('hidden');
+    const modal = document.getElementById('apk-download-modal');
+    const canvas = document.getElementById("qr-apk-canvas");
+    const titleEl = document.getElementById("modal-scanner-title");
+    const stepTitleEl = document.getElementById("modal-scanner-step-title");
+    const stepListEl = document.getElementById("modal-scanner-step-list");
 
+    if (!modal || !canvas) return;
+
+    canvas.innerHTML = "";
+    modal.classList.remove('hidden');
+
+    const safeCourt = typeof DEVICE_ROLE !== 'undefined' && DEVICE_ROLE !== 'admin' ? DEVICE_ROLE : 'court_1';
+    const isCloudMode = SYSTEM_MODE.toLowerCase() === 'online' || 
+                        SYSTEM_MODE.toLowerCase() === 'firebase' || 
+                        window.location.hostname.includes('github.io') || 
+                        window.location.hostname.includes('netlify.app');
+
+    // ----------------------------------------------------------
+    // A. JALUR ONLINE / FIREBASE CLOUD (BUKA WEB SCANNER LANGSUNG)
+    // ----------------------------------------------------------
+    if (isCloudMode) {
+        // Tarik URL Mobile Scanner dari Form Admin / Settings
+        const inputScannerUrl = document.getElementById('setting-scanner-url') ? document.getElementById('setting-scanner-url').value.trim() : "";
+        const savedScannerUrl = (STATE.settings && (STATE.settings.scannerUrl || STATE.settings.scannerBaseUrl)) ? (STATE.settings.scannerUrl || STATE.settings.scannerBaseUrl).trim() : "";
+        const localSavedScannerUrl = (localStorage.getItem('mass_scanner_url') || "").trim();
+
+        let scannerBaseUrl = inputScannerUrl || savedScannerUrl || localSavedScannerUrl || "https://portable-scanner.netlify.app";
+
+        if (scannerBaseUrl.endsWith('/')) scannerBaseUrl = scannerBaseUrl.slice(0, -1);
+        const separator = scannerBaseUrl.includes('?') ? '&' : '?';
+        const fullWebScannerUrl = `${scannerBaseUrl}${separator}court=${safeCourt}`;
+
+        // Perbarui Tampilan UI ke Mode Web Scanner
+        if (titleEl) {
+            titleEl.className = "text-sm font-black text-cyan-400 tracking-widest uppercase mb-2 border-b border-slate-700 pb-3 w-full text-center";
+            titleEl.innerHTML = `<i class="fas fa-qrcode mr-2"></i>LINK WEB SCANNER (${safeCourt.replace('_', ' ').toUpperCase()})`;
+        }
+        if (stepTitleEl) {
+            stepTitleEl.innerHTML = `<i class="fas fa-mobile-alt text-cyan-400 mr-2"></i>Petunjuk Penggunaan Web Scanner:`;
+        }
+        if (stepListEl) {
+            stepListEl.innerHTML = `
+                <li>Buka kamera bawaan HP atau Google Lens, lalu arahkan ke QR di atas.</li>
+                <li>Ketuk link tautan untuk membuka <b>Web Scanner</b> di browser HP.</li>
+                <li>Pilih <b>'Allow / Izinkan'</b> saat browser meminta izin kamera.</li>
+                <li>Scanner langsung aktif dan terhubung ke <b>${safeCourt.replace('_', ' ').toUpperCase()}</b> tanpa perlu menginstal APK!</li>
+            `;
+        }
+
+        // Gambar QR Code Web Link
+        new QRCode(canvas, {
+            text: fullWebScannerUrl,
+            width: 190,
+            height: 190,
+            colorDark: "#0f172a",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.L
+        });
+        return;
+    }
+
+    // ----------------------------------------------------------
+    // B. JALUR LOKAL LAN & HYBRID (DOWNLOAD FILE APK SERVER NODE.JS)
+    // ----------------------------------------------------------
     let serverIp = "127.0.0.1";
     let port = window.location.port ? ':' + window.location.port : '';
 
     try {
         const response = await fetch('/api/server-ip');
-        const data = await response.json();
-        serverIp = data.ip;
+        if (response.ok) {
+            const data = await response.json();
+            serverIp = data.ip;
+        }
     } catch (error) {
-        console.error("Gagal mendeteksi IP LAN:", error);
+        console.warn("Menggunakan IP host saat ini:", window.location.hostname);
+        serverIp = window.location.hostname || "127.0.0.1";
     }
 
-    // 🌟 RAKIT URL MENUJU FILE APK DI FOLDER NODE.JS 🌟
     const apkUrl = `http://${serverIp}${port}/downloads/scanner-masskempo.apk`;
 
-    // Gambar QR Berisi URL
-    new QRCode(document.getElementById("qr-apk-canvas"), {
+    // Perbarui Tampilan UI ke Mode Download APK
+    if (titleEl) {
+        titleEl.className = "text-sm font-black text-green-400 tracking-widest uppercase mb-2 border-b border-slate-700 pb-3 w-full text-center";
+        titleEl.innerHTML = `<i class="fas fa-download mr-2"></i>DOWNLOAD APK SCANNER (LAN)`;
+    }
+    if (stepTitleEl) {
+        stepTitleEl.innerHTML = `<i class="fas fa-list-ol text-blue-400 mr-2"></i>Prosedur Instalasi APK:`;
+    }
+    if (stepListEl) {
+        stepListEl.innerHTML = `
+            <li>Buka kamera bawaan HP (atau Google Lens) dan scan QR di atas.</li>
+            <li>Ketuk link yang muncul untuk mengunduh (download) file APK.</li>
+            <li>Buka file yang terunduh dan tekan <b>'Install'</b>.</li>
+            <li>Bila muncul peringatan keamanan, pilih <b>'Settings/Pengaturan'</b> &rarr; aktifkan <b>'Allow from this source'</b> (Izinkan dari sumber ini).</li>
+        `;
+    }
+
+    // Gambar QR Code Link Download APK
+    new QRCode(canvas, {
         text: apkUrl,
-        width: 170,
-        height: 170,
-        colorDark: "#166534", // Hijau gelap agar secara visual membedakannya dari QR Setup
+        width: 190,
+        height: 190,
+        colorDark: "#166534",
         colorLight: "#ffffff",
         correctLevel: QRCode.CorrectLevel.M
     });
 }
 
 function tutupModalDownloadAPK() {
-    document.getElementById('apk-download-modal').classList.add('hidden');
+    const modal = document.getElementById('apk-download-modal');
+    if (modal) modal.classList.add('hidden');
 }
 
 // =========================================================
