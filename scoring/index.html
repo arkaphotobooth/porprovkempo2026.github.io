@@ -1,0 +1,2070 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MASS PRO - Martial Arts Scoring System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="../assets/js/auth-guard.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+
+        .bg-dark-card {
+            background-color: #1e293b;
+        }
+
+        .active-tab {
+            border-bottom: 2px solid #3b82f6;
+            background-color: rgba(59, 130, 246, 0.1);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        /* Mengunci jarak gap persis 48px (3rem) dan tambah padding kiri agar label G tidak terpotong */
+        .bracket-container {
+            display: flex;
+            gap: 3rem;
+            padding: 1.5rem 2rem;
+            overflow-x: auto;
+            align-items: stretch;
+            padding-top: 3rem;
+        }
+
+        .bracket-col {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .bracket-match {
+            position: relative;
+            z-index: 10;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex flex-col">
+
+    <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-50 shadow-md">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center py-2 gap-3">
+
+                <div class="flex items-center gap-3">
+                    <img src="logo-saya.svg" class="w-10 h-10 object-contain" alt="Logo Kejuaraan">
+
+                    <div class="flex flex-col justify-center mt-1">
+                        <h1 class="text-xl font-black tracking-tight text-white m-0 leading-none">MASS <span
+                                class="text-blue-500">KEMPO</span></h1>
+
+                        <div class="flex items-center gap-1.5 mt-1">
+                            <div id="koneksi-dot"
+                                class="w-2 h-2 bg-red-500 rounded-full transition-colors duration-300"></div>
+                            <span id="koneksi-text"
+                                class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Menghubungkan...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <nav class="flex overflow-x-auto w-full md:w-auto hide-scrollbar gap-1 text-xs font-bold mt-1 md:mt-0">
+                    <button onclick="switchTab('kategori')" id="tab-kategori"
+                        class="active-tab text-blue-500 px-3 py-1.5 rounded-t-lg transition-colors whitespace-nowrap hover:bg-slate-800"><i
+                            class="fas fa-tags mr-1.5"></i>Kategori</button>
+                    <button onclick="switchTab('atlet')" id="tab-atlet"
+                        class="text-slate-400 px-3 py-1.5 rounded-t-lg transition-colors whitespace-nowrap hover:bg-slate-800 hover:text-blue-400"><i
+                            class="fas fa-users mr-1.5"></i>Atlet</button>
+                    <button onclick="switchTab('timbang')" id="tab-timbang"
+                        class="text-slate-400 px-3 py-1.5 rounded-t-lg transition-colors whitespace-nowrap hover:bg-slate-800 hover:text-blue-400">
+                        <i class="fas fa-balance-scale mr-1.5"></i>Timbang
+                    </button>
+                    <button onclick="switchTab('drawing')" id="tab-drawing"
+                        class="text-slate-400 px-3 py-1.5 rounded-t-lg transition-colors whitespace-nowrap hover:bg-slate-800 hover:text-blue-400"><i
+                            class="fas fa-sitemap mr-1.5"></i>Drawing</button>
+                    <button onclick="switchTab('jadwal')" id="tab-jadwal"
+                        class="text-slate-400 px-3 py-1.5 rounded-t-lg transition-colors whitespace-nowrap hover:bg-slate-800 hover:text-blue-400">
+                        <i class="fas fa-calendar-alt mr-1.5"></i>Jadwal
+                    </button>
+                    <button onclick="switchTab('scoring')" id="tab-scoring"
+                        class="text-slate-400 px-3 py-1.5 rounded-t-lg transition-colors whitespace-nowrap hover:bg-slate-800 hover:text-blue-400"><i
+                            class="fas fa-gavel mr-1.5"></i>Scoring</button>
+                    <button onclick="switchTab('ranking')" id="tab-ranking"
+                        class="text-slate-400 px-3 py-1.5 rounded-t-lg transition-colors whitespace-nowrap hover:bg-slate-800 hover:text-blue-400"><i
+                            class="fas fa-trophy mr-1.5"></i>Ranking</button>
+                    <button onclick="switchTab('juara')" id="tab-juara"
+                        class="text-yellow-500 px-3 py-1.5 rounded-t-lg transition-colors whitespace-nowrap hover:bg-slate-800"><i
+                            class="fas fa-crown mr-1.5"></i>Juara Umum</button>
+                    <button onclick="switchTab('admin')" id="tab-admin"
+                        class="text-red-400 px-3 py-1.5 rounded-t-lg transition-colors whitespace-nowrap hover:bg-slate-800"><i
+                            class="fas fa-cog mr-1.5"></i>Admin</button>
+                    <div class="border-l-2 border-slate-700/50 ml-1 pl-2 flex items-center">
+                        <button id="btn-back-portal"
+                            class="text-white px-4 py-1.5 rounded-lg transition-all shadow-md whitespace-nowrap font-bold text-xs flex items-center gap-2">
+                            <i id="icon-back-portal" class="fas fa-spinner fa-spin"></i>
+                            <span id="text-back-portal">Memuat...</span>
+                        </button>
+                    </div>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow container mx-auto px-2 py-4">
+
+        <section id="section-kategori" class="block animate-fade-in">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                <div class="col-span-1 flex flex-col gap-6">
+
+                    <div class="bg-dark-card p-6 rounded-2xl border border-slate-800 shadow-xl">
+                        <h2 class="text-lg font-black text-white mb-4 border-b border-slate-700 pb-2"><i
+                                class="fas fa-plus-circle text-blue-500 mr-2"></i>Tambah Nomor Pertandingan Baru</h2>
+                        <form id="form-kategori" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-400 mb-1 uppercase">Disiplin</label>
+                                <select id="cat-discipline"
+                                    class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none transition-colors">
+                                    <option value="embu">EMBU</option>
+                                    <option value="randori">RANDORI</option>
+                                    <option value="festival">FESTIVAL</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-400 mb-1 uppercase">Nama Nomor
+                                    Pertandingan</label>
+                                <input type="text" id="cat-name" required
+                                    class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none transition-colors placeholder-slate-600"
+                                    placeholder="Cth: Embu Berpasangan Putra I-II Dan">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-400 mb-1 uppercase">Format
+                                    Atlet</label>
+                                <select id="cat-type"
+                                    class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none transition-colors">
+                                    <option value="1">Tunggal / Solo (1 Org)</option>
+                                    <option value="2">Berpasangan / Pasangan (2 Org)</option>
+                                    <option value="3">Beregu (3+ Org)</option>
+                                </select>
+                            </div>
+                            <button type="submit"
+                                class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition-colors shadow-[0_4px_14px_0_rgba(37,99,235,0.39)]">SIMPAN
+                                NOMOR PERTANDINGAN</button>
+                        </form>
+                    </div>
+
+                    <div class="bg-dark-card p-6 rounded-2xl border border-slate-800 shadow-xl border-dashed">
+                        <h2 class="text-md font-black text-green-400 mb-2"><i class="fas fa-file-csv mr-2"></i>Import
+                            dari CSV</h2>
+                        <p class="text-[10px] text-slate-400 mb-4 leading-relaxed">Format: <b>Disiplin,Nama Nomor,Format
+                                Atlet</b><br>Contoh: <i>Randori,Randori Putra Kelas A,1</i></p>
+                        <input type="file" id="csv-kategori-upload" accept=".csv" class="hidden"
+                            onchange="handleCategoryCSVUpload(event)">
+                        <button onclick="document.getElementById('csv-kategori-upload').click()"
+                            class="w-full bg-slate-800 border border-green-500/50 hover:bg-green-600 hover:border-green-500 text-green-400 hover:text-white font-bold py-3 rounded-lg transition-all flex items-center justify-center gap-2">
+                            <i class="fas fa-upload"></i> Pilih File CSV
+                        </button>
+                    </div>
+
+                </div>
+
+                <div class="col-span-1 lg:col-span-2">
+                    <div class="bg-dark-card p-6 rounded-2xl border border-slate-800 shadow-xl h-full">
+                        <h2 class="text-lg font-black text-white mb-4 border-b border-slate-700 pb-2"><i
+                                class="fas fa-list text-blue-500 mr-2"></i>Daftar Nomor Pertandingan Tersimpan</h2>
+                        <div id="list-kategori" class="flex flex-wrap gap-3">
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <section id="section-atlet" class="hidden animate-fade-in">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="col-span-1 flex flex-col gap-6">
+                    <div class="bg-dark-card p-6 rounded-2xl border border-slate-800 shadow-xl">
+                        <h2 class="text-lg font-black text-white mb-4 border-b border-slate-700 pb-2"><i
+                                class="fas fa-user-plus text-blue-500 mr-2"></i>Input Manual</h2>
+                        <form id="form-peserta" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-400 mb-1 uppercase">Pilih Nomor
+                                    Pertandingan</label>
+                                <select id="p-kategori"
+                                    class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white focus:border-blue-500 outline-none"></select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-400 mb-1 uppercase">Nama Atlet /
+                                    Tim</label>
+                                <input type="text" id="p-nama" required
+                                    class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white focus:border-blue-500 outline-none"
+                                    placeholder="Nama Atlet">
+                                <p class="text-[9px] text-slate-500 mt-1 italic">Untuk Pasangan/Beregu, gunakan "Nama 1
+                                    & Nama 2"</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-400 mb-1 uppercase">Kontingen /
+                                    Dojo</label>
+                                <input type="text" id="p-kontingen" required
+                                    class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white focus:border-blue-500 outline-none"
+                                    placeholder="Nama Kontingen">
+                            </div>
+                            <button type="submit"
+                                class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-lg transition-colors">TAMBAH
+                                DATA</button>
+                        </form>
+                    </div>
+
+                    <div class="bg-dark-card p-6 rounded-2xl border border-slate-800 shadow-xl border-dashed">
+                        <h2 class="text-md font-black text-green-400 mb-2"><i class="fas fa-file-csv mr-2"></i>Import
+                            dari CSV</h2>
+                        <p class="text-[10px] text-slate-400 mb-4 leading-relaxed">Format Wajib: <b>Nama Atlet,
+                                Kontingen, Nomor</b> (Pisahkan dengan koma).<br>Jika nama pakai koma, apit dengan tanda
+                            kutip ganda.</p>
+                        <input type="file" id="csv-upload" accept=".csv" class="hidden"
+                            onchange="handleCSVUpload(event)">
+                        <button onclick="document.getElementById('csv-upload').click()"
+                            class="w-full bg-slate-800 border border-green-500/50 hover:bg-green-600 hover:border-green-500 text-green-400 hover:text-white font-bold py-3 rounded-lg transition-all flex items-center justify-center gap-2">
+                            <i class="fas fa-upload"></i> Pilih File CSV
+                        </button>
+                    </div>
+                </div>
+
+                <div class="col-span-1 lg:col-span-2">
+                    <div class="bg-dark-card p-6 rounded-2xl border border-slate-800 shadow-xl h-full flex flex-col">
+                        <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
+                            <h2 class="text-lg font-black text-white"><i
+                                    class="fas fa-database text-blue-500 mr-2"></i>Database Peserta</h2>
+                            <select id="filter-atlet-kategori" onchange="renderParticipantTable(true)"
+                                class="bg-slate-900 border border-slate-700 text-xs rounded p-1 text-slate-300 w-48 truncate outline-none focus:border-blue-500"></select>
+                        </div>
+                        <div class="overflow-x-auto flex-1 mb-2">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr
+                                        class="bg-slate-900 text-xs text-slate-500 uppercase tracking-wider border-b-2 border-slate-700">
+                                        <th class="p-3 w-[35%]">Nama Atlet/Tim</th>
+                                        <th class="p-3 w-[25%]">Kontingen</th>
+                                        <th class="p-3 w-[25%]">Nomor & Status</th>
+                                        <th class="p-3 w-[15%] text-right">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-peserta-body" class="text-sm">
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div
+                            class="flex flex-col md:flex-row justify-between items-center mt-auto pt-4 border-t border-slate-700 gap-3">
+                            <div class="text-xs text-slate-400 font-bold bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-700"
+                                id="pagination-info">Menampilkan 0 atlet</div>
+                            <div class="flex gap-2 w-full md:w-auto">
+                                <button onclick="changeAthletePage(-1)" id="btn-prev-page"
+                                    class="flex-1 md:flex-none bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg border border-slate-600 transition-colors text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"><i
+                                        class="fas fa-chevron-left mr-1"></i> SEBELUMNYA</button>
+                                <button onclick="changeAthletePage(1)" id="btn-next-page"
+                                    class="flex-1 md:flex-none bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg border border-slate-600 transition-colors text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed">SELANJUTNYA
+                                    <i class="fas fa-chevron-right ml-1"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 👇 TAMBAHAN SECTION TIMBANG BADAN 👇 -->
+        <section id="section-timbang" class="hidden animate-fade-in">
+            <div class="bg-dark-card p-6 rounded-2xl border border-slate-800 shadow-xl mb-6">
+                <!-- Header Kontrol -->
+                <div
+                    class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-700 pb-4 mb-4">
+                    <div class="flex items-center gap-3 w-full md:w-auto">
+                        <div class="bg-teal-900/40 p-3 rounded-lg border border-teal-500/30">
+                            <i class="fas fa-balance-scale text-teal-400 text-xl"></i>
+                        </div>
+                        <div class="w-full md:w-72">
+                            <label class="block text-[10px] text-slate-500 mb-1 font-bold uppercase">Pilih Kelas
+                                Randori</label>
+                            <select id="timbang-select-kategori" onchange="renderTimbangTable()"
+                                class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-sm font-bold focus:border-teal-500 outline-none"></select>
+                        </div>
+                    </div>
+
+                    <div class="w-full md:w-64 flex flex-col gap-2">
+                        <div class="relative w-full">
+                            <i class="fas fa-search absolute left-3 top-3 text-slate-500"></i>
+                            <input type="text" id="timbang-search" onkeyup="renderTimbangTable()"
+                                placeholder="Cari Atlet / Kontingen..."
+                                class="w-full bg-slate-900 border border-slate-600 rounded-lg py-2 pl-9 pr-3 text-sm text-white focus:border-teal-500 outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Info Range (Auto-Detect) -->
+                <div
+                    class="bg-slate-900/50 border border-slate-700 rounded-xl p-3 flex justify-between items-center mb-4">
+                    <div>
+                        <span class="text-[10px] text-slate-400 uppercase font-bold tracking-widest block mb-1">Target
+                            Berat Badan Kelas Ini:</span>
+                        <div class="flex items-center gap-3">
+                            <span id="timbang-range-display"
+                                class="text-lg font-black text-teal-400 tracking-wider">Mendeteksi...</span>
+                            <button onclick="bukaModalEditRange()"
+                                class="text-slate-500 hover:text-white bg-slate-800 p-1.5 rounded transition-colors"
+                                title="Koreksi Batas Berat Manual">
+                                <i class="fas fa-pencil-alt text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="timbang-status-lock"
+                        class="hidden bg-red-900/30 border border-red-800 text-red-400 text-xs font-bold px-3 py-1.5 rounded-lg">
+                        <i class="fas fa-lock mr-1"></i> TELAH DIUNDI
+                    </div>
+                </div>
+
+                <!-- Tabel Timbang -->
+                <div class="overflow-x-auto rounded-xl border border-slate-700 shadow-inner">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr
+                                class="bg-slate-900 text-xs text-slate-400 uppercase tracking-wider border-b-2 border-slate-700">
+                                <th class="p-4 w-[30%]">Nama Atlet</th>
+                                <th class="p-4 w-[20%]">Kontingen</th>
+                                <th class="p-4 w-[15%] text-center">Input Berat (Kg)</th>
+                                <th class="p-4 w-[20%] text-center">Status</th>
+                                <th class="p-4 w-[15%] text-center">Aksi TM</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-timbang-body" class="text-sm">
+                            <tr>
+                                <td colspan="5" class="p-6 text-center text-slate-500">Pilih kelas Randori di atas.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+        <!-- 👆 AKHIR SECTION TIMBANG BADAN 👆 -->
+
+        <section id="section-drawing" class="hidden animate-fade-in">
+            <div
+                class="bg-dark-card p-3 rounded-2xl border border-slate-800 shadow-xl mb-2 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-4 w-full md:w-auto">
+                    <div class="bg-purple-600/20 p-3 rounded-lg border border-purple-500/30">
+                        <i class="fas fa-sitemap text-purple-400 text-xl"></i>
+                    </div>
+                    <div class="w-full md:w-72">
+                        <label class="block text-[10px] text-slate-500 mb-1 font-bold uppercase">Pilih Nomor
+                            Undian</label>
+                        <select id="draw-select-kategori" onchange="checkExistingDrawing()"
+                            class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-sm font-bold focus:border-purple-500 outline-none"></select>
+                    </div>
+                </div>
+
+                <!-- 🌟 PANEL KENDALI PROYEKTOR TM 🌟 -->
+                <div
+                    class="flex items-center gap-3 w-full md:w-auto bg-indigo-950/40 p-2 rounded-xl border border-indigo-500/30">
+                    <button onclick="bukaProyektorTM()"
+                        class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg shadow-[0_0_10px_rgba(79,70,229,0.5)] transition-colors text-xs flex items-center gap-2 whitespace-nowrap">
+                        <i class="fas fa-tv"></i> BUKA PROYEKTOR TM
+                    </button>
+                    <div id="projector-controls"
+                        class="hidden flex items-center gap-2 pl-3 border-l border-indigo-500/30">
+                        <span
+                            class="text-[9px] text-indigo-300 font-bold uppercase tracking-widest hidden lg:block">Fase:</span>
+                        <select id="select-projector-phase" onchange="updateProjectorPhase()"
+                            class="bg-indigo-900 border border-indigo-500 rounded p-1.5 text-white text-xs font-bold outline-none cursor-pointer">
+                            <option value="b1">Babak Penyisihan (B1)</option>
+                            <option value="final">Babak Lanjutan / Final</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="draw-panel-embu" class="hidden w-full md:w-auto">
+                    <button onclick="startDrawing()"
+                        class="w-full md:w-auto bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-6 rounded-lg transition-colors shadow-lg flex items-center justify-center gap-2">
+                        <i class="fas fa-random"></i> ACAK URUTAN (EMBU)
+                    </button>
+                </div>
+
+                <div id="draw-panel-randori" class="hidden w-full md:w-auto flex flex-col md:flex-row gap-2">
+                    <button onclick="generateRandoriBracket()"
+                        class="w-full md:w-auto bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-6 rounded-lg transition-colors shadow-[0_0_15px_rgba(220,38,38,0.4)] flex items-center justify-center gap-2">
+                        <i class="fas fa-project-diagram"></i> GENERATE BAGAN BARU
+                    </button>
+                </div>
+            </div>
+
+            <div id="draw-panel-empty" class="text-center py-20 border-2 border-dashed border-slate-700 rounded-2xl">
+                <i class="fas fa-inbox text-4xl text-slate-600 mb-3"></i>
+                <p class="text-slate-400 font-bold">Pilih Nomor di atas untuk melihat Drawing</p>
+            </div>
+
+            <div id="drawing-result" class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full"></div>
+
+            <!-- 🌟 KUNCI UTAMA: STRUKTUR DUA PANEL BERDAMPINGAN YANG BENAR 🌟 -->
+            <div id="randori-layout-wrapper"
+                class="hidden w-full flex flex-col lg:flex-row gap-4 mt-4 items-start animate-fade-in">
+
+                <!-- PANEL KIRI: PETA SLOT UTAMA (FIXED 2 KOLOM ATLET) -->
+                <div id="randori-sidebar"
+                    class="w-full lg:w-1/3 xl:w-2/5 bg-dark-card border border-slate-700 rounded-2xl shadow-xl flex-shrink-0 lg:sticky top-20 flex flex-col max-h-[85vh]">
+                    <!-- Diisi Otomatis via JS -->
+                </div>
+
+                <!-- PANEL KANAN: WADAH BAGAN INDEPENDEN (SCROLLABLE CANVAS) -->
+                <div id="randori-bracket-container"
+                    class="w-full lg:flex-1 overflow-auto bg-[#0f172a] p-6 rounded-2xl border border-slate-700 shadow-inner custom-scrollbar">
+                    <div id="randori-bracket-view" class="flex flex-col gap-10">
+                        <!-- Kotak Pertandingan Bagan G1, G2, dst Diisi Otomatis via JS -->
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <section id="section-jadwal" class="hidden animate-fade-in">
+            <div class="bg-dark-card p-6 rounded-2xl border border-slate-800 shadow-xl mb-6 min-h-[500px]">
+                <div
+                    class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-700 pb-4 mb-5 gap-4">
+                    <div>
+                        <h2 class="text-xl font-black text-white"><i
+                                class="fas fa-calendar-check text-indigo-500 mr-2"></i>Jadwal Lapangan</h2>
+                        <p class="text-xs text-slate-400 mt-1">Otomatis sinkron dengan pengaturan Pusat Komando Jadwal.
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div id="jadwal-court-badge"
+                            class="bg-indigo-900/50 border border-indigo-700 text-indigo-300 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest">
+                            COURT -</div>
+                        <button onclick="renderJadwalList()"
+                            class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg text-xs font-bold border border-slate-600 shadow-md transition-colors"><i
+                                class="fas fa-sync-alt mr-2"></i>Refresh</button>
+                    </div>
+                </div>
+                <div id="jadwal-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <!-- Kartu Jadwal Dirender di sini -->
+                </div>
+            </div>
+        </section>
+
+        <section id="section-scoring" class="hidden animate-fade-in">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                <div class="col-span-1 lg:col-span-3 flex flex-col gap-4">
+                    <div class="bg-dark-card p-4 rounded-xl border border-slate-700 shadow-lg">
+
+                        <!-- KOTAK PLAYLIST AKTIF (Banner) -->
+                        <div id="playlist-banner"
+                            class="hidden bg-indigo-900/40 border border-indigo-500/50 rounded-xl p-3 shadow-inner animate-fade-in relative mb-4">
+                            <button onclick="closePlaylist()"
+                                class="absolute top-2 right-2 text-indigo-400 hover:text-red-400 transition-colors"
+                                title="Tutup Playlist & Kembali Manual"><i class="fas fa-times text-lg"></i></button>
+                            <div class="text-[9px] text-indigo-300 font-black uppercase tracking-widest mb-1">PLAYLIST
+                                AKTIF</div>
+                            <div class="text-white font-bold text-xs leading-tight mb-1" id="playlist-title">-</div>
+                            <div class="text-[10px] text-amber-400 font-mono font-bold" id="playlist-time">-</div>
+                        </div>
+
+                        <!-- ZONA KATEGORI (Hanya ini yang akan disembunyikan saat Playlist jalan) -->
+                        <div id="manual-kategori-zone" class="mb-4">
+                            <label
+                                class="block text-[10px] text-slate-400 mb-1 font-bold uppercase tracking-wider">NOMOR
+                                PERTANDINGAN</label>
+                            <select id="select-kategori" onchange="filterPesertaScoring()"
+                                class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-sm focus:border-blue-500 outline-none"></select>
+                        </div>
+
+                        <!-- ZONA PARTAI (TETAP MUNCUL SEBAGAI FAIL-SAFE) -->
+                        <label class="block text-[10px] text-slate-400 mb-1 font-bold uppercase tracking-wider">PILIH
+                            PARTAI / PESERTA</label>
+                        <select id="select-peserta"
+                            class="w-full bg-blue-900/30 border border-blue-500/50 rounded p-2 text-white text-sm focus:border-blue-500 outline-none font-semibold"></select>
+
+                        <button id="btnTembakWasit" onclick="toggleWasitMode()"
+                            class="w-full hidden bg-blue-600 hover:bg-blue-500 text-white font-black py-3 px-4 rounded-xl shadow-lg mt-3 transition-all">
+                            <i class="fas fa-broadcast-tower mr-2"></i> AKTIFKAN KONEKSI HP WASIT
+                        </button>
+                        <button id="btn-broadcast-toggle" onclick="toggleBroadcast()"
+                            class="hidden w-full mt-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-400 font-bold py-2.5 px-4 rounded-lg shadow-md text-xs transition-all flex items-center justify-center gap-2 tracking-widest">
+                            <i id="icon-broadcast" class="fas fa-tv-slash text-sm"></i>
+                            <span id="text-broadcast">TV OFFLINE</span>
+                        </button>
+                    </div>
+
+                    <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg text-center">
+                        <h3 class="text-xs font-bold text-slate-400 mb-2 uppercase tracking-widest">Master Timer</h3>
+                        <div id="timer-display"
+                            class="text-4xl font-black text-yellow-400 font-mono tracking-widest mb-4 drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]">
+                            00:00</div>
+                        <div class="flex gap-2">
+                            <button id="btn-timer" onclick="toggleTimer()"
+                                class="flex-1 bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg font-bold transition-colors">START</button>
+                            <button onclick="resetTimer()"
+                                class="bg-slate-600 hover:bg-slate-500 px-4 py-2 rounded-lg font-bold transition-colors">RESET</button>
+                        </div>
+                    </div>
+
+                    <div id="panel-waktu-embu"
+                        class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg hidden mt-0">
+                        <h4
+                            class="text-[11px] font-black text-slate-400 mb-3 uppercase tracking-wider border-b border-slate-700 pb-2">
+                            <i class="fas fa-stopwatch text-blue-400 mr-2"></i>Batas Waktu Embu
+                        </h4>
+                        <div id="embu-time-indicator"
+                            class="bg-slate-900 border border-slate-600 p-3 rounded-lg text-center shadow-inner">
+                            <div class="text-[10px] text-slate-500 font-bold mb-1 uppercase tracking-widest"
+                                id="embu-time-label">Deteksi Otomatis...</div>
+                            <div class="text-xl font-black text-blue-400 font-mono tracking-wider" id="embu-time-value">
+                                01:30 - 02:00</div>
+                        </div>
+                        <p class="text-[9px] text-slate-500 mt-3 italic leading-tight text-center">*Durasi & Denda
+                            otomatis dibaca dari nama kelas. Ubah di Tab Admin.</p>
+                    </div>
+                    <div id="panel-juri-embu"
+                        class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg hidden mt-0 transition-all duration-300">
+                        <h4
+                            class="text-[11px] font-black text-slate-400 mb-3 uppercase tracking-wider border-b border-slate-700 pb-2">
+                            <i class="fas fa-users text-purple-400 mr-2"></i>Jumlah Wasit / Juri
+                        </h4>
+                        <div class="bg-slate-900 p-1 rounded-lg flex border border-slate-700 mb-2">
+                            <button id="btn-j3" onclick="setJudges(3)"
+                                class="flex-1 px-4 py-2 rounded font-semibold text-sm text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">3
+                                Juri</button>
+                            <button id="btn-j5" onclick="setJudges(5)"
+                                class="flex-1 px-4 py-2 rounded font-bold text-sm bg-blue-600 text-white transition-colors shadow-sm">5
+                                Juri</button>
+                        </div>
+
+                        <!-- UI ACCORDION PENUGASAN WASIT -->
+                        <div class="mt-4 border-t border-slate-700 pt-3">
+                            <button onclick="togglePenugasanWasit()"
+                                class="flex justify-between items-center w-full text-left focus:outline-none group">
+                                <h4
+                                    class="text-[11px] font-black text-slate-400 uppercase tracking-wider group-hover:text-slate-200 transition-colors">
+                                    <i class="fas fa-qrcode text-green-400 mr-2"></i>Penugasan Wasit
+                                </h4>
+                                <i id="icon-penugasan-wasit"
+                                    class="fas fa-chevron-down text-slate-400 transition-transform duration-300"></i>
+                            </button>
+
+                            <div id="body-penugasan-wasit" class="hidden mt-4 animate-fade-in">
+                                <div class="flex flex-col gap-2 mb-4" id="dropdown-wasit-container">
+                                    <!-- Dropdown W1-W5 akan di-render otomatis via JS -->
+                                </div>
+                                <button onclick="openQRTugasModal()"
+                                    class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3 rounded-lg shadow-[0_0_15px_rgba(37,99,235,0.3)] transition-all flex items-center justify-center gap-2 text-xs tracking-wider">
+                                    <i class="fas fa-qrcode text-lg"></i> TAMPILKAN QR PENUGASAN
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-span-1 lg:col-span-9">
+                    <div class="bg-dark-card p-5 rounded-2xl border border-slate-800 shadow-xl h-full flex flex-col">
+
+                        <div
+                            class="flex flex-col md:flex-row justify-between items-start md:items-center mb-3 border-b border-slate-700 pb-3 gap-4">
+                            <div class="flex-1 w-full">
+                                <div class="flex items-center gap-3 mb-0">
+                                    <span id="scoring-badge-embu"
+                                        class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded font-bold hidden">EMBU</span>
+                                    <span id="scoring-badge-randori"
+                                        class="bg-red-700 text-white text-[10px] px-2 py-0.5 rounded font-bold hidden">RANDORI</span>
+                                    <h2 class="text-xl font-black text-white m-0">Panel Penilaian</h2>
+                                </div>
+                                <div id="scoring-athlete-name"
+                                    class="text-lg font-bold text-yellow-400 mt-0 whitespace-normal break-words w-full">
+                                    Pilih pertandingan di panel kiri</div>
+                            </div>
+
+                            <div id="top-action-randori"
+                                class="hidden flex-shrink-0 w-full md:w-auto mt-2 md:mt-0 flex gap-2">
+                                <button onclick="openVerificationModal()"
+                                    class="flex-1 md:flex-none bg-slate-800 border-2 border-blue-500 hover:bg-slate-700 text-blue-400 hover:text-blue-300 font-black py-3 px-6 rounded-xl text-sm transition-transform hover:scale-105 shadow-md tracking-widest inline-flex items-center justify-center gap-2">
+                                    <i class="fas fa-qrcode text-lg"></i> PERSETUJUAN
+                                </button>
+                                <button onclick="saveRandoriMatchResult()"
+                                    class="flex-1 md:flex-none bg-red-600 hover:bg-red-500 text-white font-black py-3 px-6 rounded-xl text-sm transition-transform hover:scale-105 shadow-[0_4px_15px_rgba(220,38,38,0.4)] tracking-widest inline-flex items-center justify-center gap-2">
+                                    <i class="fas fa-flag-checkered text-lg"></i> SIMPAN HASIL
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="panel-embu" class="hidden flex-col w-full">
+                            <div id="judge-inputs" class="grid grid-cols-3 md:grid-cols-5 gap-3 mb-3 mt-2"></div>
+
+                            <!-- Ubah mt-auto menjadi mt-4 agar menempel rapat di bawah form wasit -->
+                            <div
+                                class="mt-4 bg-gradient-to-r from-slate-800 to-slate-900 border border-slate-700 p-6 rounded-xl flex flex-col md:flex-row justify-between items-center shadow-inner gap-4">
+                                <div>
+                                    <div class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">
+                                        TOTAL NILAI BERSIH</div>
+                                    <div id="live-final-score"
+                                        class="text-5xl font-black text-white font-mono drop-shadow-md">000.0</div>
+                                    <div id="live-penalty" class="text-xs text-red-400 mt-1 font-bold">Penalti Waktu: 0
+                                    </div>
+                                </div>
+                                <div class="flex gap-3 w-full md:w-auto">
+                                    <button id="btn-save-b1" onclick="saveScore(1)"
+                                        class="flex-1 md:flex-none bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-xl transition-transform hover:scale-105 shadow-[0_4px_14px_0_rgba(37,99,235,0.39)]"><i
+                                            class="fas fa-save mr-2"></i>SIMPAN BABAK 1</button>
+                                    <button id="btn-save-b2" onclick="saveScore(2)"
+                                        class="flex-1 md:flex-none bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 px-6 rounded-xl transition-transform hover:scale-105 shadow-[0_4px_14px_0_rgba(147,51,234,0.39)]"><i
+                                            class="fas fa-save mr-2"></i>SIMPAN BABAK 2</button>
+                                    <button id="btn-save-penyisihan" onclick="saveScore('b1')"
+                                        class="hidden flex-1 md:flex-none bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-xl transition-transform hover:scale-105 shadow-[0_4px_14px_0_rgba(37,99,235,0.39)]"><i
+                                            class="fas fa-save mr-2"></i>SIMPAN PENYISIHAN</button>
+                                    <button id="btn-save-final" onclick="saveScore('b2')"
+                                        class="hidden flex-1 md:flex-none bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-3 px-6 rounded-xl transition-transform hover:scale-105 shadow-[0_4px_14px_0_rgba(202,138,4,0.39)]"><i
+                                            class="fas fa-save mr-2"></i>SIMPAN FINAL</button>
+                                    <button id="btn-tampil-pemenang-h2h" onclick="tampilkanPemenangH2H_TV()"
+                                        class="hidden flex-1 md:flex-none bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-black py-3 px-6 rounded-xl transition-transform hover:scale-105 shadow-[0_4px_14px_0_rgba(234,179,8,0.4)] tracking-widest">
+                                        <i class="fas fa-trophy mr-2 animate-bounce"></i> TAMPILKAN JUARA H2H
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="panel-randori" class="hidden flex-col w-full gap-3">
+    <!-- Kontainer Utama -->
+    <div class="flex flex-col md:flex-row items-stretch bg-[#0f172a] border border-slate-700 rounded-2xl shadow-inner relative overflow-hidden divide-y md:divide-y-0 md:divide-x divide-slate-700/80">
+
+        <!-- ================= PANEL PITA MERAH ================= -->
+        <!-- 🔥 DITAMBAHKAN: id="side-merah-randori" dan class "relative" -->
+        <div id="side-merah-randori" class="flex-1 flex flex-col justify-between p-6 relative">
+
+            <!-- INFO ATLET & SKOR (HORIZONTAL) -->
+            <div class="flex flex-row items-center justify-between w-full mb-6 gap-4">
+                <!-- Data Atlet (Kiri) -->
+                <div class="flex flex-col items-start flex-1 min-w-0">
+                    <div class="bg-red-600 text-white text-[10px] font-black px-3 py-1 rounded-md mb-2 tracking-widest uppercase shadow-[0_0_10px_rgba(220,38,38,0.5)]">
+                        Pita Merah
+                    </div>
+                    <div id="randori-nama-merah" class="text-lg font-black text-red-400 leading-tight break-words text-left w-full">
+                        -
+                    </div>
+                    <div id="randori-kont-merah" class="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest text-left truncate w-full">
+                        -
+                    </div>
+                </div>
+                <!-- Angka Skor (Kanan) -->
+                <div class="flex-shrink-0">
+                    <div id="score-merah" class="text-7xl font-black text-white font-mono leading-none drop-shadow-md">
+                        0
+                    </div>
+                </div>
+            </div>
+
+            <!-- BAGIAN BAWAH: KENDALI & PERINGATAN -->
+            <div class="flex flex-col w-full gap-2.5">
+                <!-- Tracker Peringatan -->
+                <div class="flex flex-col items-start mb-2 w-full bg-slate-900/40 p-3 rounded-xl border border-slate-800 shadow-inner">
+                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2 w-full text-center">Akumulasi Peringatan (1-6)</span>
+                    <div class="flex gap-2 justify-center w-full" id="warning-tracker-merah">
+                        <div id="warn-merah-1" class="w-7 h-6 rounded bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] text-slate-500 font-bold transition-colors">1</div>
+                        <div id="warn-merah-2" class="w-7 h-6 rounded bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] text-slate-500 font-bold transition-colors">2</div>
+                        <div id="warn-merah-3" class="w-7 h-6 rounded bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] text-slate-500 font-bold transition-colors">3</div>
+                        <div id="warn-merah-4" class="w-7 h-6 rounded bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] text-slate-500 font-bold transition-colors">4</div>
+                        <div id="warn-merah-5" class="w-7 h-6 rounded bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] text-slate-500 font-bold transition-colors">5</div>
+                        <div id="warn-merah-6" class="w-7 h-6 rounded bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] text-slate-500 font-bold transition-colors">6</div>
+                    </div>
+                </div>
+
+                <!-- Tombol Poin -->
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="addRandoriScore('merah', 5, 'WAZA-ARI')" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-bold py-2.5 px-3 rounded-xl text-xs shadow-sm transition-all flex items-center justify-between">
+                        <span>WAZA-ARI</span><span class="text-slate-400 font-mono text-[10px]">(+5)</span>
+                    </button>
+                    <button onclick="addRandoriScore('merah', 5, 'YUSEI KACHI')" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-bold py-2.5 px-3 rounded-xl text-xs shadow-sm transition-all flex items-center justify-between">
+                        <span>YUSEI KACHI</span><span class="text-slate-400 font-mono text-[10px]">(+5)</span>
+                    </button>
+                    <button onclick="addRandoriScore('merah', 10, 'IPPON')" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-bold py-2.5 px-3 rounded-xl text-xs shadow-sm transition-all flex items-center justify-between">
+                        <span>IPPON</span><span class="text-slate-400 font-mono text-[10px]">(+10)</span>
+                    </button>
+                    <button onclick="addRandoriScore('merah', 15, 'MUJOKEN KACHI')" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-bold py-2.5 px-3 rounded-xl text-xs shadow-sm transition-all flex items-center justify-between">
+                        <span>MUJOKEN</span><span class="text-slate-400 font-mono text-[10px]">(+15)</span>
+                    </button>
+                </div>
+
+                <div class="w-full h-px bg-slate-800 my-1"></div>
+
+                <!-- Pelanggaran Pita Merah -->
+                <div class="grid grid-cols-2 gap-2">
+                    <button type="button" onclick="triggerBatsuModal('merah', 'BATSU 5', 5)" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 font-bold py-2 px-3 rounded-xl text-xs transition-all flex items-center justify-between shadow-inner" title="Batsu Merah: Poin masuk ke Putih">
+                        <span>BATSU 5</span><span class="text-slate-500 font-mono text-[10px]">(+5)</span>
+                    </button>
+                    <button type="button" onclick="triggerBatsuModal('merah', 'BATSU 10', 10)" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 font-bold py-2 px-3 rounded-xl text-xs transition-all flex items-center justify-between shadow-inner" title="Batsu Merah: Poin masuk ke Putih">
+                        <span>BATSU 10</span><span class="text-slate-500 font-mono text-[10px]">(+10)</span>
+                    </button>
+                </div>
+                <button onclick="addWarning('merah')" class="w-full bg-slate-900/40 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 font-bold py-2.5 rounded-xl text-xs transition-all tracking-wide shadow-inner">
+                    +1 PERINGATAN (AKUMULASI)
+                </button>
+            </div>
+        </div>
+
+        <!-- ================= PANEL PITA PUTIH ================= -->
+        <!-- 🔥 DITAMBAHKAN: id="side-putih-randori" dan class "relative" -->
+        <div id="side-putih-randori" class="flex-1 flex flex-col justify-between p-6 relative">
+
+            <!-- INFO ATLET & SKOR (HORIZONTAL TERBALIK) -->
+            <div class="flex flex-row items-center justify-between w-full mb-6 gap-4">
+                <!-- Angka Skor (Kiri) -->
+                <div class="flex-shrink-0">
+                    <div id="score-putih" class="text-7xl font-black text-white font-mono leading-none drop-shadow-[0_0_10px_rgba(255,255,255,0.15)]">
+                        0
+                    </div>
+                </div>
+                <!-- Data Atlet (Kanan) -->
+                <div class="flex flex-col items-end flex-1 min-w-0">
+                    <div class="bg-slate-800 text-slate-200 border border-slate-600 text-[10px] font-black px-3 py-1 rounded-md mb-2 tracking-widest uppercase shadow-sm">
+                        Pita Putih
+                    </div>
+                    <div id="randori-nama-putih" class="text-lg font-black text-white leading-tight break-words text-right w-full">
+                        -
+                    </div>
+                    <div id="randori-kont-putih" class="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest text-right truncate w-full">
+                        -
+                    </div>
+                </div>
+            </div>
+
+            <!-- BAGIAN BAWAH: KENDALI & PERINGATAN -->
+            <div class="flex flex-col w-full gap-2.5">
+                <!-- Tracker Peringatan -->
+                <div class="flex flex-col items-center mb-2 w-full bg-slate-900/40 p-3 rounded-xl border border-slate-800 shadow-inner">
+                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2 w-full text-center">Akumulasi Peringatan (1-6)</span>
+                    <div class="flex gap-2 justify-center w-full" id="warning-tracker-putih">
+                        <div id="warn-putih-1" class="w-7 h-6 rounded bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] text-slate-500 font-bold transition-colors">1</div>
+                        <div id="warn-putih-2" class="w-7 h-6 rounded bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] text-slate-500 font-bold transition-colors">2</div>
+                        <div id="warn-putih-3" class="w-7 h-6 rounded bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] text-slate-500 font-bold transition-colors">3</div>
+                        <div id="warn-putih-4" class="w-7 h-6 rounded bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] text-slate-500 font-bold transition-colors">4</div>
+                        <div id="warn-putih-5" class="w-7 h-6 rounded bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] text-slate-500 font-bold transition-colors">5</div>
+                        <div id="warn-putih-6" class="w-7 h-6 rounded bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] text-slate-500 font-bold transition-colors">6</div>
+                    </div>
+                </div>
+
+                <!-- Tombol Poin -->
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="addRandoriScore('putih', 5, 'WAZA-ARI')" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-bold py-2.5 px-3 rounded-xl text-xs shadow-sm transition-all flex items-center justify-between">
+                        <span>WAZA-ARI</span><span class="text-slate-400 font-mono text-[10px]">(+5)</span>
+                    </button>
+                    <button onclick="addRandoriScore('putih', 5, 'YUSEI KACHI')" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-bold py-2.5 px-3 rounded-xl text-xs shadow-sm transition-all flex items-center justify-between">
+                        <span>YUSEI KACHI</span><span class="text-slate-400 font-mono text-[10px]">(+5)</span>
+                    </button>
+                    <button onclick="addRandoriScore('putih', 10, 'IPPON')" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-bold py-2.5 px-3 rounded-xl text-xs shadow-sm transition-all flex items-center justify-between">
+                        <span>IPPON</span><span class="text-slate-400 font-mono text-[10px]">(+10)</span>
+                    </button>
+                    <button onclick="addRandoriScore('putih', 15, 'MUJOKEN KACHI')" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-bold py-2.5 px-3 rounded-xl text-xs shadow-sm transition-all flex items-center justify-between">
+                        <span>MUJOKEN</span><span class="text-slate-400 font-mono text-[10px]">(+15)</span>
+                    </button>
+                </div>
+
+                <div class="w-full h-px bg-slate-800 my-1"></div>
+
+                <!-- Pelanggaran Pita Putih -->
+                <div class="grid grid-cols-2 gap-2">
+                    <button type="button" onclick="triggerBatsuModal('putih', 'BATSU 5', 5)" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 font-bold py-2 px-3 rounded-xl text-xs transition-all flex items-center justify-between shadow-inner" title="Batsu Putih: Poin masuk ke Merah">
+                        <span>BATSU 5</span><span class="text-slate-500 font-mono text-[10px]">(+5)</span>
+                    </button>
+                    <button type="button" onclick="triggerBatsuModal('putih', 'BATSU 10', 10)" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 font-bold py-2 px-3 rounded-xl text-xs transition-all flex items-center justify-between shadow-inner" title="Batsu Putih: Poin masuk ke Merah">
+                        <span>BATSU 10</span><span class="text-slate-500 font-mono text-[10px]">(+10)</span>
+                    </button>
+                </div>
+                <button onclick="addWarning('putih')" class="w-full bg-slate-900/40 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 font-bold py-2.5 rounded-xl text-xs transition-all tracking-wide shadow-inner">
+                    +1 PERINGATAN (AKUMULASI)
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Log & Undo Bar -->
+    <div class="bg-[#0f172a] border border-slate-700 rounded-2xl px-5 py-3.5 flex flex-col md:flex-row items-center justify-between shadow-inner gap-4 mt-1">
+        <div class="flex items-center gap-3">
+            <i class="fas fa-history text-slate-500 text-lg ml-2"></i>
+            <span id="randori-log-text" class="text-xs font-medium text-slate-400 italic tracking-wide">Belum ada poin tercatat...</span>
+        </div>
+        <button onclick="undoLastRandoriScore()" class="w-full md:w-auto bg-transparent border border-slate-600 text-slate-300 hover:text-white hover:border-slate-400 hover:bg-slate-800 font-bold py-2 px-6 rounded-xl text-xs transition-colors flex items-center justify-center gap-2 tracking-widest">
+            <i class="fas fa-undo"></i> BATAL (UNDO)
+        </button>
+    </div>
+</div>
+
+
+                        <!-- ========================================== -->
+                        <!-- DUA ACCORDION: DAFTAR ANTREAN & BLOK SELANJUTNYA -->
+                        <!-- ========================================== -->
+                        <div id="zone-on-deck" class="hidden mt-6 flex flex-col gap-4 animate-fade-in w-full">
+
+                            <!-- ACCORDION 1: BLOK SAAT INI -->
+                            <div id="accordion-current-block"
+                                class="border border-slate-700 rounded-xl bg-slate-800/50 overflow-hidden shadow-md">
+                                <button onclick="toggleCurrentBlockAccordion()"
+                                    class="w-full flex items-center justify-between p-4 hover:bg-slate-700/50 transition-colors focus:outline-none">
+                                    <div class="flex items-center gap-3">
+                                        <div
+                                            class="bg-indigo-600/20 border border-indigo-500/50 text-indigo-400 text-[10px] px-2 py-1 rounded font-black tracking-widest flex items-center gap-1.5">
+                                            <i class="fas fa-list-ol"></i> ANTREAN SAAT INI
+                                        </div>
+                                        <h4 class="text-sm font-bold text-slate-300">Lihat Urutan Tampil Blok Ini</h4>
+                                    </div>
+                                    <i id="accordion-icon-current"
+                                        class="fas fa-chevron-down text-slate-400 transition-transform duration-300"></i>
+                                </button>
+
+                                <!-- KONTEN ACCORDION 1 (Dibiarkan terbuka / tidak ada class 'hidden' di awal) -->
+                                <div id="accordion-content-current" class="p-5 border-t border-slate-700 bg-[#0f172a]">
+                                    <div class="mb-3">
+                                        <div id="current-block-title" class="text-lg font-black text-white">-</div>
+                                        <div id="current-block-subtitle"
+                                            class="text-xs font-bold text-green-400 mt-1 uppercase tracking-widest">
+                                            SEDANG BERJALAN</div>
+                                    </div>
+                                    <div class="overflow-x-auto rounded-lg border border-slate-700 shadow-inner">
+                                        <table class="w-full text-left text-sm border-collapse">
+                                            <thead
+                                                class="bg-slate-900 text-[10px] uppercase text-slate-400 border-b-2 border-slate-700">
+                                                <tr>
+                                                    <th class="p-3 text-center w-16">Undian</th>
+                                                    <th class="p-3 w-1/3">Kontingen</th>
+                                                    <th class="p-3 border-l border-slate-800">Nama Atlet</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="current-block-participants"
+                                                class="text-slate-300 divide-y divide-slate-800 text-xs font-medium">
+                                                <!-- Diisi Otomatis via JS -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- ACCORDION 2: BLOK SELANJUTNYA -->
+                            <div id="accordion-next-block"
+                                class="hidden border border-slate-700 rounded-xl bg-slate-800/50 overflow-hidden shadow-md">
+                                <button onclick="toggleNextBlockAccordion()"
+                                    class="w-full flex items-center justify-between p-4 hover:bg-slate-700/50 transition-colors focus:outline-none">
+                                    <div class="flex items-center gap-3">
+                                        <div
+                                            class="bg-slate-700/50 border border-slate-600 text-slate-400 text-[10px] px-2 py-1 rounded font-black tracking-widest flex items-center gap-1.5">
+                                            <i class="fas fa-forward"></i> PERSIAPAN SELANJUTNYA
+                                        </div>
+                                        <h4 class="text-sm font-bold text-slate-400">Lihat Blok Pertandingan Berikutnya
+                                        </h4>
+                                    </div>
+                                    <i id="accordion-icon-next"
+                                        class="fas fa-chevron-down text-slate-400 transition-transform duration-300"></i>
+                                </button>
+
+                                <!-- KONTEN ACCORDION 2 -->
+                                <div id="accordion-content-next"
+                                    class="hidden p-5 border-t border-slate-700 bg-[#0f172a]">
+                                    <div class="mb-3">
+                                        <div id="next-block-title" class="text-lg font-black text-slate-400">-</div>
+                                        <div id="next-block-subtitle"
+                                            class="text-xs font-bold text-indigo-400 mt-1 uppercase tracking-widest">
+                                            PERSIAPAN</div>
+                                    </div>
+                                    <div
+                                        class="overflow-x-auto rounded-lg border border-slate-700 shadow-inner opacity-80 hover:opacity-100 transition-opacity">
+                                        <table class="w-full text-left text-sm border-collapse">
+                                            <thead
+                                                class="bg-slate-900 text-[10px] uppercase text-slate-400 border-b-2 border-slate-700">
+                                                <tr>
+                                                    <th class="p-3 text-center w-16">Undian</th>
+                                                    <th class="p-3 w-1/3">Kontingen</th>
+                                                    <th class="p-3 border-l border-slate-800">Nama Atlet</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="next-block-participants"
+                                                class="text-slate-400 divide-y divide-slate-800 text-xs font-medium">
+                                                <!-- Diisi Otomatis via JS -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                        <!-- ========================================== -->
+
+                        <div id="playlist-next-block-zone" class="hidden mt-6 animate-fade-in w-full">
+                            <div
+                                class="bg-indigo-950/50 border border-indigo-500/50 rounded-2xl p-6 text-center shadow-inner">
+                                <h3 class="text-xl font-black text-indigo-400 mb-2"><i
+                                        class="fas fa-check-circle text-green-400 mr-2"></i>Blok Jadwal Selesai</h3>
+                                <p class="text-slate-400 text-sm mb-6">Seluruh partai pada blok / pool ini telah
+                                    diberikan nilai.</p>
+                                <button onclick="playNextJadwalBlock()"
+                                    class="w-full md:w-auto px-8 bg-indigo-600 hover:bg-indigo-500 text-white font-black py-4 rounded-xl shadow-[0_0_15px_rgba(79,70,229,0.4)] transition-transform hover:scale-[1.02] tracking-widest inline-flex items-center justify-center gap-3">
+                                    LANJUT BLOK JADWAL BERIKUTNYA <i class="fas fa-forward text-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="section-ranking" class="hidden animate-fade-in">
+            <div class="bg-dark-card p-6 rounded-2xl border border-slate-800 shadow-xl mb-6">
+                <div
+                    class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-700 pb-4 mb-4">
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-trophy text-yellow-500 text-2xl"></i>
+                        <h2 class="text-xl font-black text-white">Klasemen & Peringkat</h2>
+                    </div>
+                    <div class="flex items-center gap-3 w-full md:w-auto">
+                        <select id="rank-filter-kategori" onchange="renderRanking()"
+                            class="w-full md:w-64 bg-slate-900 border border-slate-600 rounded-lg p-2 text-white text-sm focus:border-blue-500 outline-none transition-colors"></select>
+
+                        <button id="btn-promote-final" class="hidden"></button>
+                    </div>
+                </div>
+
+                <div id="ranking-list" class="space-y-4">
+                </div>
+            </div>
+        </section>
+
+        <section id="section-juara" class="hidden animate-fade-in">
+            <div class="bg-dark-card p-6 rounded-2xl border border-slate-800 shadow-xl border-t-4 border-t-yellow-500">
+                <div class="text-center mb-8">
+                    <i
+                        class="fas fa-crown text-yellow-500 text-5xl mb-4 drop-shadow-[0_0_15px_rgba(234,179,8,0.6)]"></i>
+                    <h2 class="text-3xl font-black text-white tracking-tight">KLASEMEN JUARA UMUM</h2>
+                    <p class="text-slate-400 mt-2">Dihitung otomatis dari Perolehan Medali Nomor Final (Embu & Randori)
+                    </p>
+                </div>
+
+                <div class="overflow-x-auto rounded-xl border border-slate-700">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr
+                                class="bg-slate-900 text-sm font-black text-slate-400 uppercase tracking-widest border-b-2 border-slate-700">
+                                <th class="p-4 text-center w-16">Peringkat</th>
+                                <th class="p-4">Kontingen</th>
+                                <th class="p-4 text-center bg-yellow-500/5 text-yellow-500"><i
+                                        class="fas fa-medal mr-1"></i> Emas</th>
+                                <th class="p-4 text-center bg-slate-400/5 text-slate-300"><i
+                                        class="fas fa-medal mr-1"></i> Perak</th>
+                                <th class="p-4 text-center bg-amber-700/5 text-amber-600"><i
+                                        class="fas fa-medal mr-1"></i> Perunggu</th>
+                                <th class="p-4 text-center text-blue-400 border-l border-slate-700"><i
+                                        class="fas fa-star mr-1"></i> Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-juara-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="section-admin" class="hidden animate-fade-in">
+            <div class="max-w-3xl mx-auto space-y-6">
+
+                <div id="admin-broadcast-zone"
+                    class="bg-dark-card p-6 rounded-2xl border border-slate-800 shadow-xl mb-6 border-l-4 border-indigo-500">
+                    <div class="flex justify-between items-start mb-2">
+                        <h2 class="text-xl font-black text-white">
+                            <i class="fas fa-satellite-dish text-indigo-500 mr-2"></i>Peran Perangkat & TV Broadcast
+                        </h2>
+                        <!-- 👇 TOMBOL PENGATURAN TV (BARU) 👇 -->
+                        <button onclick="bukaModalSettingTV()"
+                            class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-sm flex items-center gap-2">
+                            <i class="fas fa-cogs text-blue-400"></i> SETTING TV
+                        </button>
+                    </div>
+                    <p class="text-xs text-slate-400 mb-4">Pilih peran laptop ini. Hanya "Tatami / Court" yang akan
+                        menembakkan data *live* ke layar TV.</p>
+
+                    <div class="flex flex-col md:flex-row gap-4 items-center">
+                        <select id="setting-device-role" onchange="changeDeviceRole()"
+                            class="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white font-bold focus:border-indigo-500 outline-none">
+                            <option value="admin">Admin Utama (Mode Senyap)</option>
+                            <option value="court_1">Court 1</option>
+                            <option value="court_2">Court 2</option>
+                            <option value="court_3">Court 3</option>
+                        </select>
+
+                        <a id="btn-open-tv" href="display.html?court=court_1" target="_blank"
+                            class="hidden whitespace-nowrap bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors shadow-lg">
+                            <i class="fas fa-desktop"></i> BUKA TV COURT INI
+                        </a>
+                    </div>
+                </div>
+                <div class="bg-dark-card p-6 rounded-2xl border border-slate-800 shadow-xl mb-6">
+                    <h2 class="text-xl font-black text-white mb-4 border-b border-slate-700 pb-2"><i
+                            class="fas fa-sliders-h text-blue-500 mr-2"></i>Pengaturan Sistem</h2>
+                    <div
+                        class="flex flex-col md:flex-row items-center justify-between gap-4 border-b border-slate-700 pb-4 mb-4 bg-slate-900/50 p-4 rounded-xl">
+                        <div class="flex-1 w-full">
+                            <h3 class="font-bold text-slate-300">Judul Kejuaraan (Layar TV)</h3>
+                            <p class="text-xs text-slate-500 mb-2">Ganti teks judul event secara real-time di layar
+                                penonton.</p>
+                            <input type="text" id="setting-judul-tv"
+                                class="w-full bg-slate-950 border border-slate-600 p-2.5 rounded text-white font-bold focus:border-blue-500 outline-none uppercase"
+                                placeholder="Contoh: KEJUARAAN NASIONAL 2024">
+                        </div>
+                        <div class="w-full md:w-auto mt-2 md:mt-0 flex justify-end">
+                            <button onclick="saveJudulTV()"
+                                class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-6 rounded-lg transition-colors shadow-md whitespace-nowrap"><i
+                                    class="fas fa-tv mr-2"></i>Terapkan ke TV</button>
+                        </div>
+                    </div>
+                    <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div>
+                            <h3 class="font-bold text-slate-300">Syarat Minimal Peserta (Juara Umum)</h3>
+                            <p class="text-xs text-slate-500">Nomor dengan peserta kurang dari angka ini tidak akan
+                                menyumbang medali di klasemen Juara Umum.</p>
+                        </div>
+                        <div class="flex items-center gap-2 w-full md:w-auto">
+                            <input type="number" id="setting-min-peserta" value="1" min="1"
+                                class="w-20 bg-slate-900 border border-slate-600 p-2 rounded text-white text-center font-bold focus:border-blue-500 outline-none">
+                            <button onclick="saveMinPesertaSetting()"
+                                class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-md">Simpan</button>
+                        </div>
+                    </div>
+                    <div
+                        class="flex flex-col md:flex-row items-center justify-between gap-4 mt-4 border-t border-slate-700 pt-4">
+                        <div>
+                            <h3 class="font-bold text-slate-300">Aktifkan Eksibisi Embu Langsung Final</h3>
+                            <p class="text-xs text-slate-500">Jika peserta kurang dari batas minimum Juara Umum, mainkan
+                                hanya 1 babak dan langsung tentukan juara (Medali tidak dihitung ke Juara Umum).</p>
+                        </div>
+                        <div class="flex items-center justify-end w-full md:w-auto">
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="setting-eksibisi-final" onchange="saveEksibisiSetting()"
+                                    class="sr-only peer">
+                                <div
+                                    class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600">
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    <div
+                        class="flex flex-col md:flex-row items-center justify-between gap-4 mt-4 border-t border-slate-700 pt-4">
+                        <div>
+                            <h3 class="font-bold text-slate-300">Pengaturan Standar Waktu Embu</h3>
+                            <p class="text-xs text-slate-500">Atur batas MIN dan MAX waktu untuk kelas Tandoku, Pemula,
+                                dan Default. Denda akan dihitung otomatis.</p>
+                        </div>
+                        <div class="flex items-center justify-end w-full md:w-auto">
+                            <button onclick="openTimeModal()"
+                                class="bg-slate-800 border border-blue-500 hover:bg-blue-600 text-blue-400 hover:text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm shadow-md whitespace-nowrap"><i
+                                    class="fas fa-clock mr-2"></i>Atur Waktu</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-dark-card p-6 rounded-2xl border border-slate-800 shadow-xl mb-6">
+                    <h2 class="text-xl font-black text-blue-400 mb-2"><i class="fas fa-server mr-2"></i>Manajemen
+                        Database (Backup)</h2>
+                    <p class="text-sm text-slate-400 mb-6">Simpan seluruh data turnamen (Kategori, Atlet, Bagan, Nilai)
+                        ke dalam satu file mentah JSON untuk diarsipkan, atau pulihkan data dari file cadangan.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <button onclick="backupDatabase()"
+                            class="bg-blue-900/50 hover:bg-blue-600 border border-blue-700 text-blue-300 hover:text-white font-bold py-3 px-4 rounded-xl transition-all shadow-md text-sm flex items-center justify-center gap-3">
+                            <i class="fas fa-download text-2xl"></i>
+                            <div class="text-left leading-tight">
+                                <div class="font-black">BACKUP DATA</div>
+                                <div class="text-[10px] font-normal opacity-70">Simpan ke file .JSON</div>
+                            </div>
+                        </button>
+
+                        <input type="file" id="json-restore-upload" accept=".json" class="hidden"
+                            onchange="restoreDatabase(event)">
+                        <button onclick="document.getElementById('json-restore-upload').click()"
+                            class="bg-orange-900/50 hover:bg-orange-600 border border-orange-700 text-orange-300 hover:text-white font-bold py-3 px-4 rounded-xl transition-all shadow-md text-sm flex items-center justify-center gap-3">
+                            <i class="fas fa-upload text-2xl"></i>
+                            <div class="text-left leading-tight">
+                                <div class="font-black">RESTORE DATA</div>
+                                <div class="text-[10px] font-normal opacity-70">Muat dari file .JSON</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-dark-card p-6 rounded-2xl border border-slate-800 shadow-xl text-center">
+                    <h2 class="text-xl font-black text-white mb-2"><i
+                            class="fas fa-download text-green-500 mr-2"></i>Export Data</h2>
+                    <p class="text-sm text-slate-400 mb-6">Unduh seluruh data nilai mentah ke format CSV (Excel).</p>
+                    <button onclick="exportCustomCSV()"
+                        class="bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-8 rounded-xl transition-transform hover:scale-105 shadow-lg w-full md:w-auto">
+                        <i class="fas fa-file-csv mr-2"></i> DOWNLOAD REKAP NILAI (.CSV)
+                    </button>
+                </div>
+
+                <div id="admin-paperless-zone"
+                    class="bg-dark-card p-6 rounded-2xl border border-slate-800 shadow-xl text-center mb-6">
+                    <h2 class="text-xl font-black text-blue-400 mb-2"><i class="fas fa-qrcode mr-2"></i>Sistem Paperless
+                        (Verifikasi)</h2>
+                    <p class="text-sm text-slate-400 mb-4">Aktifkan fitur scan ID Card Official & Wasit menggunakan
+                        Webcam di meja Panitera (Khusus Randori).</p>
+                    <!-- PENGATURAN LINK SCANNER -->
+                    <div
+                        class="flex flex-col md:flex-row items-center justify-between gap-4 mb-5 bg-slate-900/50 p-4 rounded-xl border border-slate-700 shadow-inner">
+                        <div class="text-left w-full">
+                            <h3 class="font-bold text-slate-300 text-sm">URL Link Mobile Scanner</h3>
+                            <p class="text-[10px] text-slate-500">Alamat web (Netlify/Hosting) aplikasi Scanner Anda.
+                            </p>
+                        </div>
+                        <div class="flex items-center gap-2 w-full md:w-auto">
+                            <input type="text" id="setting-scanner-url" placeholder="https://app-anda.netlify.app"
+                                class="w-full md:w-56 bg-slate-950 border border-slate-600 rounded-lg p-2.5 text-blue-300 text-xs font-bold focus:border-purple-500 outline-none">
+                            <button onclick="saveScannerUrl()"
+                                class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-2.5 px-4 rounded-lg transition-colors shadow-md whitespace-nowrap text-xs"><i
+                                    class="fas fa-save mr-1"></i> Simpan</button>
+                        </div>
+                    </div>
+                    <!-- PENGATURAN LINK APLIKASI WASIT (NETLIFY) -->
+                    <div
+                        class="flex flex-col md:flex-row items-center justify-between gap-4 mb-5 bg-slate-900/50 p-4 rounded-xl border border-slate-700 shadow-inner mt-4">
+                        <div class="text-left w-full">
+                            <h3 class="font-bold text-slate-300 text-sm">URL Link Aplikasi Wasit</h3>
+                            <p class="text-[10px] text-slate-500">Alamat web (Netlify/Hosting) khusus untuk terminal
+                                Wasit.</p>
+                        </div>
+                        <div class="flex items-center gap-2 w-full md:w-auto">
+                            <input type="text" id="setting-wasit-url" placeholder="https://wasit-app.netlify.app"
+                                class="w-full md:w-56 bg-slate-950 border border-slate-600 rounded-lg p-2.5 text-green-300 text-xs font-bold focus:border-green-500 outline-none">
+                            <button onclick="saveWasitUrl()"
+                                class="bg-green-600 hover:bg-green-500 text-white font-bold py-2.5 px-4 rounded-lg transition-colors shadow-md whitespace-nowrap text-xs"><i
+                                    class="fas fa-save mr-1"></i> Simpan</button>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-center gap-4 mb-4">
+                        <span class="font-bold text-slate-300 text-sm">Status Verifikator Webcam:</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="setting-verifikator" onchange="saveVerifikatorSetting()"
+                                class="sr-only peer">
+                            <div
+                                class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600">
+                            </div>
+                        </label>
+                    </div>
+                    <button onclick="openMasterBarcodeModal()"
+                        class="w-full md:w-auto bg-slate-800 border border-blue-500 hover:bg-blue-600 text-blue-400 hover:text-white font-bold py-3 px-6 rounded-xl transition-all shadow-md text-sm">
+                        <i class="fas fa-users-cog mr-2"></i> KELOLA MASTER DATA BARCODE
+                    </button>
+                </div>
+
+                <!-- TAMBAHKAN BLOK INI DI ATAS ZONA BERBAHAYA -->
+                <div id="containerIntegrasi"
+                    class="bg-indigo-950/30 p-6 rounded-2xl border border-indigo-800 shadow-xl text-center mb-6">
+                    <h2 id="titleIntegrasi" class="text-xl font-black text-indigo-400 mb-2"><i
+                            class="fas fa-cloud-download-alt mr-2"></i>Integrasi Sistem Pendaftaran</h2>
+                    <p id="descIntegrasi" class="text-sm text-indigo-300/70 mb-6">Sedot data pendaftar terbaru secara
+                        langsung dari server Pendaftaran tanpa perlu Import CSV.</p>
+                    <button id="btnSyncData" onclick="tarikDataPendaftaran()"
+                        class="bg-indigo-600 hover:bg-indigo-500 text-white font-black py-3 px-8 rounded-xl transition-transform hover:scale-105 shadow-[0_0_15px_rgba(79,70,229,0.5)] text-sm tracking-wider">
+                        <i class="fas fa-sync-alt mr-2 animate-spin-slow"></i> MULAI SINKRONISASI DATA
+                    </button>
+                </div>
+
+                <div class="bg-red-950/20 p-6 rounded-2xl border border-red-900 shadow-xl text-center">
+                    <h2 class="text-xl font-black text-red-500 mb-2"><i
+                            class="fas fa-exclamation-triangle mr-2"></i>Zona Berbahaya</h2>
+                    <p class="text-sm text-red-300/70 mb-6">Tindakan di bawah ini tidak dapat dibatalkan. Pastikan Anda
+                        sudah mengunduh data jika diperlukan.</p>
+
+                    <!-- PERUBAHAN GRID MENJADI 4 TOMBOL -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <button onclick="resetSemuaNilai()"
+                            class="bg-slate-800 border border-orange-700 hover:bg-orange-900 text-orange-400 font-bold py-3 px-4 rounded-lg transition-colors text-sm shadow-md">
+                            <i class="fas fa-eraser mr-2"></i>Hapus Nilai Saja
+                        </button>
+                        <button onclick="resetSemuaDrawing()"
+                            class="bg-slate-800 border border-red-500 hover:bg-red-900 text-red-400 font-bold py-3 px-4 rounded-lg transition-colors text-sm shadow-md">
+                            <i class="fas fa-sitemap mr-2"></i>Hapus Drawing & Bagan
+                        </button>
+                        <button onclick="resetDataAtlet()"
+                            class="bg-slate-800 border border-red-700 hover:bg-red-900 text-red-500 font-bold py-3 px-4 rounded-lg transition-colors text-sm shadow-md">
+                            <i class="fas fa-user-slash mr-2"></i>Hapus Semua Atlet
+                        </button>
+                        <button onclick="resetTotalSistem()"
+                            class="bg-red-700 hover:bg-red-600 text-white font-black py-3 px-4 rounded-lg transition-colors shadow-[0_0_15px_rgba(185,28,28,0.5)] text-sm">
+                            <i class="fas fa-bomb mr-2"></i>RESET PABRIK (HAPUS SEMUA)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <div id="edit-modal"
+        class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center z-50 animate-fade-in p-4">
+        <div
+            class="bg-dark-card border border-slate-700 p-6 rounded-2xl shadow-2xl w-full max-w-md transform transition-all">
+            <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-3">
+                <h3 class="text-xl font-black text-white"><i class="fas fa-edit text-blue-500 mr-2"></i>Edit Data Atlet
+                </h3>
+                <button onclick="closeEditModal()" class="text-slate-400 hover:text-white transition-colors"><i
+                        class="fas fa-times text-xl"></i></button>
+            </div>
+            <form id="form-edit-peserta" class="space-y-4">
+                <input type="hidden" id="edit-id">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1 uppercase">Nomor Pertandingan</label>
+                    <select id="edit-kategori"
+                        class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2 text-white text-sm focus:border-blue-500 outline-none"></select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1 uppercase">Nama Atlet/Tim</label>
+                    <input type="text" id="edit-nama" required
+                        class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2 text-white text-sm focus:border-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1 uppercase">Kontingen</label>
+                    <input type="text" id="edit-kontingen" required
+                        class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2 text-white text-sm focus:border-blue-500 outline-none">
+                </div>
+
+                <div class="flex justify-end gap-3 mt-8">
+                    <button type="button" onclick="closeEditModal()"
+                        class="px-5 py-2 rounded-lg text-slate-300 font-bold hover:bg-slate-800 transition-colors">Batal</button>
+                    <button type="submit"
+                        class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-2 rounded-lg transition-transform hover:scale-105 shadow-md">Simpan
+                        Perubahan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="time-modal"
+        class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center z-50 animate-fade-in p-4">
+        <div
+            class="bg-dark-card border border-slate-700 p-6 rounded-2xl shadow-2xl w-full max-w-md transform transition-all">
+            <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-3">
+                <h3 class="text-xl font-black text-white"><i class="fas fa-clock text-blue-500 mr-2"></i>Standar Waktu
+                    Embu</h3>
+                <button onclick="closeTimeModal()" class="text-slate-400 hover:text-white transition-colors"><i
+                        class="fas fa-times text-xl"></i></button>
+            </div>
+            <form id="form-time-rules" class="space-y-4">
+                <div class="bg-slate-900 p-3 rounded-lg border border-slate-700 shadow-inner">
+                    <label class="block text-xs font-black text-yellow-400 mb-2 uppercase tracking-widest">1. Kategori
+                        Tandoku</label>
+                    <div class="flex gap-2">
+                        <input type="number" id="t-tandoku-min"
+                            class="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white text-sm text-center font-mono"
+                            placeholder="Min (Detik)" required>
+                        <input type="number" id="t-tandoku-max"
+                            class="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white text-sm text-center font-mono"
+                            placeholder="Max (Detik)" required>
+                    </div>
+                </div>
+                <div class="bg-slate-900 p-3 rounded-lg border border-slate-700 shadow-inner">
+                    <label class="block text-xs font-black text-green-400 mb-2 uppercase tracking-widest">2. Kategori
+                        Pemula</label>
+                    <div class="flex gap-2">
+                        <input type="number" id="t-pemula-min"
+                            class="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white text-sm text-center font-mono"
+                            placeholder="Min (Detik)" required>
+                        <input type="number" id="t-pemula-max"
+                            class="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white text-sm text-center font-mono"
+                            placeholder="Max (Detik)" required>
+                    </div>
+                </div>
+                <div class="bg-slate-900 p-3 rounded-lg border border-slate-700 shadow-inner">
+                    <label class="block text-xs font-black text-blue-400 mb-2 uppercase tracking-widest">3. Remaja /
+                        Dewasa (Default)</label>
+                    <div class="flex gap-2">
+                        <input type="number" id="t-default-min"
+                            class="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white text-sm text-center font-mono"
+                            placeholder="Min (Detik)" required>
+                        <input type="number" id="t-default-max"
+                            class="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white text-sm text-center font-mono"
+                            placeholder="Max (Detik)" required>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 mt-8 border-t border-slate-700 pt-4">
+                    <button type="button" onclick="closeTimeModal()"
+                        class="px-5 py-2 rounded-lg text-slate-300 font-bold hover:bg-slate-800 transition-colors">Batal</button>
+                    <button type="submit"
+                        class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-2 rounded-lg transition-transform hover:scale-105 shadow-md">Simpan
+                        Aturan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL MASTER BARCODE -->
+    <div id="barcode-modal"
+        class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm hidden flex items-center justify-center z-[60] animate-fade-in p-4">
+        <div
+            class="bg-dark-card border border-slate-700 p-6 rounded-2xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col transform transition-all">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-3">
+                <h3 class="text-xl font-black text-white"><i class="fas fa-database text-blue-500 mr-2"></i>Database
+                    Official & Wasit</h3>
+                <button onclick="closeMasterBarcodeModal()"
+                    class="text-slate-400 hover:text-red-400 transition-colors"><i
+                        class="fas fa-times text-2xl"></i></button>
+            </div>
+
+            <div
+                class="flex flex-col md:flex-row justify-between items-center mb-4 bg-slate-900 p-3 rounded-xl border border-slate-700 gap-3">
+                <div class="text-xs text-slate-400 flex-1">
+                    <i class="fas fa-info-circle text-blue-400 mr-1"></i> Format CSV: <b>Nama, Jabatan(Wasit/Official),
+                        Kontingen(Kosongi jika Wasit)</b>
+                </div>
+                <div class="flex items-center gap-2 w-full md:w-auto">
+                    <button onclick="openAccountForm()"
+                        class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg shadow-md text-[11px] flex items-center justify-center gap-2 whitespace-nowrap transition-transform hover:scale-105">
+                        <i class="fas fa-user-plus text-sm"></i> TAMBAH MANUAL
+                    </button>
+
+                    <input type="file" id="csv-barcode-upload" accept=".csv" class="hidden"
+                        onchange="handleBarcodeCSVUpload(event)">
+                    <button onclick="document.getElementById('csv-barcode-upload').click()"
+                        class="bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-lg shadow-md text-[11px] flex items-center justify-center gap-2 whitespace-nowrap transition-transform hover:scale-105">
+                        <i class="fas fa-file-csv text-sm"></i> IMPORT CSV
+                    </button>
+
+                    <button onclick="openAdminQrSetupModal()"
+                        class="bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-1.5 px-3 rounded-lg shadow-md flex items-center justify-center transition-transform hover:scale-105"
+                        title="Setup Scanner Admin">
+                        <i class="fas fa-qrcode text-lg"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div
+                class="overflow-y-auto custom-scrollbar flex-1 bg-[#0f172a] rounded-xl border border-slate-700 shadow-inner">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-800 text-xs uppercase text-slate-400 sticky top-0 shadow-md z-10">
+                        <tr>
+                            <th class="p-4">Nama Lengkap</th>
+                            <th class="p-4">Jabatan</th>
+                            <th class="p-4">Kontingen</th>
+                            <th class="p-4">Status Barcode</th>
+                            <th class="p-4 text-center">Aksi (Pairing)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="barcode-list-body" class="text-slate-300"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="account-form-modal"
+        class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm hidden flex items-center justify-center z-[80] animate-fade-in p-4">
+        <div
+            class="bg-dark-card border border-slate-700 p-6 rounded-2xl shadow-2xl w-full max-w-sm transform transition-all">
+            <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-3">
+                <h3 id="account-form-title" class="text-lg font-black text-white"><i
+                        class="fas fa-user-edit text-blue-500 mr-2"></i>Formulir Akun</h3>
+                <button onclick="closeAccountForm()" class="text-slate-400 hover:text-white transition-colors"><i
+                        class="fas fa-times text-xl"></i></button>
+            </div>
+            <form onsubmit="saveAccountForm(event)" class="space-y-4">
+                <input type="hidden" id="acc-id">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Nama
+                        Lengkap</label>
+                    <input type="text" id="acc-nama" required
+                        class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-white text-sm focus:border-blue-500 outline-none">
+                </div>
+                <div>
+                    <label
+                        class="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Jabatan</label>
+                    <select id="acc-jabatan" required onchange="handleJabatanFormChange()"
+    class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-white text-sm focus:border-blue-500 outline-none">
+    <option value="OFFICIAL">Official Tim</option>
+    <option value="WASIT">Wasit Utama</option>
+    <option value="KOORDINATOR">Koordinator Pertandingan</option>
+</select>
+                </div>
+                <div class="mb-4">
+                    <label
+                        class="block text-[10px] text-slate-400 font-bold mb-1 uppercase tracking-widest">Kontingen</label>
+                    <input type="text" id="acc-kontingen"
+                        class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-sm text-white outline-none focus:border-blue-500 transition-colors"
+                        placeholder="Kosongi jika Wasit">
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-[10px] text-slate-400 font-bold mb-1 uppercase tracking-widest">Area Tugas
+                        (Khusus Wasit)</label>
+                    <select id="acc-court-tugas"
+                        class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-sm text-white focus:border-blue-500 outline-none transition-colors">
+                        <option value="ALL">Semua Lapangan (Bebas)</option>
+                        <option value="court_1">Court 1</option>
+                        <option value="court_2">Court 2</option>
+                        <option value="court_3">Court 3</option>
+                    </select>
+                </div>
+
+                <!-- 👇 TAMBAHKAN BLOK KODE INI TEPAT DI BAWAH KONTINGEN 👇 -->
+                <div class="mb-6">
+                    <label class="block text-[10px] text-slate-400 font-bold mb-1 uppercase tracking-widest">ID Login
+                        Manual (Otomatis)</label>
+                    <input type="text" id="acc-short-id" readonly
+                        class="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-2.5 text-sm text-yellow-500 font-mono font-bold outline-none cursor-not-allowed text-center tracking-widest"
+                        placeholder="DIBUAT OTOMATIS">
+                </div>
+                <!-- 👆 BATAS AKHIR KODE TAMBAHAN 👆 -->
+
+                <!-- Tombol Simpan Data biasanya ada di bawah sini -->
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" onclick="closeAccountForm()"
+                        class="px-4 py-2 rounded-lg text-sm font-bold text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">Batal</button>
+                    <button type="submit"
+                        class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-lg text-sm font-bold shadow-md">Simpan
+                        Data</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL RADAR PAIRING (HP ADMIN) -->
+    <div id="pairing-radar-modal"
+        class="fixed inset-0 bg-slate-950/95 backdrop-blur-md hidden flex items-center justify-center z-[70] animate-fade-in p-4">
+        <div
+            class="bg-dark-card border border-blue-500/30 p-8 rounded-3xl shadow-[0_0_50px_rgba(59,130,246,0.15)] w-full max-w-md flex flex-col items-center text-center transform transition-all relative overflow-hidden">
+
+            <button onclick="closePairingRadarModal()"
+                class="absolute top-4 right-4 text-slate-500 hover:text-red-400 transition-colors"><i
+                    class="fas fa-times text-xl"></i></button>
+
+            <h3
+                class="text-sm font-black text-blue-400 tracking-widest uppercase mb-6 border-b border-slate-700/50 pb-2 w-full">
+                PAIRING MODE AKTIF</h3>
+
+            <div class="relative flex items-center justify-center mb-6">
+                <!-- Efek Gelombang Radar -->
+                <div class="absolute w-32 h-32 border-4 border-blue-500/30 rounded-full animate-ping"></div>
+                <div class="absolute w-24 h-24 border-2 border-blue-400/40 rounded-full animate-pulse"></div>
+                <div
+                    class="w-20 h-20 bg-slate-800 border-2 border-blue-500 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(59,130,246,0.5)] z-10 relative">
+                    <i class="fas fa-mobile-alt text-3xl text-white"></i>
+                </div>
+            </div>
+
+            <p class="text-xs text-slate-400 mb-2">Sistem menunggu scan barcode untuk:</p>
+            <div class="bg-slate-900 border border-slate-700 w-full p-4 rounded-xl shadow-inner mb-6">
+                <div id="pairing-target-role"
+                    class="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">JABATAN</div>
+                <div id="pairing-target-name" class="text-xl font-black text-white">NAMA TARGET</div>
+            </div>
+
+            <div
+                class="text-[10px] font-bold text-yellow-400 bg-yellow-900/20 px-4 py-2 rounded-lg border border-yellow-700/30 animate-pulse w-full">
+                Scan ID Card menggunakan Mobile Scanner (Mode Admin).
+            </div>
+        </div>
+    </div>
+
+    <div id="verification-modal"
+        class="fixed inset-0 bg-slate-950/95 backdrop-blur-md hidden flex items-center justify-center z-[80] animate-fade-in p-4">
+        <div
+            class="bg-dark-card border border-slate-700 p-6 rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col md:flex-row gap-6 transform transition-all max-h-[95vh] overflow-y-auto custom-scrollbar">
+
+            <div class="flex-1 flex flex-col">
+                <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
+                    <h3 class="text-lg font-black text-white"><i class="fas fa-mobile-alt text-blue-500 mr-2"></i>MOBILE
+                        SCANNER TERHUBUNG</h3>
+                    <button onclick="closeVerificationModal()"
+                        class="text-slate-400 hover:text-red-400 transition-colors md:hidden"><i
+                            class="fas fa-times text-2xl"></i></button>
+                </div>
+
+                <!-- WADAH RADAR HP -->
+                <div
+                    class="bg-[#0f172a] rounded-xl border-2 border-dashed border-blue-500/50 overflow-hidden relative flex-1 min-h-[300px] flex flex-col items-center justify-center transition-all p-6 text-center">
+                    <div class="relative">
+                        <i
+                            class="fas fa-wifi text-blue-500 text-5xl absolute -top-8 -left-4 animate-ping opacity-50"></i>
+                        <i
+                            class="fas fa-mobile-alt text-6xl text-slate-300 drop-shadow-[0_0_15px_rgba(59,130,246,0.6)] z-10 relative"></i>
+                    </div>
+                    <h4 class="text-lg font-black text-white mt-6 tracking-widest">SISTEM MENUNGGU SCAN...</h4>
+                    <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+                        Silakan buka aplikasi Scanner di HP Panitera.<br>
+                        Pastikan HP berada di <b id="ui-court-badge"
+                            class="bg-indigo-600 text-white px-2 py-0.5 rounded text-[10px]">COURT INI</b>.
+                    </p>
+
+                    <div id="verify-scan-hint"
+                        class="mt-8 text-[11px] font-bold text-yellow-400 uppercase tracking-widest bg-yellow-900/30 border border-yellow-700/50 px-4 py-2 rounded-lg animate-pulse">
+                        Arahkan ID Card ke kamera HP Panitera sekarang.
+                    </div>
+
+                    <!-- 🌟 TOMBOL UNGU MAGIS 🌟 -->
+                    <button onclick="openQrOperatorModal()"
+                        class="absolute bottom-4 right-4 bg-purple-600 hover:bg-purple-500 text-white w-12 h-12 rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(147,51,234,0.5)] transition-transform hover:scale-110 group z-20 border border-purple-400/50">
+                        <i class="fas fa-qrcode text-2xl"></i>
+                        <div
+                            class="absolute bottom-full right-0 mb-3 w-48 bg-slate-800 text-white text-[10px] font-bold py-2 px-3 rounded-lg shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none text-center border border-slate-600">
+                            Tampilkan QR Code untuk Operator HP
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <div class="w-full md:w-1/3 flex flex-col gap-3">
+                <div class="justify-between items-center mb-1 md:mb-2 border-b border-slate-700 pb-2 hidden md:flex">
+                    <h3 class="text-lg font-black text-white"><i
+                            class="fas fa-check-circle text-green-500 mr-2"></i>STATUS PERSETUJUAN</h3>
+                    <button onclick="closeVerificationModal()"
+                        class="text-slate-400 hover:text-red-400 transition-colors"><i
+                            class="fas fa-times text-xl"></i></button>
+                </div>
+
+                <div id="v-match-identity"
+                    class="bg-slate-900 border border-slate-700 rounded-xl p-3 shadow-inner mb-1 flex flex-col justify-center">
+                </div>
+
+                <div id="v-block-wasit"
+                    class="bg-slate-800 border border-slate-700 rounded-xl p-3 flex flex-col items-center justify-center text-center transition-all duration-500 min-h-[75px]">
+                    <span class="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">WASIT UTAMA</span>
+                    <span id="v-name-wasit" class="font-bold text-slate-600 text-sm">Menunggu...</span>
+                </div>
+
+                <div class="flex gap-3">
+                    <div id="v-block-merah"
+                        class="flex-1 bg-slate-800 border border-slate-700 rounded-xl p-3 flex flex-col items-center justify-center text-center transition-all duration-500 min-h-[75px]">
+                        <span class="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">OFF.
+                            MERAH</span>
+                        <span id="v-name-merah" class="font-bold text-slate-600 text-sm">Menunggu...</span>
+                    </div>
+
+                    <div id="v-block-putih"
+                        class="flex-1 bg-slate-800 border border-slate-700 rounded-xl p-3 flex flex-col items-center justify-center text-center transition-all duration-500 min-h-[75px]">
+                        <span class="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">OFF.
+                            PUTIH</span>
+                        <span id="v-name-putih" class="font-bold text-slate-600 text-sm">Menunggu...</span>
+                    </div>
+                </div>
+
+                <button onclick="saveRandoriMatchResult()"
+                    class="mt-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-transform hover:scale-[1.02] text-sm tracking-widest flex items-center justify-center gap-2">
+                    <i class="fas fa-save text-lg"></i> SIMPAN HASIL
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL QR CODE OPERATOR (SMART URL) -->
+<div id="qr-operator-modal"
+    class="fixed inset-0 bg-slate-950/95 backdrop-blur-md hidden flex items-center justify-center z-[120] animate-fade-in p-4">
+    <div
+        class="bg-dark-card border border-purple-500/50 p-8 rounded-3xl shadow-[0_0_50px_rgba(147,51,234,0.2)] w-full max-w-sm flex flex-col items-center text-center transform transition-all relative overflow-hidden">
+        <button onclick="closeQrOperatorModal()"
+            class="absolute top-4 right-4 text-slate-500 hover:text-red-400 transition-colors"><i
+                class="fas fa-times text-xl"></i></button>
+
+        <h3
+            class="text-sm font-black text-purple-400 tracking-widest uppercase mb-2 border-b border-slate-700 pb-3 w-full">
+            <i class="fas fa-mobile-alt mr-2"></i>LINK OPERATOR SCANNER
+        </h3>
+
+        <p class="text-[11px] text-slate-300 mb-6 leading-relaxed">Gunakan kamera bawaan HP Panitera Pembantu untuk
+            men-scan QR ini. HP akan otomatis terhubung ke lokasi yang tepat.</p>
+
+        <!-- Tempat QR Code digambar -->
+        <div
+            class="bg-white p-4 rounded-2xl shadow-inner mb-6 flex items-center justify-center w-[220px] h-[220px]">
+            <div id="qr-code-canvas"></div>
+        </div>
+
+        <div
+            class="text-[10px] font-bold text-white bg-indigo-900/40 px-4 py-3 rounded-xl border border-indigo-700/50 w-full flex flex-col items-center gap-1 shadow-inner">
+            <span class="text-slate-400">Target Tugas Scanner:</span>
+            <span id="qr-target-court" class="text-xl font-black tracking-widest text-indigo-300">-</span>
+        </div>
+
+        <p class="mt-4 text-[11px] text-slate-300 leading-relaxed">
+            Bila panitera belum mempunyai aplikasi scanner bisa <button onclick="bukaModalDownloadAPK()"
+                class="text-blue-400 font-bold underline hover:text-blue-300 transition-colors">KLIK DI
+                SINI</button>
+        </p>
+    </div>
+</div>
+
+    <!-- MODAL MASTER QR PENUGASAN WASIT -->
+    <div id="qr-tugas-modal"
+        class="fixed inset-0 bg-slate-950/95 backdrop-blur-md hidden flex items-center justify-center z-[100] animate-fade-in p-4">
+        <div
+            class="bg-white rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl relative overflow-hidden flex flex-col items-center">
+            <div class="absolute top-0 left-0 w-full h-2 bg-blue-600"></div>
+
+            <h2 class="text-xl font-extrabold text-slate-800 mb-1">SCAN PENUGASAN</h2>
+            <p id="qr-tugas-subtitle" class="text-[10px] font-bold text-slate-500 mb-6 uppercase tracking-widest">
+                COURT 1 • 5 JURI • MODE EMBU
+            </p>
+
+            <div
+                class="bg-white p-3 rounded-xl border-4 border-slate-100 shadow-inner mb-6 w-[240px] h-[240px] flex items-center justify-center">
+                <!-- Kanvas dari Library qrcode.js -->
+                <div id="qr-tugas-canvas"></div>
+            </div>
+
+            <div class="bg-blue-50 text-blue-800 p-3 rounded-lg w-full mb-6 text-xs text-left shadow-sm">
+                <p class="font-bold mb-1"><i class="fas fa-info-circle mr-1"></i>Instruksi Wasit:</p>
+                <p>Kamera aplikasi HP Wasit diarahkan ke kotak QR ini. Sistem otomatis mendeteksi kursi Wasit (1-5).</p>
+            </div>
+
+            <button onclick="closeQRTugasModal()"
+                class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-lg transition-colors text-sm shadow-md">
+                TUTUP & MULAI PERTANDINGAN
+            </button>
+        </div>
+    </div>
+
+    <!-- 👇 MODAL BARU: DOWNLOAD APK SCANNER 👇 -->
+    <div id="apk-download-modal"
+        class="fixed inset-0 bg-slate-950/95 backdrop-blur-md hidden flex items-center justify-center z-[110] animate-fade-in p-4">
+        <div
+            class="bg-dark-card border border-green-500/50 p-8 rounded-3xl shadow-[0_0_50px_rgba(34,197,94,0.2)] w-full max-w-sm flex flex-col items-center text-left transform transition-all relative overflow-hidden">
+            <button onclick="tutupModalDownloadAPK()"
+                class="absolute top-4 right-4 text-slate-500 hover:text-red-400 transition-colors"><i
+                    class="fas fa-times text-xl"></i></button>
+
+            <h3
+                class="text-sm font-black text-green-400 tracking-widest uppercase mb-2 border-b border-slate-700 pb-3 w-full text-center">
+                <i class="fas fa-download mr-2"></i>DOWNLOAD APK SCANNER
+            </h3>
+
+            <!-- Tempat QR Code URL APK digambar -->
+            <div
+                class="bg-white p-4 rounded-2xl shadow-inner mb-6 mt-4 flex items-center justify-center w-[200px] h-[200px] mx-auto">
+                <div id="qr-apk-canvas"></div>
+            </div>
+
+            <!-- Prosedur Instalasi -->
+            <div class="bg-slate-900 border border-slate-700 p-4 rounded-xl shadow-inner w-full">
+                <p class="text-xs font-bold text-slate-300 mb-2 border-b border-slate-700 pb-2"><i
+                        class="fas fa-list-ol text-blue-400 mr-2"></i>Prosedur Instalasi:</p>
+                <ol class="text-[10px] text-slate-400 list-decimal pl-4 space-y-1.5 leading-relaxed">
+                    <li>Buka kamera bawaan HP (atau Google Lens) dan scan QR di atas.</li>
+                    <li>Ketuk link yang muncul untuk mengunduh (download) file APK.</li>
+                    <li>Buka file yang terunduh dan tekan <b>'Install'</b>.</li>
+                    <li>Bila muncul peringatan keamanan, pilih <b>'Settings/Pengaturan'</b> &rarr; aktifkan <b>'Allow
+                            from this source'</b> (Izinkan dari sumber ini).</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+    <!-- 👆 AKHIR MODAL BARU 👆 -->
+
+    <!-- 👇 MODAL EDIT RANGE BERAT 👇 -->
+    <div id="modal-edit-range"
+        class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center z-[110] animate-fade-in p-4">
+        <div class="bg-dark-card border border-slate-700 p-6 rounded-2xl shadow-2xl w-full max-w-sm">
+            <h3 class="text-lg font-black text-white mb-4"><i class="fas fa-sliders-h text-teal-500 mr-2"></i>Koreksi
+                Range Berat</h3>
+            <div class="flex gap-4 mb-6">
+                <div class="flex-1">
+                    <label class="block text-xs font-bold text-slate-400 mb-1">MIN (Kg)</label>
+                    <input type="number" id="input-range-min"
+                        class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white outline-none">
+                </div>
+                <div class="flex-1">
+                    <label class="block text-xs font-bold text-slate-400 mb-1">MAX (Kg)</label>
+                    <input type="number" id="input-range-max"
+                        class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white outline-none">
+                </div>
+            </div>
+            <div class="flex justify-end gap-2">
+                <button onclick="document.getElementById('modal-edit-range').classList.add('hidden')"
+                    class="px-4 py-2 text-slate-400 hover:text-white font-bold text-sm">Batal</button>
+                <button onclick="simpanManualRange()"
+                    class="bg-teal-600 hover:bg-teal-500 text-white px-4 py-2 rounded-lg font-bold text-sm">Simpan
+                    Range</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 👇 MODAL PINDAH KELAS (TM) 👇 -->
+    <div id="modal-pindah-kelas"
+        class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm hidden flex items-center justify-center z-[110] animate-fade-in p-4">
+        <div
+            class="bg-dark-card border border-orange-500/50 p-6 rounded-2xl shadow-[0_0_30px_rgba(249,115,22,0.2)] w-full max-w-md">
+            <h3 class="text-lg font-black text-orange-400 mb-2"><i class="fas fa-exchange-alt mr-2"></i>Pindah Kelas
+                (Keputusan TM)</h3>
+            <p id="teks-pindah-info"
+                class="text-xs text-slate-300 mb-4 bg-slate-900 p-3 rounded border border-slate-700"></p>
+
+            <input type="hidden" id="pindah-atlet-id">
+            <label class="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Pilih Kelas Baru</label>
+            <select id="pindah-select-kategori"
+                class="w-full bg-slate-900 border border-orange-500/50 rounded-lg p-3 text-white text-sm focus:border-orange-400 outline-none mb-6"></select>
+
+            <div class="flex justify-end gap-3">
+                <button onclick="document.getElementById('modal-pindah-kelas').classList.add('hidden')"
+                    class="px-4 py-2 text-slate-400 hover:text-white font-bold text-sm">Batal</button>
+                <button onclick="eksekusiPindahKelas()"
+                    class="bg-orange-600 hover:bg-orange-500 text-white px-5 py-2 rounded-lg font-bold shadow-md">Pindahkan
+                    Sekarang</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 👇 MODAL PERINGATAN DRAWING (TIMBANG BADAN) 👇 -->
+    <div id="modal-confirm-drawing"
+        class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm hidden flex items-center justify-center z-[120] animate-fade-in p-4">
+        <div
+            class="bg-dark-card border border-yellow-500/50 p-8 rounded-3xl shadow-[0_0_40px_rgba(234,179,8,0.2)] w-full max-w-md text-center transform transition-all relative overflow-hidden">
+
+            <div class="absolute top-0 left-0 w-full h-2 bg-yellow-500"></div>
+
+            <i
+                class="fas fa-exclamation-triangle text-yellow-500 text-5xl mb-4 drop-shadow-[0_0_10px_rgba(234,179,8,0.4)] animate-pulse"></i>
+            <h3 class="text-xl font-black text-white mb-2 tracking-wide">PERINGATAN DRAWING!</h3>
+
+            <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+                Terdapat <b id="drawing-pending-count" class="text-yellow-400 text-lg px-1">0</b> atlet di kelas ini
+                yang <span class="border-b border-yellow-500/50">belum memiliki data berat badan</span>.
+            </p>
+
+            <!-- Daftar Atlet Belum Timbang -->
+            <div class="bg-slate-900/80 border border-slate-700 p-3 rounded-xl text-xs text-slate-300 text-left mb-6 max-h-32 overflow-y-auto custom-scrollbar shadow-inner"
+                id="drawing-pending-list">
+                <!-- Diisi otomatis oleh JS -->
+            </div>
+
+            <p class="text-[10px] text-slate-400 mb-6 uppercase tracking-widest font-bold">
+                Yakin ingin tetap memasukkan mereka ke dalam bagan pertandingan (Beresiko WO)?
+            </p>
+
+            <div class="flex flex-col gap-3">
+                <button onclick="document.getElementById('modal-confirm-drawing').classList.add('hidden')"
+                    class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600 px-4 py-3.5 rounded-xl font-bold transition-colors tracking-widest text-sm shadow-sm">
+                    BATAL & CEK TAB TIMBANG
+                </button>
+                <button onclick="executeRandoriBracket()"
+                    class="w-full bg-yellow-600 hover:bg-yellow-500 text-slate-900 px-4 py-3.5 rounded-xl font-black shadow-[0_0_15px_rgba(234,179,8,0.4)] transition-transform hover:scale-[1.02] tracking-widest text-sm">
+                    TETAP GENERATE BAGAN
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- 👆 AKHIR MODAL PERINGATAN 👆 -->
+
+    <!-- 👇 MODAL PENGATURAN TV BROADCAST 👇 -->
+    <div id="modal-setting-tv"
+        class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm hidden flex items-center justify-center z-[130] animate-fade-in p-4">
+        <div
+            class="bg-dark-card border border-blue-500/50 p-6 rounded-2xl shadow-[0_0_40px_rgba(59,130,246,0.15)] w-full max-w-lg max-h-[90vh] flex flex-col transform transition-all relative">
+
+            <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-3 flex-shrink-0">
+                <h3 class="text-xl font-black text-white"><i class="fas fa-desktop text-blue-400 mr-2"></i>Pengaturan TV
+                    Broadcast</h3>
+                <button onclick="document.getElementById('modal-setting-tv').classList.add('hidden')"
+                    class="text-slate-400 hover:text-red-400 transition-colors"><i
+                        class="fas fa-times text-2xl"></i></button>
+            </div>
+
+            <div class="overflow-y-auto custom-scrollbar flex-1 pr-2 space-y-6">
+
+                <!-- 1. Skala Zoom -->
+                <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-700">
+                    <h4 class="text-sm font-bold text-slate-300 mb-2"><i
+                            class="fas fa-search-plus text-blue-400 mr-2"></i>Skala Ukuran Layar TV (Zoom)</h4>
+                    <p class="text-[10px] text-slate-500 mb-3">Sesuaikan ukuran elemen TV agar pas dengan proyektor atau
+                        TV LED Anda.</p>
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs font-bold text-slate-400">Kecil</span>
+                        <input type="range" id="tv-zoom-slider" min="0.5" max="1.5" step="0.1" value="1"
+                            class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                        <span class="text-xs font-bold text-slate-400">Besar</span>
+                        <span id="tv-zoom-value"
+                            class="text-xs font-black text-blue-400 bg-blue-900/30 px-2 py-1 rounded w-10 text-center">1.0x</span>
+                    </div>
+                </div>
+
+                <!-- 2. Pengaturan Embu -->
+                <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-700">
+                    <h4 class="text-sm font-bold text-slate-300 mb-3"><i
+                            class="fas fa-user-ninja text-purple-400 mr-2"></i>Tampilan Embu & Festival</h4>
+
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-bold text-slate-400">Tampilkan Daftar Waza (Jurus)</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="tv-embu-show-waza" class="sr-only peer" checked>
+                            <div
+                                class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-500">
+                            </div>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-bold text-slate-400">Tampilkan Nilai Teknik (Tie-Breaker)</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="tv-embu-show-tech" class="sr-only peer" checked>
+                            <div
+                                class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-500">
+                            </div>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-slate-400">Timer Embu Berjalan di TV</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="tv-embu-live-timer" class="sr-only peer">
+                            <div
+                                class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-500">
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 3. Pengaturan Randori -->
+                <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-700">
+                    <h4 class="text-sm font-bold text-slate-300 mb-3"><i
+                            class="fas fa-fist-raised text-red-400 mr-2"></i>Tampilan Randori</h4>
+
+                    <div class="flex items-center justify-between mb-4 border-b border-slate-700/50 pb-4">
+                        <div class="flex flex-col pr-4">
+                            <span class="text-xs font-bold text-slate-400 mb-1">Tampilkan Timer Randori (Live)</span>
+                            <span class="text-[9px] text-slate-500 leading-tight">Timer di TV akan otomatis sinkron &
+                                hitung mundur mengikuti kontrol Panitera.</span>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                            <input type="checkbox" id="tv-randori-live-timer" class="sr-only peer" checked>
+                            <div
+                                class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-red-500">
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-slate-400">Default Waktu Randori (Hitung Mundur)</span>
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="tv-randori-minutes" min="1" max="10" value="2"
+                                class="w-14 bg-slate-800 border border-slate-600 rounded p-1.5 text-white text-center text-sm font-bold outline-none">
+                            <span class="text-xs text-slate-500">Menit</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Branding Wallpaper -->
+                <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-700 mb-2">
+                    <h4 class="text-sm font-bold text-slate-300 mb-2"><i
+                            class="fas fa-image text-green-400 mr-2"></i>Wallpaper Layar Tunggu</h4>
+                    <p class="text-[10px] text-slate-500 mb-3">Gambar latar belakang saat TV tidak menyiarkan
+                        pertandingan.</p>
+
+                    <div class="flex items-center gap-3">
+                        <input type="file" id="tv-wallpaper-upload" accept="image/jpeg, image/png, image/webp"
+                            class="hidden">
+                        <button onclick="document.getElementById('tv-wallpaper-upload').click()"
+                            class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">Pilih
+                            Gambar</button>
+                        <span id="tv-wallpaper-status" class="text-[10px] text-green-400 font-bold hidden"><i
+                                class="fas fa-check-circle mr-1"></i>Tersimpan</span>
+                        <button onclick="hapusWallpaperTV()" id="btn-hapus-wallpaper"
+                            class="text-red-400 hover:text-red-300 text-[10px] underline ml-auto hidden">Hapus</button>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="flex justify-end gap-3 mt-4 pt-4 border-t border-slate-700 flex-shrink-0">
+                <button onclick="document.getElementById('modal-setting-tv').classList.add('hidden')"
+                    class="px-4 py-2 text-slate-400 hover:text-white font-bold text-sm">Batal</button>
+                <button onclick="simpanSettingTV()"
+                    class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg font-bold shadow-[0_0_15px_rgba(37,99,235,0.4)]">Terapkan
+                    ke TV</button>
+            </div>
+        </div>
+    </div>
+    <!-- 👆 AKHIR MODAL PENGATURAN TV 👆 -->
+
+    <!-- ========================================================= -->
+<!-- 🛡️ MODAL PEMILIHAN SANKSI (BATSU VS DISKUALIFIKASI)       -->
+<!-- ========================================================= -->
+<div id="modal-sanksi-randori" class="fixed inset-0 z-[9999] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+        <!-- Header Modal -->
+        <div class="bg-slate-800/80 px-6 py-4 border-b border-slate-700 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-red-600/20 border border-red-500/40 flex items-center justify-center text-red-500">
+                    <i class="fas fa-gavel text-base"></i>
+                </div>
+                <div>
+                    <h3 class="text-white font-black text-base tracking-wide uppercase">Penetapan Sanksi Wasit</h3>
+                    <p id="modal-sanksi-sub" class="text-xs text-slate-400">Pilih tingkat sanksi pelanggaran berat</p>
+                </div>
+            </div>
+            <button onclick="closeSanctionModal()" class="text-slate-400 hover:text-white transition-colors">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+
+        <!-- Body Modal -->
+        <div class="p-6 space-y-4">
+            <div class="bg-slate-950/60 p-4 rounded-xl border border-slate-800 space-y-1">
+                <div class="flex justify-between text-xs">
+                    <span class="text-slate-400 font-medium">Atlet Pelanggar:</span>
+                    <span id="modal-sanksi-atlet" class="text-white font-bold">-</span>
+                </div>
+                <div class="flex justify-between text-xs">
+                    <span class="text-slate-400 font-medium">Kontingen:</span>
+                    <span id="modal-sanksi-kontingen" class="text-white font-bold">-</span>
+                </div>
+                <div class="flex justify-between text-xs">
+                    <span class="text-slate-400 font-medium">Pelanggaran:</span>
+                    <span id="modal-sanksi-jenis" class="text-amber-400 font-bold uppercase">-</span>
+                </div>
+            </div>
+
+            <!-- Opsi 1: Batsu Kategori -->
+            <button onclick="confirmSanctionExecution('BATSU_KATEGORI')" class="w-full text-left p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 transition-all group">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-ban text-amber-500 text-lg"></i>
+                        <div>
+                            <div class="text-sm font-black text-amber-400 uppercase tracking-wide">Batsu Kategori</div>
+                            <div class="text-[11px] text-slate-300 mt-0.5">Gugur pada nomor Randori ini saja. Nomor Embu tetap dapat diikuti.</div>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right text-amber-500/60 group-hover:translate-x-1 transition-transform text-xs"></i>
+                </div>
+            </button>
+
+            <!-- Opsi 2: Diskualifikasi Total -->
+            <button onclick="confirmSanctionExecution('DISKUALIFIKASI_TOTAL')" class="w-full text-left p-4 rounded-xl border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 transition-all group">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-user-slash text-red-500 text-lg"></i>
+                        <div>
+                            <div class="text-sm font-black text-red-400 uppercase tracking-wide">Diskualifikasi Total</div>
+                            <div class="text-[11px] text-slate-300 mt-0.5">Gugur dari seluruh kejuaraan (termasuk nomor Embu dan beregu).</div>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right text-red-500/60 group-hover:translate-x-1 transition-transform text-xs"></i>
+                </div>
+            </button>
+        </div>
+
+        <!-- Footer Modal -->
+        <div class="bg-slate-950 px-6 py-3 border-t border-slate-800 flex justify-end">
+            <button onclick="closeSanctionModal()" class="px-5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs tracking-wider uppercase transition-colors">
+                Batal
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================= -->
+<!-- 🛡️ MODAL OTORISASI KOORDINATOR PERTANDINGAN (RADAR HP)    -->
+<!-- ========================================================= -->
+<div id="modal-qr-koordinator"
+    class="fixed inset-0 bg-slate-950/95 backdrop-blur-md hidden flex items-center justify-center z-[95] animate-fade-in p-4">
+    <div
+        class="bg-dark-card border border-slate-700 p-6 rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col md:flex-row gap-6 transform transition-all max-h-[95vh] overflow-y-auto custom-scrollbar">
+
+        <!-- PANEL KIRI: RADAR HP SCANNER -->
+        <div class="flex-1 flex flex-col">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
+                <h3 class="text-lg font-black text-white">
+                    <i class="fas fa-mobile-alt text-amber-500 mr-2"></i>MOBILE SCANNER TERHUBUNG
+                </h3>
+                <button onclick="closeQRKoordinatorModal()"
+                    class="text-slate-400 hover:text-red-400 transition-colors md:hidden">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+
+            <!-- Wadah Radar Animasi Gelombang -->
+            <div
+                class="bg-[#0f172a] rounded-xl border-2 border-dashed border-amber-500/50 overflow-hidden relative flex-1 min-h-[300px] flex flex-col items-center justify-center transition-all p-6 text-center">
+                <div class="relative">
+                    <i class="fas fa-wifi text-amber-500 text-5xl absolute -top-8 -left-4 animate-ping opacity-40"></i>
+                    <i class="fas fa-mobile-alt text-6xl text-slate-300 drop-shadow-[0_0_15px_rgba(245,158,11,0.5)] z-10 relative"></i>
+                </div>
+                <h4 class="text-lg font-black text-white mt-6 tracking-widest">SISTEM MENUNGGU SCAN...</h4>
+                <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+                    Silakan buka aplikasi Scanner di HP Panitera.<br>
+                    Pastikan HP berada di <b id="ui-court-badge-koordinator" class="bg-indigo-600 text-white px-2 py-0.5 rounded text-[10px]">COURT INI</b>.
+                </p>
+
+                <div id="koordinator-scan-hint"
+                    class="mt-8 text-[11px] font-bold text-amber-400 uppercase tracking-widest bg-amber-950/40 border border-amber-700/50 px-4 py-2 rounded-lg animate-pulse">
+                    Arahkan ID Card Koordinator Pertandingan ke kamera HP Panitera.
+                </div>
+
+                <!-- Tombol Ungu QR Link Operator -->
+                <button onclick="openQrOperatorModal()"
+                    class="absolute bottom-4 right-4 bg-purple-600 hover:bg-purple-500 text-white w-12 h-12 rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(147,51,234,0.5)] transition-transform hover:scale-110 group z-20 border border-purple-400/50">
+                    <i class="fas fa-qrcode text-2xl"></i>
+                    <div
+                        class="absolute bottom-full right-0 mb-3 w-48 bg-slate-800 text-white text-[10px] font-bold py-2 px-3 rounded-lg shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none text-center border border-slate-600">
+                        Tampilkan QR Link untuk Operator HP
+                    </div>
+                </button>
+            </div>
+        </div>
+
+        <!-- PANEL KANAN: STATUS OTORISASI -->
+        <div class="w-full md:w-1/3 flex flex-col justify-between gap-3">
+            <div>
+                <div class="justify-between items-center mb-1 md:mb-2 border-b border-slate-700 pb-2 hidden md:flex">
+                    <h3 class="text-lg font-black text-white">
+                        <i class="fas fa-shield-alt text-amber-400 mr-2"></i>OTORISASI
+                    </h3>
+                    <button onclick="closeQRKoordinatorModal()" class="text-slate-400 hover:text-red-400 transition-colors">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+
+                <!-- Info Partai Terkunci -->
+                <div class="bg-slate-900 border border-slate-700 rounded-xl p-3.5 shadow-inner mb-3">
+                    <span class="text-[9px] font-black uppercase tracking-widest text-slate-500 block mb-1">PARTAI TERKUNCI</span>
+                    <div id="k-match-info" class="text-xs font-bold text-white leading-snug">Mendeteksi...</div>
+                    <div id="k-target-info" class="text-[11px] font-semibold text-red-400 mt-1.5">-</div>
+                </div>
+
+                <!-- Status Koordinator Pertandingan -->
+                <div id="k-block-status"
+                    class="bg-slate-800 border border-slate-700 rounded-xl p-4 flex flex-col items-center justify-center text-center transition-all duration-300 min-h-[90px]">
+                    <span class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">KOORDINATOR PERTANDINGAN</span>
+                    <span id="k-name-status" class="font-bold text-slate-500 text-sm">Menunggu Scan...</span>
+                </div>
+            </div>
+
+            <!-- Tombol Buka Gembok Eksekusi -->
+            <button id="btn-eksekusi-buka-gembok" onclick="eksekusiBukaGembokKoordinator()" disabled
+                class="w-full bg-slate-800 border border-slate-700 text-slate-500 font-black py-4 rounded-xl shadow-md transition-all text-sm tracking-widest flex items-center justify-center gap-2 cursor-not-allowed">
+                <i class="fas fa-unlock text-lg"></i> BUKA GEMBOK SEKARANG
+            </button>
+        </div>
+    </div>
+</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>

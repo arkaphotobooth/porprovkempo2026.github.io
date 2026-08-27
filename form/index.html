@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <title>MASS KEMPO - Admin Dashboard</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone@7.23.6/babel.min.js"></script>
+
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+    <script src="../assets/js/auth-guard.js"></script>
+</head>
+
+<body class="bg-slate-100 font-sans">
+    <div id="root"></div>
+
+    <script type="text/babel" data-type="module" data-presets="react,env">
+        const { useState, useEffect, useMemo } = React;
+
+        // =========================================================
+        // 1. CONFIG PROJECT A (REALTIME DATABASE - DRAWING/URUTAN)
+        // =========================================================
+        const rtdbConfig = {
+            apiKey: "AIzaSyA63UtPlhEdC9qKmmHVpDjGv_4RqWjK47k",
+            authDomain: "mass-pro-turnamen.firebaseapp.com",
+            projectId: "mass-pro-turnamen",
+            databaseURL: "https://mass-pro-turnamen-default-rtdb.asia-southeast1.firebasedatabase.app/",
+            storageBucket: "mass-pro-turnamen.firebasestorage.app",
+            messagingSenderId: "268290671498",
+            appId: "1:268290671498:web:d55e4960e392f7dfc8fe73"
+        };
+
+        // =========================================================
+        // 2. CONFIG PROJECT B (FIRESTORE - MASTER PENDAFTARAN)
+        // =========================================================
+        const firestoreConfig = {
+            apiKey: "AIzaSyD0MSNQBRpfZBzRgMdz726lnB5YX_TnLpo",
+            authDomain: "integrasi-sistem-kempo.firebaseapp.com",
+            projectId: "integrasi-sistem-kempo",
+            storageBucket: "integrasi-sistem-kempo.firebasestorage.app",
+            messagingSenderId: "255724075177",
+            appId: "1:255724075177:web:c54fa5dee560b66e1611b8"
+        };
+
+        // INISIALISASI DUAL INSTANCE
+        const appRTDB = firebase.initializeApp(rtdbConfig, "appRTDB");
+        const dbRTDB = appRTDB.database();
+
+        const appFirestore = firebase.initializeApp(firestoreConfig, "appFirestore");
+        const dbFirestore = appFirestore.firestore();
+
+        // Komponen Ikon (WAJIB ADA agar tidak error)
+        const Icon = ({ name, className = "w-4 h-4" }) => {
+            const svgContent = useMemo(() => {
+                if (window.lucide && window.lucide.icons[name]) return window.lucide.icons[name].toSvg({ class: className });
+                return '';
+            }, [name, className]);
+            return <span className="inline-flex items-center justify-center" dangerouslySetInnerHTML={{ __html: svgContent }} />;
+        };
+
+        const TemplateEmbu = ({ data, kopData }) => {
+            const barisWaza = [1, 2, 3, 4, 5, 6];
+
+            return (
+                <div className="page-wrapper">
+                    <div className="lembar-inner font-sans text-black relative bg-white">
+
+                        {/* 1. KOP HEADER (DINAMIS DARI LOCALSTORAGE) */}
+                        <div className="flex justify-between items-center border-b-2 border-black pb-1.5 mb-2 shrink-0">
+                            <div className="w-12 h-12 flex items-center justify-center text-[8px]">
+                                {kopData?.logoKiri ? <img src={kopData.logoKiri} className="w-full h-full object-contain" alt="Logo" /> : <div className="border border-black w-full h-full flex items-center justify-center">Logo Kiri</div>}
+                            </div>
+
+                            <div className="flex-1 text-center font-black text-[12px] leading-tight">
+                                {kopData?.baris1}<br />
+                                {kopData?.baris2}<br />
+                                {kopData?.baris3}<br />
+                                {kopData?.baris4}
+                            </div>
+
+                            <div className="w-12 h-12 flex items-center justify-center text-[8px]">
+                                {kopData?.logoKanan ? <img src={kopData.logoKanan} className="w-full h-full object-contain" alt="Logo" /> : <div className="border border-black w-full h-full flex items-center justify-center">Logo Kanan</div>}
+                            </div>
+                        </div>
+
+                        <h2 className="text-center font-bold text-[13px] mb-2 uppercase underline tracking-wide shrink-0">Daftar Penilaian Wasit</h2>
+
+                        {/* 2. HEADER INFO KENSHI (Warna abu dihapus murni putih) */}
+                        <table className="w-full border-collapse border border-black text-[11px] mb-2 shrink-0">
+                            <tbody>
+                                <tr>
+                                    <td className="w-20 whitespace-nowrap font-bold uppercase border border-black px-2 py-1">Nomor :</td>
+                                    <td colSpan={2} className="font-bold uppercase border border-black px-2 py-1">{data?.kategori || "-"}</td>
+                                    <td className="w-16 whitespace-nowrap font-bold uppercase border border-black px-2 py-1">Babak :</td>
+                                    <td className="whitespace-nowrap font-bold uppercase border border-black px-2 py-1">{data?.keteranganBabak || "-"}</td>
+                                </tr>
+                                <tr>
+                                    <td className="w-24 border border-black p-1 align-middle text-center">
+                                        <div className="text-[10px] font-bold uppercase leading-tight">No Urut Main</div>
+                                        <div className="text-3xl font-black mt-1">{data?.game || "-"}</div>
+                                    </td>
+                                    <td colSpan={4} className="p-0 border border-black align-top">
+                                        {[0, 2, 4].map((startIndex, rowIndex) => (
+                                            <div key={startIndex} className={`flex w-full ${rowIndex < 2 ? 'border-b border-black' : ''}`}>
+                                                {/* Kolom Kiri */}
+                                                <div className="flex w-1/2 border-r border-black">
+                                                    <div className="w-6 border-r border-black text-center font-bold py-0.5">+</div>
+                                                    <div className="px-2 py-0.5 flex-1">{data?.namaRaw?.[startIndex] || "\u00A0"}</div>
+                                                </div>
+                                                {/* Kolom Kanan */}
+                                                <div className="flex w-1/2">
+                                                    <div className="w-6 border-r border-black text-center font-bold py-0.5">+</div>
+                                                    <div className="px-2 py-0.5 flex-1">{data?.namaRaw?.[startIndex + 1] || "\u00A0"}</div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td className="w-20 whitespace-nowrap font-bold uppercase border border-black px-2 py-1">Kontingen :</td>
+                                    <td colSpan={4} className="font-bold uppercase border border-black px-2 py-1">{data?.kontingen || "-"}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        {/* 3. TABEL URUTAN WAZA */}
+                        <table className="w-full border-collapse border border-black text-[11px] text-center mb-2 shrink-0">
+                            <thead>
+                                <tr>
+                                    <th className="w-20 font-bold border border-black py-0.5">No. Urut</th>
+                                    <th className="font-bold border border-black py-0.5">Urutan Komposisi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {barisWaza.map((no, idx) => (
+                                    <tr key={no}>
+                                        <td className="font-bold border border-black py-0.5">{no}</td>
+                                        <td className="text-left font-bold uppercase border border-black px-2 py-0.5">{data?.komposisiWaza?.[idx] || "\u00A0"}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+
+                        {/* 4. TABEL PENILAIAN */}
+                        <div className="flex-1 flex flex-col mb-2 overflow-hidden">
+                            <table className="w-full h-full border-collapse border border-black text-[11px]">
+                                <tbody>
+                                    {/* KUNCI PERBAIKAN 2: Tulisan standard diletakkan di kolom ke-6 */}
+                                    <tr className="h-3">
+                                        <td colSpan={5} className="border-none"></td>
+                                        <td className="text-center border-none pb-0.5 text-[10px]">standard</td>
+                                    </tr>
+
+                                    {/* PENGUASAAN TEKNIK (60) */}
+                                    <tr>
+                                        <td rowSpan={6} className="w-6 p-1 align-middle border border-black">
+                                            <div className="teks-vertikal font-bold tracking-widest text-[11px] mx-auto">Penguasaan Teknik (60)</div>
+                                        </td>
+                                        <td rowSpan={6} className="align-top leading-tight p-2 border border-black w-[50%] text-[12px]">
+                                            <span className="font-bold">GOHO :</span> Serangan, bertahan, serangan balasan, lima unsur serangan dan lain-lain<br /><br />
+                                            <span className="font-bold">JUHO :</span> Shuha, nukiwaza, gyaku waza, nage waza, katame waza dan lain-lain
+                                        </td>
+                                        <td rowSpan={6} className="w-16 text-center align-middle border border-black font-bold text-[10px] leading-tight">
+                                            60<br />(Masing-2 10)
+                                        </td>
+                                        <td className="w-8 text-center font-bold border border-black py-0.5">1</td>
+                                        <td className="w-16 border border-black"></td>
+                                        <td className="w-10 text-center font-bold border border-black text-[11px]">8</td>
+                                    </tr>
+                                    {[2, 3, 4, 5, 6].map(no => (
+                                        <tr key={`pt-${no}`}>
+                                            <td className="text-center font-bold border border-black py-0.5">{no}</td>
+                                            <td className="border border-black"></td>
+                                            <td className="text-center font-bold border border-black text-[11px]">8</td>
+                                        </tr>
+                                    ))}
+
+                                    {/* KUNCI PERBAIKAN 3: colSpan dirubah dari 3 menjadi 4 agar angka sejajar */}
+                                    <tr>
+                                        <td colSpan={4} className="text-right font-bold pr-2 border border-black py-1 text-[11px]">Sub Total-1</td>
+                                        <td className="border border-black"></td>
+                                        <td className="text-center font-black border border-black text-[12px]">48</td>
+                                    </tr>
+
+                                    {/* EKSPRESI (40) */}
+                                    <tr>
+                                        <td rowSpan={4} className="w-6 p-1 align-middle border border-black">
+                                            <div className="teks-vertikal font-bold tracking-widest text-[12px] mx-auto">Ekspresi (40)</div>
+                                        </td>
+                                        <td className="p-0.5 border border-black text-[12px] font-semibold">  1. Rangkaian, Irama, Harmoni</td>
+                                        <td rowSpan={4} className="w-16 text-center align-middle border border-black font-bold text-[12px] leading-tight">
+                                            40<br />(Masing-2 10)
+                                        </td>
+                                        <td className="border border-black"></td>
+                                        <td className="border border-black"></td>
+                                        <td className="text-center font-bold border border-black py-0.5 text-[12px]">8</td>
+                                    </tr>
+                                    <tr><td className="p-0.5 border border-black text-[12px] font-semibold">2. Tai gamae, Kuda-kuda, Keindahan</td><td className="border border-black"></td><td className="border border-black"></td><td className="text-center font-bold border border-black py-0.5 text-[12px]">8</td></tr>
+                                    <tr><td className="p-0.5 border border-black text-[12px] font-semibold">3. Energi, kiai, ketrampilan</td><td className="border border-black"></td><td className="border border-black"></td><td className="text-center font-bold border border-black py-0.5 text-[12px]">8</td></tr>
+                                    <tr><td className="p-0.5 border border-black text-[12px] font-semibold">4. Nafas, pandangan mata, zanshin</td><td className="border border-black"></td><td className="border border-black"></td><td className="text-center font-bold border border-black py-0.5 text-[12px]">8</td></tr>
+
+                                    {/* colSpan dirubah menjadi 4 */}
+                                    <tr>
+                                        <td colSpan={4} className="text-right font-bold pr-2 border border-black py-1 text-[11px]">Sub Total-2</td>
+                                        <td className="border border-black"></td>
+                                        <td className="text-center font-black border border-black text-[12px]">32</td>
+                                    </tr>
+                                    <tr>
+                                        <td colSpan={4} className="text-right font-black pr-2 border border-black py-1 text-[12px]">Total</td>
+                                        <td className="border border-black"></td>
+                                        <td className="text-center font-black border border-black text-[14px]">80</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* 5. FOOTER TANDA TANGAN */}
+                        <table className="w-full border-none text-[10px] shrink-0 mt-3">
+                            <tbody>
+                                <tr>
+                                    <td colSpan={3} className="border-none font-bold pb-2">Catatan Wasit :</td>
+                                    <td colSpan={2} className="border-none text-right font-bold pr-4 pb-2 text-[11px]">Wasit Penilai : I, II, III, IV, V **</td>
+                                </tr>
+                                <tr><td colSpan={5} className="border-none pb-2">1. ...........................................................................................................................................................................................</td></tr>
+                                <tr><td colSpan={5} className="border-none pb-3">2. ...........................................................................................................................................................................................</td></tr>
+                                <tr>
+                                    <td colSpan={3} className="border-none align-bottom leading-snug">
+                                        * Coret yang tidak perlu/berlaku<br />
+                                        ** Lingkari angka yang berlaku dan coret yang tidak perlu/berlaku
+                                    </td>
+                                    <td colSpan={2} className="border-none align-bottom w-56 pt-2">
+                                        <div className="flex border-b border-black mb-1 pb-1">
+                                            <span className="w-12 font-bold">Nama</span><span className="mr-2">:</span>
+                                        </div>
+                                        <div className="flex border-b border-black pb-1">
+                                            <span className="w-12 font-bold">Tingkat</span><span className="mr-2">:</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        };
+
+        const TemplateRandori = ({ data, kopData }) => {
+            // Komponen Checkbox yang lebih rapi dan presisi
+            const CheckBox = () => <div className="inline-block w-4 h-4 border border-black align-middle ml-2"></div>;
+
+            return (
+                <div className="page-wrapper">
+                    <div className="lembar-inner font-sans text-black relative bg-white">
+
+                        {/* 1. KOP HEADER (DINAMIS DARI LOCALSTORAGE) */}
+                        <div className="flex justify-between items-center border-b-2 border-black pb-1.5 mb-2 shrink-0">
+                            <div className="w-12 h-12 flex items-center justify-center text-[8px]">
+                                {kopData?.logoKiri ? <img src={kopData.logoKiri} className="w-full h-full object-contain" alt="Logo" /> : <div className="border border-black w-full h-full flex items-center justify-center">Logo Kiri</div>}
+                            </div>
+
+                            <div className="flex-1 text-center font-black text-[12px] leading-tight">
+                                {kopData?.baris1}<br />
+                                {kopData?.baris2}<br />
+                                {kopData?.baris3}<br />
+                                {kopData?.baris4}
+                            </div>
+
+                            <div className="w-12 h-12 flex items-center justify-center text-[8px]">
+                                {kopData?.logoKanan ? <img src={kopData.logoKanan} className="w-full h-full object-contain" alt="Logo" /> : <div className="border border-black w-full h-full flex items-center justify-center">Logo Kanan</div>}
+                            </div>
+                        </div>
+
+                        {/* 2. HEADER INFO PERTANDINGAN (Perbaikan nama menjadi GAMES - X) */}
+                        <div className="text-center font-bold text-[13px] mb-2 mt-2 uppercase shrink-0">GAMES - {data?.game || "-"}</div>
+
+                        <div className="flex justify-center gap-16 text-[11px] font-semibold mb-4 shrink-0">
+                            <div>Hari : ..............................</div>
+                            <div>Tanggal : ........................................</div>
+                            <div>Pool : <span className="uppercase font-bold">{data?.pool || "........"}</span></div>
+                            <div>Court : ........................</div>
+                        </div>
+
+                        {/* 3. INFO ATLET (Tanpa Tabel / No Border) */}
+                        <div className="flex justify-between w-full mb-2 text-[11.5px] px-2 shrink-0">
+                            {/* Pita Merah */}
+                            <div className="w-[48%] flex flex-col gap-1.5">
+                                <div className="font-semibold">Pita Merah</div>
+                                <div className="flex font-semibold"><span className="w-24">Nama Atlet</span><span>: <span className="font-bold uppercase">{data?.merah?.namaRaw?.[0] || "-"}</span></span></div>
+                                <div className="flex font-semibold"><span className="w-24">Kontingen</span><span>: <span className="font-bold uppercase">{data?.merah?.kontingen || "-"}</span></span></div>
+                            </div>
+                            {/* Pita Putih */}
+                            <div className="w-[48%] flex flex-col gap-1.5">
+                                <div className="font-semibold">Pita Putih</div>
+                                <div className="flex font-semibold"><span className="w-24">Nama Atlet</span><span>: <span className="font-bold uppercase">{data?.putih?.namaRaw?.[0] || "-"}</span></span></div>
+                                <div className="flex font-semibold"><span className="w-24">Kontingen</span><span>: <span className="font-bold uppercase">{data?.putih?.kontingen || "-"}</span></span></div>
+                            </div>
+                        </div>
+
+                        {/* 4. TABEL SKORING (Garis Lurus Tipis & Text Normal) */}
+                        <table className="w-full border-collapse border-2 border-black text-[11px] shrink-0 mb-4 bg-white">
+                            <thead>
+                                <tr className="border-b-2 border-black text-center font-bold">
+                                    <th className="border-r border-black py-2 w-[18%]">KEPUTUSAN WASIT</th>
+                                    <th className="border-r border-black py-2 w-[22%]">KETERANGAN</th>
+                                    <th className="border-r border-black py-2 w-[5%]">NILAI</th>
+                                    <th className="border-r-2 border-black py-2 w-[5%]">JUMLAH</th>
+
+                                    <th className="border-r border-black py-2 w-[18%]">KEPUTUSAN WASIT</th>
+                                    <th className="border-r border-black py-2 w-[22%]">KETERANGAN</th>
+                                    <th className="border-r border-black py-2 w-[5%]">NILAI</th>
+                                    <th className="py-2 w-[5%]">JUMLAH</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {/* Baris 1: PERINGATAN (Garis bawah lurus tipis, tidak bold) */}
+                                <tr>
+                                    <td className="border-b border-r border-black px-2 py-2">PERINGATAN</td>
+                                    <td className="border-b border-r border-black px-2 py-2">
+                                        <div className="flex justify-between items-center">Mujoken Kachi <CheckBox /></div>
+                                    </td>
+                                    <td className="border-b border-r border-black text-center py-2">15</td>
+                                    <td className="border-b border-r-2 border-black" rowSpan={2}></td>
+
+                                    <td className="border-b border-r border-black px-2 py-2">PERINGATAN</td>
+                                    <td className="border-b border-r border-black px-2 py-2">
+                                        <div className="flex justify-between items-center">Mujoken Kachi <CheckBox /></div>
+                                    </td>
+                                    <td className="border-b border-r border-black text-center py-2">15</td>
+                                    <td className="border-b border-black" rowSpan={2}></td>
+                                </tr>
+                                {/* Baris 2: IPPON */}
+                                <tr>
+                                    <td className="border-b border-r border-black px-2 py-2">1.</td>
+                                    <td className="border-b border-r border-black px-2 py-2">
+                                        <div className="flex justify-between items-center">Ippon <CheckBox /></div>
+                                    </td>
+                                    <td className="border-b border-r border-black text-center py-2">10</td>
+
+                                    <td className="border-b border-r border-black px-2 py-2">1.</td>
+                                    <td className="border-b border-r border-black px-2 py-2">
+                                        <div className="flex justify-between items-center">Ippon <CheckBox /></div>
+                                    </td>
+                                    <td className="border-b border-r border-black text-center py-2">10</td>
+                                </tr>
+                                {/* Baris 3: WAZA ARI */}
+                                <tr>
+                                    <td className="border-b border-r border-black px-2 py-2">2.</td>
+                                    <td className="border-b border-r border-black px-2 py-2">
+                                        <div className="flex justify-between items-center">Waza Ari <div className="flex"><CheckBox /><CheckBox /></div></div>
+                                    </td>
+                                    <td className="border-b border-r border-black text-center py-2">5</td>
+                                    <td className="border-b border-r-2 border-black" rowSpan={2}></td>
+
+                                    <td className="border-b border-r border-black px-2 py-2">2.</td>
+                                    <td className="border-b border-r border-black px-2 py-2">
+                                        <div className="flex justify-between items-center">Waza Ari <div className="flex"><CheckBox /><CheckBox /></div></div>
+                                    </td>
+                                    <td className="border-b border-r border-black text-center py-2">5</td>
+                                    <td className="border-b border-black" rowSpan={2}></td>
+                                </tr>
+                                {/* Baris 4: BATSU */}
+                                <tr>
+                                    <td className="border-b border-r border-black px-2 py-2">3.</td>
+                                    <td className="border-b border-r border-black px-2 py-2">
+                                        <div className="flex justify-between items-center">Batsu <CheckBox /></div>
+                                    </td>
+                                    <td className="border-b border-r border-black text-center py-2">10</td>
+
+                                    <td className="border-b border-r border-black px-2 py-2">3.</td>
+                                    <td className="border-b border-r border-black px-2 py-2">
+                                        <div className="flex justify-between items-center">Batsu <CheckBox /></div>
+                                    </td>
+                                    <td className="border-b border-r border-black text-center py-2">10</td>
+                                </tr>
+                                {/* Baris 5: WAZA ARI */}
+                                <tr>
+                                    <td className="border-b border-r border-black px-2 py-2">4.</td>
+                                    <td className="border-b border-r border-black px-2 py-2">
+                                        <div className="flex justify-between items-center">Waza Ari <div className="flex"><CheckBox /><CheckBox /></div></div>
+                                    </td>
+                                    <td className="border-b border-r border-black text-center py-2">5</td>
+                                    <td className="border-r-2 border-black" rowSpan={3}></td>
+
+                                    <td className="border-b border-r border-black px-2 py-2">4.</td>
+                                    <td className="border-b border-r border-black px-2 py-2">
+                                        <div className="flex justify-between items-center">Waza Ari <div className="flex"><CheckBox /><CheckBox /></div></div>
+                                    </td>
+                                    <td className="border-b border-r border-black text-center py-2">5</td>
+                                    <td rowSpan={3}></td>
+                                </tr>
+                                {/* Baris 6: BATSU */}
+                                <tr>
+                                    <td className="border-b border-r border-black px-2 py-2">5.</td>
+                                    <td className="border-b border-r border-black px-2 py-2">
+                                        <div className="flex justify-between items-center">Batsu <div className="flex"><CheckBox /><CheckBox /></div></div>
+                                    </td>
+                                    <td className="border-b border-r border-black text-center py-2">5</td>
+
+                                    <td className="border-b border-r border-black px-2 py-2">5.</td>
+                                    <td className="border-b border-r border-black px-2 py-2">
+                                        <div className="flex justify-between items-center">Batsu <div className="flex"><CheckBox /><CheckBox /></div></div>
+                                    </td>
+                                    <td className="border-b border-r border-black text-center py-2">5</td>
+                                </tr>
+                                {/* Baris 7: YUSEI KACHI */}
+                                <tr>
+                                    <td className="border-r border-black px-2 py-2">6.</td>
+                                    <td className="border-r border-black px-2 py-2">
+                                        <div className="flex justify-between items-center">Yusei Kachi <CheckBox /></div>
+                                    </td>
+                                    <td className="border-r border-black text-center py-2">5</td>
+
+                                    <td className="border-r border-black px-2 py-2">6.</td>
+                                    <td className="border-r border-black px-2 py-2">
+                                        <div className="flex justify-between items-center">Yusei Kachi <CheckBox /></div>
+                                    </td>
+                                    <td className="border-r border-black text-center py-2">5</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        {/* 5. FOOTER TANDA TANGAN (Lega, Presisi, Ruang Tulis Luas) */}
+                        <div className="flex flex-col mt-4 shrink-0 px-2">
+                            {/* Baris Pertama: Wasit Utama & Official Kontingen */}
+                            <div className="flex justify-between text-[11px] font-bold mb-10">
+                                <div className="w-1/3">
+                                    <div className="mb-12">Wasit Utama</div>
+                                    <div className="flex flex-col gap-2">
+                                        <div className="flex items-end">
+                                            <span className="mr-2">Nama :</span>
+                                            <div className="flex-1 border-b border-black"></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="w-1/3 px-4">
+                                    <div className="mb-12">Official Kontingen : ...................................</div>
+                                    <div className="flex items-end">
+                                        <span className="mr-2">Nama :</span>
+                                        <div className="flex-1 border-b border-black"></div>
+                                    </div>
+                                </div>
+
+                                <div className="w-1/3 pl-4">
+                                    <div className="mb-12">Official Kontingen : ...................................</div>
+                                    <div className="flex items-end">
+                                        <span className="mr-2">Nama :</span>
+                                        <div className="flex-1 border-b border-black"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Baris Kedua: Koordinator & Panitera */}
+                            <div className="flex justify-between text-[11px] font-bold">
+                                <div className="w-1/3">
+                                    <div className="mb-2">Koordinator Pertandingan</div>
+                                    <div className="flex items-end mt-8">
+                                        <span className="mr-2">Nama :</span>
+                                        <div className="flex-1 border-b border-black"></div>
+                                    </div>
+                                </div>
+
+                                <div className="w-2/3 pl-12 flex flex-col items-center">
+                                    <div className="mb-6">Para Panitera</div>
+                                    <div className="flex justify-between w-full gap-4">
+                                        <span>1. ........................................</span>
+                                        <span>2. ........................................</span>
+                                        <span>3. ........................................</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [participants, setParticipants] = useState([]); // Data untuk Embu
+            const [allParticipants, setAllParticipants] = useState([]); // <--- TAMBAHKAN INI UNTUK PENCARIAN ID RANDORI
+            const [matches, setMatches] = useState([]);           // Data untuk Randori
+            const [categories, setCategories] = useState([]);     // Data Master Kategori (BARU)
+            const [loading, setLoading] = useState(true);
+            const [printing, setPrinting] = useState(false);
+            const [selectedKategori, setSelectedKategori] = useState("");
+            const [selectedBabak, setSelectedBabak] = useState("Babak 1");
+            const [selectedPool, setSelectedPool] = useState("A");
+            const [errorMsg, setErrorMsg] = useState("");
+
+            // State untuk menyimpan data gabungan yang siap dicetak
+            const [printableData, setPrintableData] = useState([]);
+            const [isSyncingMaster, setIsSyncingMaster] = useState(false);
+
+            const [isPrintMode, setIsPrintMode] = useState(false);
+            const [finalPrintData, setFinalPrintData] = useState([]);
+
+            // --- LOGIKA NAVIGASI CERDAS ---
+            const userRole = sessionStorage.getItem('role');
+
+            const handleBackOrLogout = () => {
+                if (userRole === 'seksi_pertandingan') {
+                    window.location.href = '../dashboard.html';
+                } else {
+                    if (window.confirm('Akhiri sesi dan keluar dari sistem?')) {
+                        sessionStorage.clear();
+                        window.location.href = '../index.html';
+                    }
+                }
+            };
+
+            // --- STATE UNTUK KOP DINAMIS ---
+            const [showKopModal, setShowKopModal] = useState(false);
+            const [kopData, setKopData] = useState({
+                baris1: "KEJUARAAN PROVINSI PELAJAR SHORINJI KEMPO",
+                baris2: "PIALA KADISPORA",
+                baris3: "PROVINSI JAWA TENGAH",
+                baris4: "TAHUN 2026",
+                logoKiri: "",
+                logoKanan: ""
+            });
+
+            // Ambil data KOP dari LocalStorage saat aplikasi pertama kali dimuat
+            useEffect(() => {
+                const savedKop = localStorage.getItem("kopDataMASS");
+                if (savedKop) {
+                    setKopData(JSON.parse(savedKop));
+                }
+            }, []);
+
+            // Fungsi untuk menyimpan perubahan KOP
+            const handleSaveKop = () => {
+                localStorage.setItem("kopDataMASS", JSON.stringify(kopData));
+                setShowKopModal(false);
+                alert("Pengaturan KOP berhasil disimpan di perangkat ini!");
+            };
+
+            // Fungsi untuk mengubah gambar menjadi Base64
+            const handleImageUpload = (e, posisi) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        setKopData(prev => ({ ...prev, [posisi]: reader.result }));
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            // --- FUNGSI BACKUP (EXPORT) KOP ---
+            const handleExportKop = () => {
+                try {
+                    const dataStr = JSON.stringify(kopData);
+                    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                    const url = URL.createObjectURL(dataBlob);
+
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = 'backup_kop_mass_kempo.json'; // Nama file backup
+                    document.body.appendChild(link);
+                    link.click();
+
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                } catch (error) {
+                    alert("Gagal melakukan export data.");
+                }
+            };
+
+            // --- FUNGSI RESTORE (IMPORT) KOP ---
+            const handleImportKop = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const importedData = JSON.parse(event.target.result);
+                        // Validasi sederhana memastikan file JSON berisi objek
+                        if (importedData && typeof importedData === 'object') {
+                            setKopData(prev => ({ ...prev, ...importedData }));
+                            alert("Backup berhasil dimuat! Silakan cek pratinjau dan klik 'SIMPAN KOP' untuk menyimpannya di perangkat ini.");
+                        }
+                    } catch (error) {
+                        alert("Gagal membaca file. Pastikan Anda mengunggah file JSON backup yang benar.");
+                    }
+                };
+                reader.readAsText(file);
+
+                // Reset input agar bisa upload file yang sama jika diperlukan
+                e.target.value = null;
+            };
+
+            useEffect(() => {
+                fetchAndMergeData();
+            }, []);
+
+            const fetchAndMergeData = async () => {
+                setLoading(true);
+                try {
+                    // 1. Tarik SELURUH data turnamen agar Categories dan Matches ikut terbawa
+                    const snapshot = await dbRTDB.ref('turnamen_data').once('value');
+
+                    if (!snapshot.exists()) {
+                        setErrorMsg("Data jadwal pertandingan kosong.");
+                        setLoading(false);
+                        return;
+                    }
+
+                    const turnamenData = snapshot.val();
+
+                    // 2. KEMBALIKAN STATE LAMA (Ini yang membuat dropdown dan Randori muncul!)
+                    setCategories(turnamenData.categories || []);
+                    setMatches(turnamenData.matches || []);
+
+                    // Set default kategori di dropdown
+                    const listDariMaster = turnamenData.categories ? turnamenData.categories.map(c => c.name) : [];
+                    if (listDariMaster.length > 0 && !selectedKategori) {
+                        setSelectedKategori(listDariMaster[0]);
+                    }
+
+                    // 3. Ekstrak data Participants (Embu)
+                    const participantsData = turnamenData.participants || [];
+                    const participantsArray = Array.isArray(participantsData)
+                        ? participantsData
+                        : Object.values(participantsData);
+
+                    // TAMBAHKAN BARIS INI: Simpan semua data mentah (tanpa difilter) untuk Randori
+                    setAllParticipants(participantsArray);
+
+                    // Filter hanya yang urut > 0 (Sudah di-drawing untuk Embu)
+                    const drawnParticipants = participantsArray.filter(p => p && p.urut > 0);
+
+                    // 4. Buka brankas LocalStorage untuk data Firestore
+                    const localMasterRaw = localStorage.getItem("masterKempoData");
+                    const masterData = localMasterRaw ? JSON.parse(localMasterRaw) : {};
+
+                    // 5. Proses Merging (Join) dengan Firestore
+                    const mergedData = drawnParticipants.map(peserta => {
+                        const detailPendaftaran = masterData[peserta.idFirestore];
+
+                        const detailAtlet = detailPendaftaran?.atlet?.map(stringAtlet => {
+                            const parts = stringAtlet.split('|').map(s => s.trim());
+                            return {
+                                namaLengkap: parts[0] || "-",
+                                sabuk: parts[1] || "-",
+                                ttl: parts[2] || "-"
+                            };
+                        }) || [];
+
+                        return {
+                            ...peserta,
+                            komposisiAtlet: detailAtlet,
+                            komposisiWaza: detailPendaftaran?.waza || []
+                        };
+                    });
+
+                    // 6. Sorting
+                    mergedData.sort((a, b) => {
+                        const katA = a.kategori || "";
+                        const katB = b.kategori || "";
+                        if (katA !== katB) return katA.localeCompare(katB);
+
+                        const poolA = a.pool || "";
+                        const poolB = b.pool || "";
+                        if (poolA !== poolB) return poolA.localeCompare(poolB);
+
+                        return (a.urut || 0) - (b.urut || 0);
+                    });
+
+                    // 7. SUNTIKKAN KEMBALI KE STATE (Agar tabel UI membaca data yang sudah kaya)
+                    setParticipants(mergedData);
+                    setPrintableData(mergedData); // Disimpan untuk layout cetak nanti
+
+                } catch (error) {
+                    console.error("Error saat fetch dan merge:", error);
+                    setErrorMsg("Terjadi kegagalan saat merakit data.");
+                }
+                setLoading(false);
+            };
+
+            // Fungsi Tarik Data Master dari Firestore -> Simpan ke LocalStorage
+            const syncMasterKontingen = async () => {
+                if (!window.confirm("Tarik ulang data Master Pendaftaran dari Firestore?")) return;
+
+                setIsSyncingMaster(true);
+                try {
+                    // PERUBAHAN SINTAKS COMPAT DI SINI
+                    const snapshot = await dbFirestore.collection("pendaftaran_t2").get();
+
+                    let masterData = {};
+                    snapshot.forEach((doc) => {
+                        const data = doc.data();
+                        masterData[doc.id] = {
+                            atlet: data.atlet || [],
+                            waza: data.waza || [],
+                            kelas: data.kelas || "-",
+                            kontingen: data.kontingen || "-"
+                        };
+                    });
+
+                    localStorage.setItem("masterKempoData", JSON.stringify(masterData));
+                    alert("Sinkronisasi Master Kontingen Berhasil!");
+                    fetchAndMergeData();
+                } catch (error) {
+                    console.error("Gagal tarik Firestore:", error);
+                    alert("Gagal sinkronisasi data master.");
+                } finally {
+                    setIsSyncingMaster(false);
+                }
+            };
+
+            // Ambil nama kategori murni dari database master
+            const listKategori = useMemo(() => categories.filter(c => c && c.name).map(c => c.name), [categories]);
+
+            const [selectedItems, setSelectedItems] = useState([]);
+
+            useEffect(() => {
+                setSelectedItems([]);
+                if (listPool.length === 0) setSelectedPool("-");
+                else if (!listPool.includes(selectedPool)) setSelectedPool(listPool[0]);
+                setSelectedBabak("Babak 1");
+            }, [selectedKategori, listPool]);
+
+            // ====================================================================
+            // ARSITEKTUR BARU: Baca properti discipline dari objek kategori aktif
+            // ====================================================================
+            const activeCategoryData = useMemo(() => {
+                return categories.find(c => c.name === selectedKategori);
+            }, [categories, selectedKategori]);
+
+            const isRandori = useMemo(() => activeCategoryData?.discipline === "randori", [activeCategoryData]);
+
+            // Mode Festival HANYA aktif jika discipline di database bernilai "festival"
+            const isFestivalMode = useMemo(() => activeCategoryData?.discipline === "festival", [activeCategoryData]);
+            // Filter Pool: Ambil dari 'matches' jika Randori, dari 'participants' jika Embu
+            const listPool = useMemo(() => {
+                const source = isRandori ? matches : participants;
+                const filtered = source.filter(p => p.kategori === selectedKategori);
+                // Ambil semua pool unik, jika tidak ada isinya beri nama "SINGLE"
+                const pools = [...new Set(filtered.map(m => m.pool))].filter(p => p && p !== "-");
+                return pools.length > 0 ? pools.sort() : [];
+            }, [participants, matches, selectedKategori, isRandori]);
+            // Cek apakah kategori ini menggunakan banyak Pool (misal A dan B)
+            const isMultiPool = listPool.length > 1;
+
+            // PERBAIKAN: Multi-Pool (Babak 1 & Final), Single-Pool (Babak 1 & Babak 2 saja)
+            const listBabak = isMultiPool ? ["Babak 1", "Final"] : ["Babak 1", "Babak 2"];
+
+            // Cek apakah saat ini sedang membuka tab Final Embu
+            const isEmbuFinal = !isRandori && selectedBabak === "Final";
+
+            // PERBAIKAN 2: LOGIKA FILTER & SORTING DATA
+            const displayData = useMemo(() => {
+                const source = isRandori ? matches : participants;
+
+                let filtered = source.filter(item => {
+                    if (item.kategori !== selectedKategori) return false;
+
+                    // MODE FESTIVAL: Tampilkan semua pool (A, B, C) sekaligus, abaikan babak
+                    if (isFestivalMode) return true;
+
+                    const poolData = (item.pool && item.pool !== "-") ? item.pool : "SINGLE";
+                    const poolTarget = (listPool.length > 0) ? selectedPool : "SINGLE";
+
+                    if (!isEmbuFinal && poolData !== poolTarget) return false;
+
+                    if (!isRandori && item.scores) {
+                        if (selectedBabak === "Babak 1") return item.scores.b1 !== undefined;
+                        if (selectedBabak === "Babak 2") return item.scores.b2 !== undefined;
+                        if (selectedBabak === "Final") return item.isFinalist === true || item.urutFinal > 0;
+                    }
+
+                    return true;
+                });
+
+                return isRandori
+                    ? filtered.sort((a, b) => (a.matchNum || 0) - (b.matchNum || 0))
+                    : filtered.sort((a, b) => {
+                        // SORTING KHUSUS FESTIVAL: Kumpulkan Kelompok A, lalu B, lalu C dst, baru urutkan nomornya
+                        if (isFestivalMode) {
+                            const poolA = a.pool || "";
+                            const poolB = b.pool || "";
+                            if (poolA < poolB) return -1;
+                            if (poolA > poolB) return 1;
+                            return (a.urut || 0) - (b.urut || 0);
+                        }
+
+                        // SORTING EMBU BIASA
+                        // PERBAIKAN: Baca urutan hasil 'Swap' dari Firebase menggunakan variabel urutB2
+                        if (selectedBabak === "Babak 2") return (a.urutB2 || 0) - (b.urutB2 || 0);
+                        if (selectedBabak === "Final") return (a.urutFinal || 0) - (b.urutFinal || 0);
+                        return (a.urut || 0) - (b.urut || 0);
+                    });
+            }, [matches, participants, selectedKategori, selectedPool, selectedBabak, isRandori, listPool, isEmbuFinal, isFestivalMode]);
+
+            // Fungsi untuk Ceklis Semua / Hapus Semua Ceklis
+            const handleSelectAll = (e) => {
+                if (e.target.checked) setSelectedItems(displayData.map(item => item.id || item.matchNum || item.urut));
+                else setSelectedItems([]);
+            };
+
+            // Fungsi untuk Ceklis Satuan
+            const handleSelectItem = (id) => {
+                setSelectedItems(prev => prev.includes(id) ? prev.filter(itemId => itemId !== id) : [...prev, id]);
+            };
+
+            const getKenshiInfo = (id) => {
+                // KUNCI PERBAIKAN: Ubah "BYE (KOSONG)" menjadi strip "-"
+                if (!id || id === -1) {
+                    return { nama: "-", kontingen: "-", namaRaw: ["-"] };
+                }
+
+                const kenshi = allParticipants.find(p => String(p.id) === String(id));
+
+                if (kenshi) {
+                    return {
+                        nama: kenshi.nama,
+                        kontingen: kenshi.kontingen,
+                        namaRaw: [kenshi.nama]
+                    };
+                }
+
+                return {
+                    nama: `ID Tidak Diterjemahkan`,
+                    kontingen: "-",
+                    namaRaw: [`ID:${id}`]
+                };
+            };
+
+            const handleCetakPDF = async () => {
+                setPrinting(true);
+                // Jeda napas agar UI merender tombol "MEMPROSES..."
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                try {
+                    const safeData = displayData || [];
+                    const safePools = listPool || [];
+
+                    if (safeData.length === 0) {
+                        alert("Data pendaftaran untuk nomor ini masih kosong!");
+                        setPrinting(false);
+                        return;
+                    }
+
+                    let dataToPrint = [];
+                    const isRandoriAktif = isRandori;
+                    const isFestivalAktif = isFestivalMode;
+
+                    if (isRandoriAktif) {
+                        // --- JALUR RANDORI ---
+                        const randoriTerpilih = safeData.filter(m => selectedItems.includes(m.id || m.matchNum));
+                        if (randoriTerpilih.length === 0) {
+                            alert("Silakan ceklis minimal satu partai Randori yang ingin dicetak!");
+                            setPrinting(false);
+                            return;
+                        }
+                        dataToPrint = randoriTerpilih.map((m, index) => {
+                            const dataMerah = getKenshiInfo(m.merahId);
+                            const dataPutih = getKenshiInfo(m.putihId);
+                            return {
+                                ...m,
+                                game: m.matchNum || m.urut, // Nomor urut pertandingan
+                                pool: m.pool !== "-" ? m.pool : "SINGLE",
+                                merah: { kontingen: dataMerah.kontingen, namaRaw: dataMerah.namaRaw },
+                                putih: { kontingen: dataPutih.kontingen, namaRaw: dataPutih.namaRaw }
+                            };
+                        });
+                    } else {
+                        // --- JALUR EMBU / FESTIVAL ---
+                        let teksBabak = (selectedBabak || "").toUpperCase();
+                        if (selectedBabak === "Babak 1" && safePools.length > 1) {
+                            teksBabak = "PENYISIHAN POOL " + selectedPool;
+                        } else if (selectedBabak === "Final") {
+                            teksBabak = "BABAK FINAL";
+                        }
+
+                        dataToPrint = safeData.map((m, index, allArr) => {
+                            const rawNama = m?.nama || "-";
+                            // Memotong nama atlet & waza
+                            const namaArray = rawNama.split(/[,&]/).map(n => n.trim());
+                            const nomorUrutGrouped = (allArr || []).filter(item => item.pool === m.pool).findIndex(item => item.id === m.id) + 1;
+
+                            return {
+                                ...m,
+                                kategori: selectedKategori, // Lempar nama kategori untuk KOP
+                                game: nomorUrutGrouped,
+                                kontingen: m?.kontingen || "-",
+                                namaRaw: namaArray,
+                                komposisiWaza: m?.komposisiWaza || [], // Data waza dari Firestore
+                                isEmbu: true,
+                                keteranganBabak: isFestivalAktif ? ("KELOMPOK " + (m?.pool || "-")) : teksBabak
+                            };
+                        });
+                    }
+
+                    // --- EKSEKUSI CETAK LOKAL (TANPA GOOGLE SERVER) ---
+                    setFinalPrintData(dataToPrint);
+                    setIsPrintMode(true); // Ganti tampilan ke mode kertas A4
+
+                    // Beri jeda 1 detik agar React selesai menggambar tabel A4 sebelum memanggil printer
+                    setTimeout(() => {
+                        window.print();
+                        setPrinting(false);
+                    }, 1000);
+
+                } catch (err) {
+                    console.error("Detail Error:", err);
+                    alert("Terjadi kesalahan sistem merakit data lokal: " + err.message);
+                    setPrinting(false);
+                }
+            };
+            return (
+                <>
+                    {/* INJEKSI CSS DINAMIS TERKUNCI (ANTI-BUBAR) */}
+                    <style>
+                        {`
+            @media print {
+                @page { 
+                    size: ${isRandori ? 'A4 landscape' : 'A4 portrait'}; 
+                    margin: 0 !important; 
+                }
+                body, html { margin: 0 !important; padding: 0 !important; background-color: white !important; }
+                * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            }
+            
+            .teks-vertikal {
+                writing-mode: vertical-rl;
+                transform: rotate(180deg);
+                text-align: center;
+                white-space: nowrap;
+            }
+
+            /* KUNCI ANTI-GABUNG: Pembungkus Kertas Kaku (Block) */
+            .page-wrapper {
+                page-break-after: always !important;
+                break-after: page !important;
+                page-break-inside: avoid !important;
+                display: block !important; 
+                width: ${isRandori ? '296mm' : '209mm'}; /* Lebar dibalik otomatis */
+                height: ${isRandori ? '209mm' : '296mm'}; /* Tinggi dibalik otomatis */
+                padding: 10mm; /* INI YANG MEMBUATNYA TIDAK MEPET */
+                margin: 0 auto;
+                box-sizing: border-box;
+                background: white;
+                overflow: hidden;
+            }
+
+            /* KUNCI FLEKSIBILITAS: Isi Kertas (Flexbox) */
+            .lembar-inner {
+                display: flex;
+                flex-direction: column;
+                width: 100%;
+                height: 100%;
+            }
+            `}
+                    </style>
+
+                    {/* ================= MODAL PENGATURAN KOP ================= */}
+                    {showKopModal && (
+                        <div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4 backdrop-blur-sm no-print">
+                            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col">
+                                <div className="bg-slate-900 text-white p-4 text-center font-black tracking-widest">
+                                    PENGATURAN KOP SURAT
+                                </div>
+
+                                <div className="p-6 flex flex-col gap-4">
+                                    {/* Input Teks */}
+                                    <div className="grid grid-cols-1 gap-3">
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-500 uppercase">Baris 1 (Judul Utama)</label>
+                                            <input type="text" value={kopData.baris1} onChange={e => setKopData({ ...kopData, baris1: e.target.value })} className="w-full p-2 border-2 border-slate-200 rounded-lg font-bold text-sm" />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-500 uppercase">Baris 2 (Sub Judul 1)</label>
+                                            <input type="text" value={kopData.baris2} onChange={e => setKopData({ ...kopData, baris2: e.target.value })} className="w-full p-2 border-2 border-slate-200 rounded-lg font-bold text-sm" />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-500 uppercase">Baris 3 (Sub Judul 2)</label>
+                                            <input type="text" value={kopData.baris3} onChange={e => setKopData({ ...kopData, baris3: e.target.value })} className="w-full p-2 border-2 border-slate-200 rounded-lg font-bold text-sm" />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-500 uppercase">Baris 4 (Tahun/Lokasi)</label>
+                                            <input type="text" value={kopData.baris4} onChange={e => setKopData({ ...kopData, baris4: e.target.value })} className="w-full p-2 border-2 border-slate-200 rounded-lg font-bold text-sm" />
+                                        </div>
+                                    </div>
+
+                                    {/* Input Logo */}
+                                    <div className="flex gap-4 mt-2">
+                                        <div className="flex-1 bg-slate-50 p-4 border-2 border-dashed border-slate-300 rounded-xl text-center">
+                                            <label className="text-xs font-bold text-slate-500 uppercase block mb-2">Upload Logo Kiri</label>
+                                            {kopData.logoKiri && <img src={kopData.logoKiri} alt="Logo Kiri" className="h-16 mx-auto mb-2 object-contain" />}
+                                            <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'logoKiri')} className="text-xs w-full" />
+                                        </div>
+                                        <div className="flex-1 bg-slate-50 p-4 border-2 border-dashed border-slate-300 rounded-xl text-center">
+                                            <label className="text-xs font-bold text-slate-500 uppercase block mb-2">Upload Logo Kanan</label>
+                                            {kopData.logoKanan && <img src={kopData.logoKanan} alt="Logo Kanan" className="h-16 mx-auto mb-2 object-contain" />}
+                                            <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'logoKanan')} className="text-xs w-full" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Action Buttons & Backup Area */}
+                                <div className="bg-slate-50 p-4 flex flex-col sm:flex-row justify-between items-center gap-4 border-t">
+
+                                    {/* Bagian Kiri: Tombol Export & Import */}
+                                    <div className="flex gap-2 w-full sm:w-auto">
+                                        <button
+                                            onClick={handleExportKop}
+                                            className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-2">
+                                            BACKUP
+                                        </button>
+
+                                        {/* Menggunakan label sebagai pembungkus input file yang disembunyikan */}
+                                        <label className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer flex items-center gap-2">
+                                            RESTORE
+                                            <input type="file" accept=".json" onChange={handleImportKop} className="hidden" />
+                                        </label>
+                                    </div>
+
+                                    {/* Bagian Kanan: Tombol Batal & Simpan */}
+                                    <div className="flex gap-3 w-full sm:w-auto justify-end">
+                                        <button onClick={() => setShowKopModal(false)} className="px-6 py-2 rounded-xl font-bold text-slate-500 hover:bg-slate-200 transition-all">BATAL</button>
+                                        <button onClick={handleSaveKop} className="bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-2 rounded-xl font-black shadow-md transition-all">💾 SIMPAN KOP</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {isPrintMode && (
+                        <div className="bg-white min-h-screen">
+                            {/* Panel Kontrol Mengambang (Tidak ikut tercetak karena class 'no-print' di CSS) */}
+                            <div className="print:hidden fixed top-4 right-4 flex gap-4 bg-white p-4 rounded-2xl shadow-2xl border border-gray-200 z-50">
+                                <div className="text-sm font-bold text-gray-500 mr-4 self-center">Mode Cetak Aktif</div>
+                                <button
+                                    onClick={() => window.print()}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl font-bold shadow-md transition-all">
+                                    🖨️ CETAK SEKARANG
+                                </button>
+                                <button
+                                    onClick={() => setIsPrintMode(false)}
+                                    className="bg-red-100 hover:bg-red-200 text-red-700 px-6 py-2 rounded-xl font-bold transition-all">
+                                    ✖ TUTUP & KEMBALI
+                                </button>
+                            </div>
+
+                            {/* Looping Merender Kertas A4 Sebanyak Jumlah Peserta */}
+                            <div className="print-area">
+                                {finalPrintData.map((data, idx) => {
+                                    return isRandori ? (
+                                        <TemplateRandori key={idx} data={data} kopData={kopData} />
+                                    ) : (
+                                        <TemplateEmbu key={idx} data={data} kopData={kopData} />
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className={`min-h-screen bg-slate-100 flex flex-col ${isPrintMode ? 'hidden no-print' : ''}`}>
+                        <header className="bg-slate-900 text-white p-6 flex justify-between items-center shadow-lg">
+                            <div className="flex items-center gap-4">
+                                <div className="bg-red-600 p-3 rounded-2xl text-xl font-black shadow-inner">🔥</div>
+                                <h1 className="text-xl font-black uppercase tracking-widest">MASS Admin (Print Center)</h1>
+                            </div>
+
+                            {/* KUMPULAN TOMBOL AKSI & NAVIGASI */}
+                            <div className="flex items-center gap-4">
+                                <button
+                                    onClick={() => setShowKopModal(true)}
+                                    className="bg-slate-800 hover:bg-slate-700 px-6 py-2 rounded-xl font-bold border border-slate-700 text-xs transition-all shadow-md text-white">
+                                    ⚙️ SETTING KOP
+                                </button>
+
+                                <button
+                                    onClick={syncMasterKontingen}
+                                    disabled={isSyncingMaster}
+                                    className={`px-6 py-2 rounded-xl font-bold border text-xs transition-all ${isSyncingMaster ? 'bg-slate-700 text-slate-400 border-slate-600' : 'bg-emerald-600 hover:bg-emerald-500 border-emerald-500 text-white'}`}>
+                                    {isSyncingMaster ? "MENYINKRONKAN..." : "⬇️ TARIK MASTER"}
+                                </button>
+
+                                <button
+                                    onClick={fetchAndMergeData}
+                                    className="bg-slate-800 hover:bg-slate-700 px-6 py-2 rounded-xl font-bold border border-slate-700 text-xs transition-all text-white">
+                                    🔄 REFRESH
+                                </button>
+
+                                {/* GARIS PEMBATAS VERTIKAL */}
+                                <div className="border-l-2 border-slate-700 h-8 mx-1"></div>
+
+                                {/* TOMBOL KEMBALI / LOGOUT CERDAS */}
+                                <button
+                                    onClick={handleBackOrLogout}
+                                    className={`px-6 py-2 rounded-xl font-black text-xs transition-all shadow-md flex items-center gap-2 ${userRole === 'seksi_pertandingan'
+                                        ? 'bg-indigo-600 hover:bg-indigo-500 border border-indigo-500 text-white'
+                                        : 'bg-red-600 hover:bg-red-500 border border-red-500 text-white'
+                                        }`}>
+                                    {userRole === 'seksi_pertandingan' ? '🏠 DASHBOARD' : '🚪 KELUAR'}
+                                </button>
+                            </div>
+                        </header>
+
+                        <main className="flex-1 p-6 max-w-6xl mx-auto w-full">
+                            {errorMsg && <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-xl shadow-sm text-red-600 font-bold text-xs">{errorMsg}</div>}
+
+                            <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-200">
+                                {/* GRID FILTER: DINAMIS 2 ATAU 3 KOLOM */}
+                                <div className={`grid grid-cols-1 ${isRandori ? 'md:grid-cols-2' : 'md:grid-cols-3'} gap-6 mb-8`}>
+
+                                    {/* 1. NOMOR PERTANDINGAN */}
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Nomor Pertandingan</label>
+                                        <select value={selectedKategori} onChange={(e) => setSelectedKategori(e.target.value)} className="w-full p-4 border-2 rounded-2xl font-bold bg-slate-50 outline-none focus:border-red-500">
+                                            {listKategori.map((kat, i) => <option key={i} value={kat}>{kat}</option>)}
+                                        </select>
+                                    </div>
+
+                                    {/* 2. BABAK DINAMIS */}
+                                    {(!isRandori && !isFestivalMode) && (
+                                        <div>
+                                            <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Babak</label>
+                                            <div className="flex gap-2">
+                                                {listBabak.map(b => (
+                                                    <button key={b} onClick={() => setSelectedBabak(b)} className={`flex-1 py-4 rounded-2xl font-black text-[10px] uppercase border-2 transition-all ${selectedBabak === b ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-400 border-slate-100 hover:border-slate-300'}`}>{b}</button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 3. POOL DINAMIS (Sembunyikan jika Festival) */}
+                                    {(!isFestivalMode) && (
+                                        <div>
+                                            <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Pool</label>
+                                            <div className="flex gap-2">
+                                                {isEmbuFinal ? (
+                                                    <div className="py-3 px-4 bg-amber-50 text-amber-700 rounded-2xl text-[10px] font-black flex-1 text-center border-2 border-amber-200 uppercase tracking-widest flex items-center justify-center">
+                                                        GABUNGAN FINAL
+                                                    </div>
+                                                ) : listPool.length > 0 ? listPool.map(p => (
+                                                    <button key={p} onClick={() => setSelectedPool(p)} className={`w-12 h-12 rounded-full font-black text-sm border-2 transition-all ${selectedPool === p ? 'bg-red-600 text-white border-red-600 shadow-md' : 'bg-white text-slate-400 border-slate-100 hover:bg-slate-50'}`}>{p}</button>
+                                                )) : <div className="py-3 px-4 bg-slate-50 rounded-2xl text-[10px] font-bold text-slate-400 flex-1 text-center border-2 border-dashed flex items-center justify-center">Single Pool</div>}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                                {/* PANEL TOMBOL (HEADER TABEL) */}
+                                <div className="flex justify-between items-center mb-6 bg-slate-50 p-6 rounded-3xl border border-slate-100">
+                                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                        {isRandori ? `TERPILIH: ${selectedItems.length} PARTAI` : `TOTAL: ${displayData.length} NOMOR`}
+                                    </div>
+                                    <button onClick={handleCetakPDF} disabled={printing || displayData.length === 0} className={`px-10 py-4 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg transition-all ${printing ? 'bg-slate-400' : 'bg-red-600 hover:bg-red-700 text-white'}`}>
+                                        {printing ? "MEMPROSES..." : isRandori ? "📄 CETAK TERPILIH" : "📄 CETAK SEMUA"}
+                                    </button>
+                                </div>
+
+                                {/* TABEL DATA SIMPEL */}
+                                <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white">
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-slate-50 text-slate-500 text-[10px] uppercase font-black tracking-widest border-b">
+                                            <tr>
+                                                {isRandori && <th className="p-4 text-center w-16">Pilih</th>}
+                                                <th className="p-4 text-center w-24">{isRandori ? "Game" : "No"}</th>
+                                                {isRandori ? (
+                                                    <>
+                                                        <th className="p-4">Merah</th>
+                                                        <th className="p-4">Putih</th>
+                                                        <th className="p-4 text-center">Status</th>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <th className="p-4">Nama Kenshi / Pasangan</th>
+                                                        <th className="p-4">Kontingen</th>
+                                                        <th className="p-4 text-center">Urut</th>
+                                                    </>
+                                                )}
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {displayData.map((item, i) => {
+                                                const itemId = item.id || item.matchNum;
+                                                const isChecked = selectedItems.includes(itemId);
+
+                                                // Ambil info nama & kontingen khusus Randori
+                                                const merah = isRandori ? getKenshiInfo(item.merahId) : null;
+                                                const putih = isRandori ? getKenshiInfo(item.putihId) : null;
+
+                                                return (
+                                                    <tr key={i} className={`hover:bg-slate-50 transition-colors ${isChecked ? 'bg-red-50' : ''}`}>
+
+                                                        {/* Kolom Ceklis (Hanya Randori) */}
+                                                        {isRandori && (
+                                                            <td className="p-4 text-center">
+                                                                <input type="checkbox" checked={isChecked}
+                                                                    onChange={() => handleSelectItem(itemId)}
+                                                                    className="w-4 h-4 accent-red-600 cursor-pointer" />
+                                                            </td>
+                                                        )}
+
+                                                        {/* Kolom Game / No (Selalu mulai dari 1 berdasarkan urutan filter) */}
+                                                        <td className="p-4 text-center font-black text-slate-800">{i + 1}</td>
+
+                                                        {isRandori ? (
+                                                            <>
+                                                                {/* KUNCI PERBAIKAN: Menampilkan NAMA di atas, KONTINGEN di bawah */}
+                                                                <td className="p-4 uppercase">
+                                                                    <div className="font-bold text-red-700">{merah?.nama}</div>
+                                                                    <div className="text-[10px] text-slate-400 font-bold">{merah?.kontingen !== "-" ? merah?.kontingen : ""}</div>
+                                                                </td>
+                                                                <td className="p-4 uppercase">
+                                                                    <div className="font-bold text-blue-700">{putih?.nama}</div>
+                                                                    <div className="text-[10px] text-slate-400 font-bold">{putih?.kontingen !== "-" ? putih?.kontingen : ""}</div>
+                                                                </td>
+                                                                <td className="p-4 text-center">
+                                                                    {(() => {
+                                                                        const statusText = (item.status || "PENDING").toUpperCase();
+                                                                        let colorClass = "bg-slate-100 text-slate-500"; // Default Abu-abu
+
+                                                                        if (statusText === "AUTO-WIN" || statusText === "AUTO BYE") {
+                                                                            colorClass = "bg-red-100 text-red-700";
+                                                                        } else if (statusText === "DONE") {
+                                                                            colorClass = "bg-green-100 text-green-700";
+                                                                        } else if (statusText === "PENDING" || statusText === "BELUM") {
+                                                                            colorClass = "bg-orange-100 text-orange-700";
+                                                                        }
+
+                                                                        return (
+                                                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${colorClass}`}>
+                                                                                {statusText}
+                                                                            </span>
+                                                                        );
+                                                                    })()}
+                                                                </td>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <td className="p-4 font-black uppercase text-slate-700">{item.nama}</td>
+                                                                <td className="p-4 font-bold text-slate-400 uppercase">{item.kontingen}</td>
+                                                                <td className="p-4 text-center font-black text-red-600">
+                                                                    {/* Gunakan (displayData || []) untuk memastikan array tidak undefined */}
+                                                                    {(displayData || [])
+                                                                        .filter((itemLain, indexLain) => indexLain <= i && itemLain.pool === item.pool)
+                                                                        .length}
+                                                                </td>
+                                                            </>
+                                                        )}
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </main>
+                    </div>
+                </>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+
+</html>

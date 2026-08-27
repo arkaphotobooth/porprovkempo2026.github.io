@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Panitia | MASS KEMPO</title>
+    <link rel="stylesheet" href="assets/css/global.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .login-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 10px;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            background: none;
+            font-weight: 700;
+            font-size: 13px;
+            color: #64748b;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: 0.2s;
+        }
+        .tab-btn.active {
+            background: #eff6ff;
+            color: #2563eb;
+        }
+        .dropzone-box {
+            border: 2px dashed #cbd5e1;
+            padding: 25px;
+            text-align: center;
+            border-radius: 8px;
+            background: #f8fafc;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+        .dropzone-box:hover {
+            border-color: #3b82f6;
+            background: #f0fdf4;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="logo-placeholder">MASS KEMPO</div>
+            <h2 class="login-title">Portal Panitia Venue</h2>
+
+            <!-- PILIHAN JALUR KONEKSI -->
+            <div class="login-tabs">
+                <button type="button" class="tab-btn active" id="tabOnline"><i class="fas fa-cloud"></i> Online (Cloud SSO)</button>
+                <button type="button" class="tab-btn" id="tabOffline"><i class="fas fa-file-code"></i> Offline (Manifest)</button>
+            </div>
+
+            <!-- FORM 1: JALUR ONLINE CLOUD SSO -->
+            <form id="loginForm">
+                <div class="input-group">
+                    <label for="eventId">Nomor Registrasi Event (Project Hub)</label>
+                    <input type="text" id="eventId" required placeholder="Contoh: MK-REQ-3573" style="text-transform: uppercase;">
+                </div>
+
+                <div class="input-group">
+                    <label for="username">Username / ID Peran</label>
+                    <input type="text" id="username" required placeholder="admin_utama / court_1">
+                </div>
+
+                <div class="input-group">
+                    <label for="password">Kata Sandi</label>
+                    <input type="password" id="password" required placeholder="Masukkan kata sandi">
+                </div>
+
+                <div id="errorMessage" class="error-message"></div>
+                <button type="submit" id="loginBtn" class="btn-primary">Masuk & Sinkronkan</button>
+            </form>
+
+            <!-- FORM 2: JALUR OFFLINE LAN (INGESTION MANIFEST) -->
+            <form id="manifestForm" style="display: none;">
+                <div class="dropzone-box" id="dropzoneManifest">
+                    <i class="fas fa-file-import fa-2x text-muted mb-2"></i>
+                    <p style="font-size: 13px; margin: 0; color: #475569;">Klik untuk pilih file <b>event-manifest.json</b></p>
+                    <input type="file" id="manifestFileInput" accept=".json" style="display: none;">
+                </div>
+                <div id="manifestInfo" style="display: none; font-size: 12px; background: #e2e8f0; padding: 10px; border-radius: 6px; margin-bottom: 15px;"></div>
+                <button type="submit" id="btnManifestSubmit" class="btn-primary" disabled>Terapkan Manifest Offline</button>
+            </form>
+        </div>
+    </div>
+
+    <script type="module" src="login.js"></script>
+</body>
+
+</html>

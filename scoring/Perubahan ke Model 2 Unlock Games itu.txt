@@ -1,0 +1,19 @@
+Prompt untuk Perubahan ke Model 2 (Bypass Khusus Per-Partai):
+
+"Tolong ubah logika fungsi otorisasi Koordinator Pertandingan (eksekusiBukaGembokKoordinator) pada aplikasi MASS KEMPO dari sistem Pemutihan Permanen (Model 1) menjadi sistem Izin Khusus Per-Partai / Single-Match Bypass (Model 2) dengan aturan teknis berikut:
+
+Pertahankan Status Sanksi Global:
+
+Saat gembok dibuka, status statusSanksi dan sanksiDetail pada STATE.participants tidak boleh diubah menjadi NORMAL/dihapus. Status atlet tetap tercatat terkena sanksi untuk partai lain maupun nomor Embu.
+
+Tandai Bypass pada Objek Pertandingan Berjalan:
+
+Sematkan properti bypass khusus pada partai yang sedang dimuat (misal: match.bypassSanksiMerah = true atau match.bypassSanksiPutih = true), lalu sinkronkan properti ini ke database lokal dan Firebase.
+
+Penyelarasan Logika Pengecekan Panel Skoring:
+
+Perbarui fungsi pembaca sanksi di panel Randori dan Embu agar memeriksa apakah partai terkait memiliki tanda bypass. Jika terdapat tanda bypass, tirai gembok dilepas dan skor direset ke 0 - 0 khusus untuk partai tersebut saja, sementara partai lanjutan atau nomor lain tetap terkunci jika dibuka.
+
+Pencegahan Efek Samping Bagan:
+
+Pastikan mekanisme kemenangan WO atau Auto-Win tidak terganggu untuk partai-partai lain yang tidak mendapatkan dispensasi bypass dari Koordinator."

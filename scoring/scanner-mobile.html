@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Scanner MASS KEMPO</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body class="bg-slate-950 text-white min-h-screen flex flex-col">
+
+    <div class="p-4 border-b border-slate-800 bg-slate-900 shadow-md flex flex-col gap-3 z-20">
+        <h1 class="text-lg font-black text-center text-blue-400 tracking-widest"><i
+                class="fas fa-mobile-alt mr-2"></i>MOBILE SCANNER</h1>
+
+        <select id="select-court" onchange="handleCourtChange()"
+            class="w-full bg-slate-800 border border-blue-500/50 rounded-xl p-3 text-white font-bold outline-none text-center shadow-inner">
+            <option value="">-- PILIH LOKASI TUGAS ANDA --</option>
+            <option value="admin">🔒 Mode Admin (Master Data)</option>
+            <option disabled>────────────────────</option>
+            <option value="court_1">Seksi Pertandingan: Court 1</option>
+            <option value="court_2">Seksi Pertandingan: Court 2</option>
+            <option value="court_3">Seksi Pertandingan: Court 3</option>
+        </select>
+
+        <select id="select-camera" onchange="startScannerWithSelectedCamera()"
+            class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-slate-400 text-sm font-bold outline-none text-center hidden">
+            <option value="">Menyiapkan Lensa Kamera...</option>
+        </select>
+    </div>
+
+    <div id="scanner-wrapper" class="hidden flex-1 flex flex-col items-center justify-center p-4">
+
+        <div
+            class="relative bg-[#0f172a] p-3 rounded-[2rem] shadow-[0_0_40px_rgba(59,130,246,0.15)] border border-slate-800 w-full max-w-sm flex flex-col gap-3">
+
+            <div
+                class="text-[10px] font-black text-red-400 bg-red-900/20 px-3 py-1.5 rounded-lg border border-red-800/50 text-center animate-pulse tracking-widest flex items-center justify-center gap-1.5 shadow-inner">
+                <i class="fas fa-exclamation-triangle"></i> JANGAN TERLALU DEKAT. JAGA JARAK 15 CM!
+            </div>
+
+            <div id="reader"
+                class="w-full rounded-[1.5rem] overflow-hidden border-[3px] border-blue-500 relative shadow-[inset_0_0_20px_rgba(0,0,0,1)] bg-black min-h-[250px]">
+            </div>
+
+            <div class="px-2 mt-1">
+                <div class="flex items-center justify-between text-[10px] text-slate-400 font-bold mb-2">
+                    <span><i class="fas fa-search-minus mr-1"></i> 1x</span>
+                    <span
+                        class="text-blue-400 tracking-widest uppercase bg-blue-900/30 px-2 py-0.5 rounded border border-blue-800">Kontrol
+                        Lensa</span>
+                    <span>4x <i class="fas fa-search-plus ml-1"></i></span>
+                </div>
+                <input type="range" id="zoom-slider" min="1" max="4" step="0.1" value="2"
+                    oninput="applyZoom(this.value)"
+                    class="w-full h-2.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500 shadow-inner">
+            </div>
+
+            <button id="btn-flash" onclick="toggleFlashlight()"
+                class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-600 px-6 py-3.5 rounded-2xl text-slate-400 font-bold shadow-lg transition-all flex items-center justify-center gap-2">
+                <i class="fas fa-bolt text-lg"></i> Nyalakan Senter
+            </button>
+        </div>
+    </div>
+
+    <audio id="snd-success" src="https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3"
+        preload="auto"></audio>
+    <audio id="snd-fail" src="https://assets.mixkit.co/active_storage/sfx/2955/2955-preview.mp3" preload="auto"></audio>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <script>
+        // MASUKKAN CONFIG FIREBASE MASS KEMPO ANDA DI SINI
+        const firebaseConfig = {
+            apiKey: "AIzaSyA63UtPlhEdC9qKmmHVpDjGv_4RqWjK47k",
+            authDomain: "mass-pro-turnamen.firebaseapp.com",
+            projectId: "mass-pro-turnamen",
+            databaseURL: "https://mass-pro-turnamen-default-rtdb.asia-southeast1.firebasedatabase.app/",
+            storageBucket: "mass-pro-turnamen.firebasestorage.app",
+            messagingSenderId: "268290671498",
+            appId: "1:268290671498:web:d55e4960e392f7dfc8fe73"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        let html5QrCode = null;
+        let isFlashOn = false;
+        let currentCourt = '';
+        let feedbackListener = null;
+
+        let videoTrack = null;
+        let zoomCapability = null;
+        let devicesList = [];
+
+        // 1. TAHAP SETUP & SMART AUTO-SELECT
+        function handleCourtChange() {
+            currentCourt = document.getElementById('select-court').value;
+            if (!currentCourt) {
+                document.getElementById('scanner-wrapper').classList.add('hidden');
+                document.getElementById('select-camera').classList.add('hidden');
+                if (html5QrCode) html5QrCode.stop().catch(e => { });
+                return;
+            }
+
+            document.getElementById('scanner-wrapper').classList.remove('hidden');
+            document.getElementById('select-camera').classList.remove('hidden');
+
+            if (devicesList.length === 0) {
+                Html5Qrcode.getCameras().then(devices => {
+                    if (devices && devices.length > 0) {
+                        devicesList = devices;
+                        populateCameraDropdown();
+                    } else {
+                        alert("Kamera tidak ditemukan. Pastikan izin kamera diberikan ke browser.");
+                    }
+                }).catch(err => alert("Gagal mendeteksi kamera: " + err));
+            } else {
+                startScannerWithSelectedCamera();
+            }
+        }
+
+        // 2. POPULASI DROPDOWN LENSA & PEMILIHAN CERDAS
+        function populateCameraDropdown() {
+            const select = document.getElementById('select-camera');
+            select.innerHTML = '';
+
+            let bestCameraId = devicesList[0].id;
+
+            // Logika Mencari Lensa Belakang Utama (Biasanya berlabel "back" index 0)
+            const backCameras = devicesList.filter(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('belakang'));
+            if (backCameras.length > 0) {
+                bestCameraId = backCameras[0].id; // Mengunci lensa belakang utama
+            }
+
+            devicesList.forEach((d, idx) => {
+                let isSelected = (d.id === bestCameraId) ? 'selected' : '';
+                select.innerHTML += `<option value="${d.id}" ${isSelected}>[Lensa ${idx + 1}] ${d.label}</option>`;
+            });
+
+            startScannerWithSelectedCamera();
+        }
+
+        // 3. MULAI SCANNER BERDASARKAN DROPDOWN
+        function startScannerWithSelectedCamera() {
+            const camId = document.getElementById('select-camera').value;
+            if (!camId) return;
+
+            if (html5QrCode) {
+                // Restart kamera dengan aman
+                html5QrCode.stop().then(() => { html5QrCode.clear(); launchCamera(camId); })
+                    .catch(e => { html5QrCode.clear(); launchCamera(camId); });
+            } else {
+                launchCamera(camId);
+            }
+        }
+
+        function launchCamera(camId) {
+            html5QrCode = new Html5Qrcode("reader");
+            isFlashOn = false;
+            document.getElementById('btn-flash').classList.remove('text-yellow-400');
+            document.getElementById('btn-flash').classList.add('text-slate-400');
+
+            html5QrCode.start(camId, { fps: 10, qrbox: { width: 250, height: 250 } },
+                (decodedText) => {
+                    if (html5QrCode.getState() === Html5QrcodeScannerState.SCANNING) html5QrCode.pause();
+                    let ref = database.ref(`scanner_inbox/${currentCourt}`).push();
+                    ref.set({ url: decodedText, timestamp: Date.now() });
+                }).then(() => {
+                    // Jeda 1 detik agar browser selesai memuat Hardware Lensa
+                    setTimeout(() => {
+                        initCameraConstraints();
+                    }, 1000);
+                }).catch(err => alert("Gagal menyalakan lensa: " + err));
+
+            setupFeedbackListener();
+        }
+
+        // 4. MENDENGAR FEEDBACK LAPTOP (Sistem Anti-Tabrakan)
+        function setupFeedbackListener() {
+            if (feedbackListener) database.ref(`scanner_feedback/${currentCourt}`).off('value', feedbackListener);
+
+            feedbackListener = database.ref(`scanner_feedback/${currentCourt}`).on('value', (snap) => {
+                const fb = snap.val();
+                if (fb && fb.timestamp > Date.now() - 5000) {
+                    if (fb.status === 'SUCCESS') {
+                        document.getElementById('snd-success').play();
+                        document.body.classList.add('bg-green-900');
+                        if (navigator.vibrate) navigator.vibrate([100, 100]);
+                    } else {
+                        document.getElementById('snd-fail').play();
+                        document.body.classList.add('bg-red-900');
+                        if (navigator.vibrate) navigator.vibrate(500);
+                    }
+
+                    setTimeout(() => {
+                        document.body.className = "bg-slate-950 text-white min-h-screen flex flex-col";
+                        if (html5QrCode && html5QrCode.getState() === Html5QrcodeScannerState.PAUSED) html5QrCode.resume();
+                    }, 1000);
+                }
+            });
+        }
+
+        // 5. INJEKSI KENDALI HARDWARE (AUTO-FOCUS, ZOOM 2x, SENTER)
+        function initCameraConstraints() {
+            const tracks = document.querySelector('#reader video')?.srcObject?.getVideoTracks();
+            if (tracks && tracks.length > 0) {
+                videoTrack = tracks[0];
+                const capabilities = videoTrack.getCapabilities ? videoTrack.getCapabilities() : null;
+
+                // A. Paksa Auto-Focus Bergerak (Continuous/Macro)
+                if (capabilities && capabilities.focusMode) {
+                    const modes = capabilities.focusMode;
+                    let bestFocus = modes.includes('continuous') ? 'continuous' : (modes.includes('macro') ? 'macro' : 'none');
+
+                    if (bestFocus !== 'none') {
+                        videoTrack.applyConstraints({ advanced: [{ focusMode: bestFocus }] })
+                            .catch(e => console.log("Gagal set AutoFocus:", e));
+                    }
+                }
+
+                // B. Suntikkan Default Zoom ke 2x (Atau batas maksimal kamera)
+                if (capabilities && capabilities.zoom) {
+                    zoomCapability = capabilities.zoom;
+                    const slider = document.getElementById('zoom-slider');
+                    slider.min = capabilities.zoom.min;
+                    slider.max = capabilities.zoom.max;
+
+                    // Kita kunci default di 2x. (Tidak 4x agar piksel tidak pecah ekstrem).
+                    let targetZoom = Math.min(2, capabilities.zoom.max);
+                    targetZoom = Math.max(targetZoom, capabilities.zoom.min);
+
+                    slider.value = targetZoom;
+                    applyZoom(targetZoom);
+                }
+            }
+        }
+
+        // 🌟 SISTEM AUTO-LOAD DARI PARAMETER URL (QR CODE) 🌟
+        window.onload = function () {
+            // Membaca URL (Contoh: https://.../?lokasi=court_1)
+            const urlParams = new URLSearchParams(window.location.search);
+            const lokasiTarget = urlParams.get('lokasi');
+
+            if (lokasiTarget) {
+                const selectEl = document.getElementById('select-court');
+                // Cek apakah lokasiTarget ada di dalam opsi dropdown
+                let optionExists = Array.from(selectEl.options).some(opt => opt.value === lokasiTarget);
+
+                if (optionExists) {
+                    selectEl.value = lokasiTarget; // Pilih otomatis
+                    handleCourtChange(); // Langsung nyalakan kamera!
+                } else {
+                    alert("Lokasi Court dari QR Code tidak valid.");
+                }
+            }
+        };
+
+        // 6. KONTROL TUAS ZOOM MANUAL
+        function applyZoom(val) {
+            if (videoTrack && zoomCapability) {
+                videoTrack.applyConstraints({
+                    advanced: [{ zoom: parseFloat(val) }]
+                }).catch(e => console.log("Gagal Zoom Lensa:", e));
+            }
+        }
+
+        // 7. SENTER BYPASS HARDWARE
+        function toggleFlashlight() {
+            if (videoTrack) {
+                isFlashOn = !isFlashOn;
+                videoTrack.applyConstraints({
+                    advanced: [{ torch: isFlashOn }]
+                }).then(() => {
+                    const btn = document.getElementById('btn-flash');
+                    btn.classList.toggle('text-yellow-400', isFlashOn);
+                    btn.classList.toggle('text-slate-400', !isFlashOn);
+                }).catch(e => alert("Lensa ini tidak terhubung dengan Flashlight/Senter HP. Coba pilih Lensa lain di menu Dropdown atas."));
+            } else {
+                alert("Sistem belum siap. Tunggu kamera menyala.");
+            }
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem & Jaringan | MASS KEMPO</title>
+    <link rel="stylesheet" href="../assets/css/global.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8fafc;
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .sys-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar Styles */
+        .sys-sidebar {
+            width: 280px;
+            background: #ffffff;
+            border-right: 1px solid #e2e8f0;
+            padding: 30px 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sys-brand {
+            padding: 0 30px;
+            margin-bottom: 40px;
+        }
+
+        .sys-brand h1 {
+            font-size: 20px;
+            color: #0f172a;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sys-brand p {
+            font-size: 12px;
+            color: #64748b;
+            margin: 5px 0 0 0;
+        }
+
+        .sys-nav {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .sys-nav li {
+            margin-bottom: 5px;
+        }
+
+        .sys-nav a {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px 30px;
+            color: #64748b;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s;
+            border-left: 4px solid transparent;
+        }
+
+        .sys-nav a:hover {
+            background: #f1f5f9;
+            color: #3b82f6;
+        }
+
+        .sys-nav a.active {
+            background: #eff6ff;
+            color: #3b82f6;
+            border-left-color: #3b82f6;
+        }
+
+        /* Content Styles */
+        .sys-content {
+            flex: 1;
+            padding: 40px;
+            background: #f8fafc;
+        }
+
+        .tab-pane {
+            display: none;
+            max-width: 800px;
+        }
+
+        .tab-pane.active {
+            display: block;
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .sys-card {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            margin-bottom: 25px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .sys-card h2 {
+            margin-top: 0;
+            font-size: 18px;
+            color: #0f172a;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        /* Form Grid */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .full {
+            grid-column: 1 / -1;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 700;
+            color: #475569;
+            margin-bottom: 8px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 14px;
+            background: #fff;
+            box-sizing: border-box;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-back {
+            background: #1e293b;
+            color: white;
+            text-decoration: none;
+            display: inline-flex;
+            justify-content: center;
+            width: calc(100% - 60px);
+            margin: auto 30px 30px 30px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sys-container">
+        <!-- Sidebar -->
+        <aside class="sys-sidebar">
+            <div class="sys-brand">
+                <h1><i class="fas fa-server" style="color: #3b82f6;"></i> Control Center</h1>
+                <p>MASS KEMPO Engine</p>
+            </div>
+            <ul class="sys-nav">
+                <li><a href="#" class="tab-link active" data-target="profil"><i class="fas fa-trophy"></i> Profil
+                        Event</a></li>
+                <li><a href="#" class="tab-link" data-target="jaringan"><i class="fas fa-network-wired"></i>
+                        Jaringan</a></li>
+                <li><a href="#" class="tab-link" data-target="database"><i class="fas fa-database"></i> Database</a>
+                </li>
+            </ul>
+            <div style="flex: 1;"></div>
+            <a href="../dashboard.html" class="btn btn-back"><i class="fas fa-arrow-left"></i> Ke Dashboard</a>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="sys-content">
+
+            <!-- Tab 1: Profil Event -->
+            <section id="profil" class="tab-pane active">
+                <div class="sys-card">
+                    <h2>Identitas Event / Kejuaraan</h2>
+                    <form id="formEvent">
+                        <div class="form-grid">
+                            <div class="form-group full">
+                                <label>Nama Kejuaraan</label>
+                                <input type="text" id="eventName" placeholder="Contoh: Kejurda Kenshi Jateng 2026"
+                                    required>
+                            </div>
+                            <div class="form-group">
+                                <label>Tanggal Pelaksanaan</label>
+                                <input type="date" id="eventDate" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Lokasi (GOR / Gedung)</label>
+                                <input type="text" id="eventLocation" placeholder="Contoh: GOR Sahabat" required>
+                            </div>
+                        </div>
+                        <div style="margin-top: 25px; text-align: right;">
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Simpan
+                                Profil</button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Tab 2: Jaringan -->
+            <section id="jaringan" class="tab-pane">
+                <div class="sys-card">
+                    <h2>Konfigurasi Jaringan & Server</h2>
+                    <form id="formNetwork">
+                        <div class="form-group mb-4">
+                            <label class="font-weight-bold">Mode Operasional Sistem</label>
+                            <select id="netMode" class="form-control">
+                                <option value="lokal">LOKAL MURNI (Offline, SQLite Only)</option>
+                                <option value="hybrid">HYBRID (Lokal + Sinkronisasi Cloud)</option>
+                                <option value="firebase">FULL FIREBASE (Cloud Only)</option>
+                            </select>
+                        </div>
+
+                        <!-- Bagian untuk Menampilkan IP Address -->
+                        <div
+                            style="margin-bottom: 20px; padding: 15px; background-color: #e9ecef; border-radius: 8px; border-left: 4px solid #0d6efd;">
+                            <label style="font-weight: bold; margin-bottom: 5px; display: block;">🌐 Alamat IP Server
+                                (Untuk Akses Wasit):</label>
+                            <div style="font-size: 1.2rem; color: #084298;">
+                                http://<span id="ipAddressDisplay" style="font-weight: bold;">Memuat IP...</span>:3000
+                            </div>
+                            <small style="color: #6c757d;">Ketik alamat di atas pada browser HP/Laptop wasit agar
+                                terhubung ke server lokal ini.</small>
+                        </div>
+
+                        <hr>
+
+                        <div class="row">
+                            <!-- BLOK 1: RTDB -->
+                            <div class="col-md-6 mb-3">
+                                <h5 class="text-primary">🔥 Config RTDB (Skoring & Undian)</h5>
+                                <p class="text-muted small mb-2"><i>Paste langsung kode
+                                        <code>firebaseConfig = { ... }</code> Anda di sini:</i></p>
+                                <textarea id="rtdb_raw" class="form-control" rows="10"
+                                    placeholder="const firebaseConfig = {&#10;  apiKey: '...',&#10;  authDomain: '...',&#10;  ...&#10;};"></textarea>
+                            </div>
+
+                            <!-- BLOK 2: FIRESTORE -->
+                            <div class="col-md-6 mb-3">
+                                <h5 class="text-success">📁 Config Firestore (Pendaftaran)</h5>
+                                <p class="text-muted small mb-2"><i>Paste langsung kode
+                                        <code>pendaftaranConfig = { ... }</code> Anda di sini (kosongkan jika tidak
+                                        ada):</i></p>
+                                <textarea id="fs_raw" class="form-control" rows="10"
+                                    placeholder="const pendaftaranConfig = {&#10;  apiKey: '...',&#10;  authDomain: '...',&#10;  ...&#10;};"></textarea>
+                            </div>
+                        </div>
+
+                        <button id="btnSimpanJaringan" class="btn btn-primary mt-3 w-100">Simpan Konfigurasi
+                            Jaringan</button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Tab 3: Database -->
+            <section id="database" class="tab-pane">
+                <div class="sys-card">
+                    <h2>Maintenance Data</h2>
+                    <p style="color: #64748b; font-size: 14px; margin-bottom: 20px;">Backup seluruh data event ini atau
+                        reset untuk memulai event baru di laptop ini.</p>
+                    <div style="display: flex; gap: 15px;">
+                        <button class="btn btn-primary"><i class="fas fa-download"></i> Backup Data (.db)</button>
+                        <button class="btn btn-danger"><i class="fas fa-trash-alt"></i> Reset Data Event</button>
+                    </div>
+
+                    <!-- TAMBAHAN BARU: Blok Sinkronisasi Cloud -->
+                    <div style="margin-top: 30px; padding-top: 25px; border-top: 1px solid #e2e8f0;">
+                        <h3 style="font-size: 16px; color: #0f172a; margin-bottom: 10px;">Sinkronisasi Cloud (Firebase
+                            &rarr; Lokal)</h3>
+                        <p style="color: #64748b; font-size: 14px; margin-bottom: 15px;">
+                            Tarik seluruh data dari server Cloud (Firebase) dan timpa ke database laptop ini. Sangat
+                            berguna saat memindahkan server ke perangkat baru.
+                        </p>
+                        <button id="btnTarikCloud" class="btn" style="background: #8b5cf6; color: white;">
+                            <i class="fas fa-cloud-download-alt"></i> Tarik Data Cloud ke Laptop Ini
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Tambahkan SDK Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <script src="sistem.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROYEKTOR TM - MASS KEMPO</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+            overflow-x: hidden;
+        }
+
+        /* Tema Light Mode Kontras Tinggi */
+        .card-light {
+            background-color: #ffffff;
+            border: 2px solid #e2e8f0;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+        }
+
+        .slot-kosong {
+            background-color: #f1f5f9;
+            color: #94a3b8;
+            font-style: italic;
+        }
+
+        .slot-terisi {
+            background-color: #ffffff;
+            border: 2px solid #cbd5e1;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        .slot-finalis {
+            background-color: #fefce8;
+            border: 2px solid #facc15;
+        }
+
+        /* CSS Bagan Randori Light Mode */
+        .bracket-container {
+            display: flex;
+            gap: 4rem;
+            padding: 2rem;
+            overflow-x: auto;
+            align-items: stretch;
+        }
+
+        .bracket-col {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .bracket-match {
+            position: relative;
+            z-index: 10;
+            background: white;
+            border: 2px solid #cbd5e1;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            padding: 1rem;
+        }
+
+        /* Garis Sambungan (Warna Gelap Kontras) */
+        .bracket-match.has-next::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            right: -2rem;
+            width: 2rem;
+            height: 3px;
+            background-color: #94a3b8;
+            z-index: -1;
+        }
+
+        .bracket-match.not-first::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: -2rem;
+            width: 2rem;
+            height: 3px;
+            background-color: #94a3b8;
+            z-index: -1;
+        }
+
+        .bracket-col:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            top: 15%;
+            bottom: 15%;
+            right: -2rem;
+            width: 3px;
+            background-color: #94a3b8;
+            z-index: -1;
+        }
+
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex flex-col">
+
+    <!-- HEADER PROYEKTOR -->
+    <header
+        class="bg-white border-b-4 border-blue-600 shadow-sm px-8 py-4 flex justify-between items-center z-50 relative">
+        <div class="flex items-center gap-4">
+            <img src="logo-saya.svg" class="w-16 h-16 object-contain hidden md:block"
+                onerror="this.style.display='none'">
+            <div>
+                <h1 id="tv-judul" class="text-3xl font-black text-slate-900 tracking-tight uppercase">MEMUAT DATA...
+                </h1>
+                <div class="flex items-center gap-3 mt-1">
+                    <span id="tv-badge"
+                        class="bg-slate-200 text-slate-600 text-xs px-3 py-1 rounded font-black tracking-widest">-</span>
+                    <h2 id="tv-kategori" class="text-xl font-bold text-slate-700">Menunggu Kategori...</h2>
+                </div>
+            </div>
+        </div>
+        <div class="text-right">
+            <div id="tv-status"
+                class="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-full font-black text-sm border border-blue-200">
+                <div class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+                SINKRONISASI AKTIF
+            </div>
+        </div>
+    </header>
+
+    <!-- KANVAS UTAMA -->
+    <main class="flex-grow flex p-6 gap-6 h-[calc(100vh-100px)] overflow-hidden">
+
+        <!-- PANEL KIRI (1/2) -->
+        <div id="panel-kiri"
+            class="w-1/2 flex flex-col card-light rounded-2xl overflow-hidden transition-all duration-500">
+            <div id="judul-kiri"
+                class="bg-slate-100 p-4 border-b-2 border-slate-200 text-center font-black text-lg text-slate-800 uppercase tracking-widest">
+                DAFTAR PESERTA (PRE-DRAW)
+            </div>
+            <div id="konten-kiri" class="p-6 overflow-y-auto flex-1 bg-white">
+                <!-- Data Kiri Masuk Sini -->
+            </div>
+        </div>
+
+        <!-- PANEL KANAN (1/2) -->
+        <div id="panel-kanan"
+            class="w-1/2 flex flex-col card-light rounded-2xl overflow-hidden transition-all duration-500 relative bg-white">
+            <div id="judul-kanan"
+                class="bg-slate-100 p-4 border-b-2 border-slate-200 text-center font-black text-lg text-slate-800 uppercase tracking-widest">
+                MENUNGGU UNDIAN...
+            </div>
+            <div id="konten-kanan" class="p-6 overflow-auto flex-1 bg-slate-50 relative custom-scrollbar">
+            </div>
+            <div id="tv-drawing-footer"
+                class="hidden bg-slate-100 border-t-2 border-slate-200 p-3 text-center text-xs font-black text-slate-500 uppercase tracking-wider animate-fade-in">
+                <i class="fas fa-info-circle text-blue-600 mr-2 animate-pulse"></i> Kategori Beregu/Berpasangan: Arahkan
+                kursor pada kartu kontingen untuk memverifikasi nama atlet
+            </div>
+        </div>
+
+    </main>
+
+    <!-- FIREBASE INIT -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script>
+        // GANTI DENGAN CONFIG FIREBASE ANDA SAMA PERSIS SEPERTI DI SCRIPT.JS
+        const firebaseConfig = {
+            apiKey: "AIzaSyA63UtPlhEdC9qKmmHVpDjGv_4RqWjK47k",
+            authDomain: "mass-pro-turnamen.firebaseapp.com",
+            projectId: "mass-pro-turnamen",
+            databaseURL: "https://mass-pro-turnamen-default-rtdb.asia-southeast1.firebasedatabase.app/"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        let STATE = { categories: [], participants: [], matches: [], settings: {} };
+
+        // LISTENER UTAMA
+        database.ref('turnamen_data').on('value', (snap) => {
+            const data = snap.val();
+            if (data) {
+                STATE = data;
+                if (!STATE.participants) STATE.participants = [];
+                if (!STATE.matches) STATE.matches = [];
+                if (!STATE.settings) STATE.settings = {};
+                renderProjector();
+            }
+        });
+
+        function renderProjector() {
+            let judulEl = document.getElementById('tv-judul');
+            let catEl = document.getElementById('tv-kategori');
+            let badgeEl = document.getElementById('tv-badge');
+
+            judulEl.innerText = STATE.settings.judulTV || "KEJUARAAN KEMPO";
+
+            let catName = STATE.settings.projectorCategory;
+            let phase = STATE.settings.projectorPhase || 'b1';
+
+            if (!catName) {
+                catEl.innerText = "Operator belum memilih kategori";
+                return;
+            }
+
+            let catObj = STATE.categories.find(c => c.name === catName);
+            if (!catObj) return;
+
+            catEl.innerText = catName;
+
+            if (catObj.discipline === 'randori') {
+                badgeEl.innerText = "RANDORI"; badgeEl.className = "bg-red-100 text-red-700 border border-red-300 text-xs px-3 py-1 rounded font-black tracking-widest";
+                renderRandoriProjector(catName);
+            } else {
+                let textBadge = catObj.discipline === 'festival' ? 'FESTIVAL' : 'EMBU';
+                let colorClass = catObj.discipline === 'festival' ? 'bg-green-100 text-green-700 border-green-300' : 'bg-blue-100 text-blue-700 border-blue-300';
+                badgeEl.innerText = textBadge; badgeEl.className = `${colorClass} text-xs px-3 py-1 rounded font-black tracking-widest`;
+                renderEmbuProjector(catName, phase, catObj);
+            }
+        }
+
+        // ==========================================
+        // MESIN RENDER EMBU & FESTIVAL (SMART LOGIC)
+        // ==========================================
+        function renderEmbuProjector(catName, phase, catObj) {
+            // Pastikan footer global disembunyikan terlebih dahulu tiap ganti mode
+            const tvFooter = document.getElementById('tv-drawing-footer');
+            if (tvFooter) tvFooter.classList.add('hidden');
+            const panelKiri = document.getElementById('panel-kiri');
+            const panelKanan = document.getElementById('panel-kanan');
+            const judKiri = document.getElementById('judul-kiri');
+            const judKanan = document.getElementById('judul-kanan');
+            const konKiri = document.getElementById('konten-kiri');
+            const konKanan = document.getElementById('konten-kanan');
+
+            let parts = STATE.participants.filter(p => p.kategori === catName);
+
+            let minPeserta = parseInt(STATE.settings.minPesertaJuara) || 1;
+            let isEksibisi = (catObj.discipline === 'embu' && parts.length < minPeserta && STATE.settings.eksibisiLangsungFinal);
+            let isFestival = catObj.discipline === 'festival';
+            let isCond1 = isFestival || isEksibisi; // Tampil 1 Kali
+
+            let hasFinalists = parts.some(p => p.isFinalist);
+            let isMultiPool = parts.some(p => p.pool !== '-' && p.pool !== 'SINGLE' && p.pool !== 'FINAL');
+            let isCond3 = isMultiPool || hasFinalists; // Ada sistem Final/Multi-pool
+            let isCond2 = !isCond1 && !isCond3; // Embu Standar (B1 & B2)
+
+            // Reset Kelas Panel (Berbagi 50:50)
+            panelKiri.className = "w-1/2 flex flex-col card-light rounded-2xl overflow-hidden transition-all duration-500";
+            panelKanan.className = "w-1/2 flex flex-col card-light rounded-2xl overflow-hidden transition-all duration-500 relative";
+            konKiri.className = "p-6 overflow-y-auto flex-1 bg-white";
+            konKanan.className = "p-6 overflow-y-auto flex-1 bg-slate-50 relative custom-scrollbar";
+
+            // --- KONDISI 1: FESTIVAL / EKSIBISI 1 BABAK (LANGSUNG FINAL) ---
+            if (isCond1) {
+                // Pastikan kontainer toggle bagan Randori disembunyikan mutlak
+                const containerToggle = document.getElementById('container-toggle-bagan');
+                if (containerToggle) containerToggle.classList.add('hidden');
+
+                let isDrawn = parts.some(p => p.urut > 0);
+                if (!isDrawn) {
+                    judKiri.innerText = "DAFTAR NAMA PESERTA VERIFIKASI"; judKanan.innerText = "MENUNGGU DRAWING...";
+                    konKiri.innerHTML = drawPreDrawList(parts);
+                    konKanan.innerHTML = `<div class="h-full flex items-center justify-center text-slate-400 font-black text-2xl italic opacity-50">KOSONG</div>`;
+                } else {
+                    // JIKA NOMOR FESTIVAL ASLI: Tampilkan dalam bentuk Grid Kelompok Berdampingan
+                    if (isFestival) {
+                        panelKiri.classList.add('hidden');
+                        panelKanan.className = "w-full flex flex-col card-light rounded-2xl overflow-hidden";
+                        judKanan.innerHTML = "<i class='fas fa-th-large text-green-600 mr-2'></i> PEMBAGIAN KELOMPOK RESMI FESTIVAL";
+
+                        let unikPools = [...new Set(parts.map(p => p.pool))].sort();
+                        let htmlFestival = `<div class="grid grid-cols-1 md:grid-cols-2 gap-6 p-2">`;
+
+                        unikPools.forEach(poolKey => {
+                            let anggotaKelompok = parts.filter(p => p.pool === poolKey).sort((a, b) => a.urut - b.urut);
+                            htmlFestival += `
+                            <div class="bg-white border-2 border-slate-300 rounded-xl p-5 shadow-sm">
+                                <h3 class="font-black text-center text-xl text-purple-700 uppercase tracking-widest mb-4 border-b-2 border-slate-100 pb-2">KELOMPOK ${poolKey}</h3>
+                                <div class="space-y-3">`;
+
+                            anggotaKelompok.forEach((p, idx) => {
+                                htmlFestival += `
+                                <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center">
+                                    <span class="font-mono font-black text-slate-400 text-lg w-8 text-right mr-4 border-r border-slate-200 pr-2">${idx + 1}.</span>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="font-semibold text-slate-900 text-base uppercase truncate tracking-wide">${p.nama}</div>
+                                        <div class="text-[11px] font-medium text-slate-500 uppercase tracking-wider mt-0.5"><i class="fas fa-shield-alt mr-1 opacity-60"></i>${p.kontingen}</div>
+                                    </div>
+                                </div>`;
+                            });
+                            htmlFestival += `</div></div>`;
+                        });
+                        htmlFestival += `</div>`;
+                        konKanan.innerHTML = htmlFestival;
+                    }
+                    // JIKA NOMOR EMBU EKSIBISI (PESERTA SEDIKIT / LANGSUNG FINAL): Tampilkan dengan gaya Embu Utama murni
+                    else {
+                        panelKiri.classList.add('hidden');
+                        panelKanan.className = "w-full flex flex-col card-light rounded-2xl overflow-hidden";
+                        judKanan.innerHTML = "<i class='fas fa-flag-checkered text-blue-600 mr-2'></i> URUTAN TAMPIL RESMI (LANGSUNG FINAL)";
+
+                        // Gunakan drawPostDrawList bawaan kita yang otomatis meringkas nama beregu dan mengaktifkan Hover Tooltip!
+                        konKanan.innerHTML = drawPostDrawList(parts.sort((a, b) => a.urut - b.urut), 'urut');
+
+                        // Munculkan instruksi footer global di bawah jika nomor berpasangan/beregu eksibisi
+                        if (tvFooter && parseInt(catObj.type) > 1) tvFooter.classList.remove('hidden');
+                    }
+                }
+            }
+
+            // --- KONDISI 2: EMBU STANDAR (B1 & B2 LANGSUNG BERDAMPINGAN) ---
+            else if (isCond2) {
+                let isDrawn = parts.some(p => p.urut > 0);
+                if (!isDrawn) {
+                    judKiri.innerText = "DAFTAR NAMA PESERTA VERIFIKASI"; judKanan.innerText = "MENUNGGU DRAWING B1 & B2...";
+                    konKiri.innerHTML = drawPreDrawList(parts);
+                    konKanan.innerHTML = `<div class="h-full flex items-center justify-center text-slate-400 font-black text-2xl italic opacity-50">KOSONG</div>`;
+                } else {
+                    // POST-DRAW: Kiri jadi B1, Kanan jadi B2 (Otomatis Diringkas jika Beregu/Berpasangan)
+                    judKiri.innerHTML = "<i class='fas fa-play text-blue-600 mr-2'></i> URUTAN TAMPIL BABAK 1";
+                    judKanan.innerHTML = "<i class='fas fa-forward text-purple-600 mr-2'></i> URUTAN TAMPIL BABAK 2";
+
+                    konKiri.innerHTML = drawPostDrawList(parts.sort((a, b) => a.urut - b.urut), 'urut');
+
+                    let b2Parts = parts.filter(p => p.urutB2 > 0);
+                    if (b2Parts.length > 0) {
+                        konKanan.innerHTML = drawPostDrawList(b2Parts.sort((a, b) => a.urutB2 - b.urutB2), 'urutB2');
+                    } else {
+                        konKanan.innerHTML = `<div class="h-full flex flex-col items-center justify-center text-slate-400 opacity-50"><i class="fas fa-random text-4xl mb-3"></i><span class="font-black text-xl italic">MENUNGGU ACAK ULANG B2...</span></div>`;
+                    }
+                }
+            }
+
+            // --- KONDISI 3: MULTI-POOL & FINAL ---
+            else {
+                if (phase === 'b1') {
+                    let isDrawn = parts.some(p => p.urut > 0);
+                    if (!isDrawn) {
+                        judKiri.innerText = "DAFTAR NAMA PESERTA VERIFIKASI"; judKanan.innerText = "MENUNGGU DRAWING POOL...";
+                        konKiri.innerHTML = drawPreDrawList(parts);
+                        konKanan.innerHTML = `<div class="h-full flex items-center justify-center text-slate-400 font-black text-2xl italic opacity-50">KOSONG</div>`;
+                    } else {
+                        // POST-DRAW POOL: Sembunyikan Kiri, Lebarkan Kanan Penuh
+                        panelKiri.classList.add('hidden');
+                        panelKanan.classList.remove('w-1/2'); panelKanan.classList.add('w-full');
+                        judKanan.innerHTML = "<i class='fas fa-users text-blue-600 mr-2'></i> URUTAN TAMPIL PENYISIHAN POOL";
+
+                        let html = `<div class="grid grid-cols-2 gap-8">`;
+                        let unikPools = [...new Set(parts.map(p => p.pool))].sort();
+                        unikPools.forEach(poolKey => {
+                            if (poolKey === '-' || poolKey === 'FINAL' || poolKey === 'SINGLE') return;
+                            html += `<div><h3 class="font-black text-center bg-blue-100 text-blue-800 p-3 rounded-lg mb-4 border border-blue-200">POOL ${poolKey}</h3>`;
+                            html += drawPostDrawList(parts.filter(p => p.pool === poolKey).sort((a, b) => a.urut - b.urut), 'urut');
+                            html += `</div>`;
+                        });
+                        html += `</div>`;
+                        konKanan.innerHTML = html;
+                    }
+                } else if (phase === 'final') {
+                    let finalis = parts.filter(p => p.isFinalist);
+                    let isDrawnFinal = finalis.some(p => p.urutFinal > 0);
+
+                    if (!isDrawnFinal) {
+                        judKiri.innerHTML = "<i class='fas fa-star text-yellow-500 mr-2'></i> DAFTAR ATLET LULUS FINAL";
+                        judKanan.innerText = "MENUNGGU DRAWING FINAL...";
+                        konKiri.innerHTML = drawPreDrawList(finalis, true);
+                        konKanan.innerHTML = `<div class="h-full flex items-center justify-center text-slate-400 font-black text-2xl italic opacity-50">KOSONG</div>`;
+                    } else {
+                        // POST-DRAW FINAL: Sembunyikan Kiri, Full Kanan Megah
+                        panelKiri.classList.add('hidden');
+                        panelKanan.classList.remove('w-1/2'); panelKanan.classList.add('w-full');
+                        judKanan.innerHTML = "<i class='fas fa-trophy text-yellow-500 mr-2'></i> URUTAN TAMPIL GRAND FINAL";
+                        konKanan.innerHTML = drawPostDrawList(finalis.sort((a, b) => a.urutFinal - b.urutFinal), 'urutFinal', true);
+                    }
+                }
+            }
+        }
+
+        // =========================================================
+        // FUNGSI GENERATOR DAFTAR VERIFIKASI (PRE-DRAW VERTIKAL TIM)
+        // =========================================================
+        function drawPreDrawList(arr, isFinalist = false) {
+            if (arr.length === 0) return `<div class="text-center text-slate-400 italic font-bold mt-10">Belum ada data / Belum disaring</div>`;
+
+            let catName = STATE.settings.projectorCategory;
+            let catObj = STATE.categories.find(c => c.name === catName) || { type: 1, discipline: 'embu' };
+            let isTeamEmbu = (catObj.discipline === 'embu' && parseInt(catObj.type) > 1);
+
+            return `<div class="space-y-4">` + arr.map(p => {
+                if (isTeamEmbu) {
+                    // 🌟 MASETPIECE PRE-DRAW REGU: Pecah nama kenshi ke bawah vertikal
+                    let subNames = p.nama.split(/\s*&\s*/).map(n => n.trim()).filter(n => n);
+                    let formatLabel = parseInt(catObj.type) === 2 ? "Pasangan" : "Beregu";
+
+                    let rowsHTML = subNames.map((n, idx) => `
+                        <div class="flex items-center text-slate-800 text-base py-1">
+                            <span class="font-bold text-slate-400 w-6 text-right mr-3">${idx + 1}.</span>
+                            <span class="font-bold uppercase tracking-wide">${n}</span>
+                        </div>
+                    `).join('');
+
+                    return `
+                    <div class="p-4 rounded-xl border-2 border-slate-300 bg-white shadow-sm transition-all">
+                        <div class="flex items-center justify-between border-b-2 border-slate-100 pb-2 mb-3 bg-slate-50/50 p-2 rounded-lg">
+                            <div class="font-black text-slate-900 text-lg uppercase flex items-center"><i class="fas fa-shield-alt text-blue-600 mr-2"></i> ${p.kontingen}</div>
+                            <span class="bg-blue-100 text-blue-800 border border-blue-300 font-black text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-wider">${formatLabel}</span>
+                        </div>
+                        <div class="pl-2 space-y-1">${rowsHTML}</div>
+                    </div>`;
+                } else {
+                    // FORMAT STANDAR (Tandoku / Festival): Satu baris lurus perorangan
+                    return `
+                    <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between">
+                        <div>
+                            <div class="font-black text-slate-800 text-lg uppercase tracking-wide">${p.nama}</div>
+                            <div class="text-sm font-bold text-slate-500 mt-1"><i class="fas fa-shield-alt mr-1"></i> ${p.kontingen}</div>
+                        </div>
+                        ${isFinalist ? `<span class="bg-yellow-100 text-yellow-800 border border-yellow-300 font-black text-xs px-3 py-1 rounded-full shadow-sm">FINALIS</span>` : ''}
+                    </div>`;
+                }
+            }).join('') + `</div>`;
+        }
+
+        // =========================================================
+        // FUNGSI GENERATOR DAFTAR HASIL JADI (PROPORSIONAL & POPUP KE BAWAH)
+        // =========================================================
+        function drawPostDrawList(arr, urutKey, isFinalist = false) {
+            let catName = STATE.settings.projectorCategory;
+            let catObj = STATE.categories.find(c => c.name === catName) || { type: 1, discipline: 'embu' };
+            let isTeamEmbu = (catObj.discipline === 'embu' && parseInt(catObj.type) > 1);
+
+            return `<div class="space-y-4">` + arr.map(p => {
+                let badge = isFinalist ? `<i class="fas fa-star text-yellow-500 mr-3 text-xl drop-shadow-sm"></i>` : `<span class="text-2xl font-black text-slate-400 w-12 text-center border-r-2 border-slate-200 mr-4 pr-2">${p[urutKey]}</span>`;
+                let bgClass = isFinalist ? 'bg-yellow-50 border-yellow-400 shadow-md' : 'slot-terisi';
+
+                if (isTeamEmbu) {
+                    let subNames = p.nama.split(/\s*&\s*/).map(n => n.trim()).filter(n => n);
+
+                    // 🌟 PERBAIKAN 1: Ukuran nama atlet di dalam popup diperbesar (text-base font-black)
+                    let tooltipRows = subNames.map((n, idx) => `
+                        <div class="flex items-center text-slate-900 text-base py-2 border-b border-slate-100 last:border-0 font-black uppercase tracking-wide">
+                            <span class="text-blue-500 w-5 text-right mr-3 font-mono">${idx + 1}.</span>
+                            <span>${n}</span>
+                        </div>
+                    `).join('');
+
+                    return `
+                    <div class="p-4 rounded-xl ${bgClass} flex items-center justify-between relative group cursor-pointer transition-all duration-200 hover:border-blue-500 hover:bg-blue-50/30">
+                        ${badge}
+                        <div class="flex-1 min-w-0">
+                            <!-- 🌟 PERBAIKAN 2: Ukuran kontingen diturunkan jadi text-xl agar proporsional dan tidak mengganggu UI -->
+                            <div class="font-black text-slate-900 text-xl uppercase tracking-tight truncate">${p.kontingen}</div>
+                        </div>
+
+                        <!-- 🔮 PERBAIKAN 3: KOTAK POPUP SEKARANG MUNCUL KE BAWAH (top-full mt-2) 🔮 -->
+                        <div class="absolute left-1/2 top-full mt-2 transform -translate-x-1/2 hidden group-hover:block bg-white border-2 border-blue-500 p-4 rounded-xl shadow-[0_15px_35px_rgba(0,0,0,0.2)] z-[100] min-w-[340px] pointer-events-none animate-fade-in">
+                            <div class="text-xs text-blue-700 font-black tracking-widest uppercase border-b-2 border-slate-100 pb-2 mb-2 flex items-center">
+                                <i class="fas fa-users-viewfinder mr-2 text-sm"></i> Anggota Pasangan / Regu Resmi
+                            </div>
+                            <div class="space-y-0.5">${tooltipRows}</div>
+                            
+                            <!-- 🌟 Segitiga penunjuk dibalik ke atas mengarah ke kartu induknya -->
+                            <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[8px] border-b-white drop-shadow-[0_-2px_0_#3b82f6]"></div>
+                        </div>
+                    </div>`;
+                } else {
+                    // FORMAT STANDAR (Tandoku / Perorangan)
+                    return `
+                    <div class="p-4 rounded-xl ${bgClass} flex items-center">
+                        ${badge}
+                        <div>
+                            <div class="font-black text-slate-900 text-xl uppercase tracking-tight">${p.nama}</div>
+                            <div class="text-sm font-bold text-slate-600 mt-1 uppercase tracking-widest flex items-center"><i class="fas fa-shield-alt mr-1 opacity-50"></i> ${p.kontingen}</div>
+                        </div>
+                    </div>`;
+                }
+            }).join('') + `</div>`;
+        }
+
+        // =========================================================
+        // FUNGSI UTAMA: PROJECTOR RANDORI (KENDALI LOCALSTORAGE TOGGLE)
+        // =========================================================
+        function renderRandoriProjector(catName) {
+            const panelKiri = document.getElementById('panel-kiri');
+            const panelKanan = document.getElementById('panel-kanan');
+            const judKiri = document.getElementById('judul-kiri');
+            const judKanan = document.getElementById('judul-kanan');
+            const konKiri = document.getElementById('konten-kiri');
+            const konKanan = document.getElementById('konten-kanan');
+            const tvFooter = document.getElementById('tv-drawing-footer');
+            const btnToggle = document.getElementById('btn-toggle-bagan');
+
+            // Munculkan tombol kontrol melayang khusus untuk nomor Randori saja
+            const containerToggle = document.getElementById('container-toggle-bagan');
+            if (containerToggle) containerToggle.classList.remove('hidden');
+
+            if (tvFooter) tvFooter.classList.add('hidden');
+
+            let parts = STATE.participants.filter(p => p.kategori === catName);
+            let catMatches = STATE.matches.filter(m => m.kategori === catName);
+
+            // Ambil status memori lokal untuk penentuan layouting
+            const isHideBagan = localStorage.getItem('massKempo_hideBagan') === 'true';
+
+            // Update teks dan ikon tombol melayang di pojok kanan bawah
+            if (btnToggle) {
+                if (isHideBagan) {
+                    btnToggle.innerHTML = `<i class="fas fa-eye"></i> Tampilkan Bagan`;
+                    btnToggle.className = "bg-purple-600 hover:bg-purple-500 text-white font-black text-xs py-2 px-4 rounded-lg flex items-center gap-2 transition-all active:scale-95 shadow-md uppercase tracking-wider";
+                } else {
+                    btnToggle.innerHTML = `<i class="fas fa-eye-slash"></i> Sembunyikan Bagan`;
+                    btnToggle.className = "bg-blue-600 hover:bg-blue-500 text-white font-black text-xs py-2 px-4 rounded-lg flex items-center gap-2 transition-all active:scale-95 shadow-md uppercase tracking-wider";
+                }
+            }
+
+            // -------------------------------------------------------------
+            // FASE A: BELUM DI-DRAWING (100% LEBAR PENUH - FIX 3 KOLOM LUAS)
+            // -------------------------------------------------------------
+            if (catMatches.length === 0) {
+                panelKanan.classList.add('hidden');
+                panelKiri.className = "w-full flex flex-col card-light rounded-2xl overflow-hidden bg-white shadow-xl";
+                konKiri.className = "p-8 overflow-y-auto flex-1 bg-white";
+
+                judKiri.innerHTML = `<div class="flex items-center justify-between w-full px-4 py-1">
+            <span><i class="fas fa-clipboard-check text-blue-600 mr-2"></i> DAFTAR VERIFIKASI ATLET (PRE-DRAW)</span>
+            <span class="text-xs font-bold text-slate-400 bg-slate-200/60 px-3 py-1 rounded-full"><i class="fas fa-project-diagram mr-1 text-slate-500"></i> MENUNGGU DRAWING OPERATOR</span>
+        </div>`;
+
+                if (parts.length === 0) {
+                    konKiri.innerHTML = `<div class="text-center text-slate-400 italic font-bold py-20 text-xl">Belum ada atlet terdaftar di kelas ini</div>`;
+                } else {
+                    let gridHTML = `<div class="grid grid-cols-1 md:grid-cols-3 gap-5">`;
+                    parts.forEach((p, idx) => {
+                        gridHTML += `
+                <div class="p-5 rounded-xl border-2 border-slate-200 bg-slate-50/50 flex flex-col justify-center min-w-0 shadow-sm transition-all hover:border-blue-400">
+                    <div class="font-black text-slate-900 text-lg uppercase tracking-tight break-words">${idx + 1}. ${p.nama}</div>
+                    <div class="text-xs font-black text-blue-600 uppercase tracking-widest mt-2 flex items-center bg-blue-50 border border-blue-200/50 px-2 py-1 rounded w-max">
+                        <i class="fas fa-shield-alt mr-1.5 opacity-80"></i>${p.kontingen}
+                    </div>
+                </div>`;
+                    });
+                    gridHTML += `</div>`;
+                    konKiri.innerHTML = gridHTML;
+                }
+            }
+
+            // -------------------------------------------------------------
+            // FASE B: SUDAH DI-DRAWING (PROPORSIONAL ADAPTIF LOCALSTORAGE)
+            // -------------------------------------------------------------
+            else {
+                judKiri.innerHTML = "<i class='fas fa-list-ol text-blue-600 mr-2'></i> PETA SLOT UNDIAN RESMI";
+                judKanan.innerHTML = "<i class='fas fa-project-diagram text-red-600 mr-2'></i> BAGAN PERTANDINGAN LIVE";
+
+                // 🌟 KENDALI VISIBILITAS UTAMA BERBASISINGATAN LOCALSTORAGE 🌟
+                if (isHideBagan) {
+                    // Sembunyikan panel kanan bagan, paksa panel peta slot melebar 100% penuh layar proyektor
+                    panelKanan.classList.add('hidden');
+                    panelKiri.classList.remove('hidden');
+                    panelKiri.className = "w-full flex flex-col card-light rounded-2xl overflow-hidden shadow-xl bg-white transition-all duration-500";
+                    konKiri.className = "p-8 overflow-y-auto flex-1 bg-white custom-scrollbar";
+                } else {
+                    // Kembalikan posisi adil 50:50 jika tombol tampilkan bagan diklik
+                    panelKanan.classList.remove('hidden');
+                    panelKiri.classList.remove('hidden');
+                    panelKiri.className = "w-1/2 flex flex-col card-light rounded-2xl overflow-hidden transition-all duration-500 shadow-md bg-white";
+                    panelKanan.className = "w-1/2 flex flex-col card-light rounded-2xl overflow-hidden relative transition-all duration-500 bg-white shadow-md";
+                    konKiri.className = "p-5 overflow-y-auto flex-1 bg-white custom-scrollbar";
+                    konKanan.className = "p-0 overflow-auto flex-1 bg-slate-50 relative custom-scrollbar";
+                }
+
+                let pools = [];
+                catMatches.forEach(m => { if (pools.indexOf(m.pool) === -1) pools.push(m.pool); });
+                pools.sort();
+
+                const isSinglePool = pools.length === 1 && (pools[0] === '-' || pools[0] === 'SINGLE');
+
+                // 1. RENDER PANEL KIRI (PETA SLOT ADAPTIF GRID)
+                // Jika mode hide aktif (lebar penuh 100%), perlebar internal grid agar memanfaatkan ruang luas
+                let gridSlotClass = isSinglePool ? 'grid-cols-1' : 'grid-cols-2 gap-4';
+                if (isHideBagan) {
+                    gridSlotClass = isSinglePool ? 'grid-cols-1 md:grid-cols-2 gap-6' : 'grid-cols-1 lg:grid-cols-2 gap-6';
+                }
+
+                let htmlKiri = `<div class="grid ${gridSlotClass}">`;
+                pools.forEach(poolName => {
+                    htmlKiri += `<div class="flex flex-col gap-2">`;
+                    if (!isSinglePool) htmlKiri += `<h4 class="text-sm font-black text-slate-600 uppercase tracking-widest mb-2 border-b-2 border-slate-200 pb-2 text-center bg-slate-100 py-1 rounded">POOL ${poolName}</h4>`;
+
+                    let r1Matches = catMatches.filter(m => m.pool === poolName && m.col === 1).sort((a, b) => a.matchNum - b.matchNum);
+                    let slotCounter = 1;
+                    r1Matches.forEach(m => {
+                        htmlKiri += buildLightSlot(slotCounter++, m.merahId);
+                        htmlKiri += buildLightSlot(slotCounter++, m.putihId);
+                    });
+                    htmlKiri += `</div>`;
+                });
+                htmlKiri += `</div>`;
+                konKiri.innerHTML = htmlKiri;
+
+                // 2. RENDER PANEL KANAN (POHON DIAGRAM PETA BAGAN - HANYA DIKOSONGKAN JIKA DI-HIDE)
+                if (isHideBagan) {
+                    konKanan.innerHTML = "";
+                } else {
+                    let poolHTML = '<div class="flex flex-row items-start gap-12 p-8 w-full min-w-max">';
+                    pools.forEach((poolName, poolIndex) => {
+                        let poolMatches = catMatches.filter(m => m.pool === poolName);
+
+                        if (poolIndex > 0) {
+                            poolHTML += `
+                    <div class="flex flex-col items-center justify-stretch self-stretch w-1 bg-slate-300 rounded-full mx-2 relative shrink-0">
+                        <div class="absolute top-1/4 transform -translate-y-1/2 bg-white border-2 border-slate-400 text-[11px] font-black text-slate-600 px-2 py-4 rounded-md tracking-widest uppercase [writing-mode:vertical-lr] shadow-sm">
+                            Batas Pool B ➡️
+                        </div>
+                    </div>`;
+                        }
+
+                        poolHTML += `
+                <div class="flex flex-col shrink-0">
+                    <div class="flex items-center gap-3 mb-8 border-b-2 border-slate-200 pb-3">
+                        <h3 class="text-2xl font-black text-slate-800 m-0 uppercase tracking-wider">BAGAN ${poolName !== '-' ? 'POOL ' + poolName : 'UTAMA'}</h3>
+                    </div>
+                    <div class="flex flex-row gap-10 items-stretch">`;
+
+                        let columns = [];
+                        poolMatches.forEach(m => { if (columns.indexOf(m.col) === -1) columns.push(m.col); });
+                        columns.sort((a, b) => a - b);
+
+                        columns.forEach(colNum => {
+                            let colMatches = poolMatches.filter(m => m.col === colNum).sort((a, b) => a.matchNum - b.matchNum);
+                            if (colMatches.length === 0) return;
+
+                            poolHTML += `<div class="flex flex-col min-w-[280px]">`;
+                            poolHTML += `<h4 class="text-center text-sm font-black uppercase text-blue-600 mb-6 bg-blue-50 py-1 rounded border border-blue-200 tracking-widest shrink-0">Babak ${colNum}</h4>`;
+                            poolHTML += `<div class="flex flex-col gap-8 justify-center flex-1">`;
+
+                            colMatches.forEach(m => {
+                                let displayNum = m.matchNum % 50 === 0 ? 50 : m.matchNum % 50;
+                                let pMerah = STATE.participants.find(p => p.id === m.merahId);
+                                let pPutih = STATE.participants.find(p => p.id === m.putihId);
+
+                                let nMerahRaw = m.merahId === -1 ? "BYE" : (pMerah ? pMerah.nama : "Menunggu");
+                                let kMerahRaw = m.merahId === -1 ? "-" : (pMerah ? pMerah.kontingen : "-");
+                                let nPutihRaw = m.putihId === -1 ? "BYE" : (pPutih ? pPutih.nama : "Menunggu");
+                                let kPutihRaw = m.putihId === -1 ? "-" : (pPutih ? pPutih.kontingen : "-");
+
+                                let bgClass = m.status === 'done' ? 'bg-green-50 border-green-400' : m.status === 'auto-win' ? 'bg-slate-100 border-slate-300 opacity-60' : 'bg-white border-blue-300';
+
+                                let txtM = m.winnerId === m.merahId ? 'text-green-700 font-black' : m.winnerId && m.winnerId !== m.merahId ? 'text-slate-400 line-through' : 'text-slate-900 font-bold';
+                                let txtP = m.winnerId === m.putihId ? 'text-green-700 font-black' : m.winnerId && m.winnerId !== m.putihId ? 'text-slate-400 line-through' : 'text-slate-900 font-bold';
+
+                                poolHTML += `
+                            <div class="relative z-10 ${bgClass} border-2 rounded-xl shadow-md p-4 transition-all flex-none">
+                                <span class="absolute -top-3 -left-3 bg-slate-800 text-[11px] text-white w-7 h-7 flex items-center justify-center rounded-full font-black border-2 border-white shadow-sm">G${displayNum}</span>
+                                <div class="flex justify-between items-center border-b border-slate-200 pb-2 mb-2">
+                                    <div class="flex-1 min-w-0 pr-2">
+                                        <div class="${txtM} truncate text-sm uppercase">${nMerahRaw}</div>
+                                        <div class="text-[10px] text-slate-500 font-bold mt-0.5 truncate uppercase tracking-widest">${kMerahRaw}</div>
+                                    </div>
+                                    <span class="text-lg font-black text-red-600 shrink-0">${m.skorMerah > 0 ? m.skorMerah : ''}</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <div class="flex-1 min-w-0 pr-2">
+                                        <div class="${txtP} truncate text-sm uppercase">${nPutihRaw}</div>
+                                        <div class="text-[10px] text-slate-500 font-bold mt-0.5 truncate uppercase tracking-widest">${kPutihRaw}</div>
+                                    </div>
+                                    <span class="text-lg font-black text-blue-600 shrink-0">${m.skorPutih > 0 ? m.skorPutih : ''}</span>
+                                </div>
+                            </div>
+                        `;
+                            });
+                            poolHTML += `</div></div>`;
+                            if (colNum < columns[columns.length - 1]) poolHTML += `<div class="flex flex-col justify-center"><div class="w-10 border-b-4 border-slate-300"></div></div>`;
+                        });
+                        poolHTML += `</div></div>`;
+                    });
+                    poolHTML += '</div>';
+                    konKanan.innerHTML = poolHTML;
+                }
+            }
+        }
+
+        // =========================================================
+        // FUNGSI HELPER: GENERATOR KOTAK SLOT ATLET (OPTIMALISASI KETERBACAAN)
+        // =========================================================
+        function buildLightSlot(slotNum, athleteId) {
+            if (athleteId === -1) {
+                return `
+        <div class="flex items-center gap-3 p-2.5 rounded-lg bg-slate-100/70 border border-slate-200 text-slate-500 opacity-60">
+            <div class="w-8 h-8 rounded flex items-center justify-center bg-slate-200 font-mono font-black text-sm border border-slate-300 shrink-0 text-slate-400">${slotNum}</div>
+            <div class="font-bold tracking-widest uppercase italic text-xs">BYE (KOSONG)</div>
+        </div>`;
+            }
+            let p = STATE.participants.find(x => x.id === athleteId);
+            if (!p) return ``;
+
+            let catObj = STATE.categories.find(c => c.name === p.kategori) || { type: 1, discipline: 'embu' };
+            let isTeamEmbu = (catObj.discipline === 'embu' && parseInt(catObj.type) > 1);
+
+            let teksUtama = isTeamEmbu ? p.kontingen : p.nama;
+            let teksSub = isTeamEmbu ? `NOMOR ${parseInt(catObj.type) === 2 ? 'BERPASANGAN' : 'BEREGU'}` : p.kontingen;
+
+            return `
+    <div class="flex items-center gap-3 p-2.5 rounded-lg bg-white border-2 border-slate-200 shadow-sm hover:border-blue-400 transition-colors">
+        <div class="w-8 h-8 rounded flex items-center justify-center bg-slate-800 text-white font-mono font-black text-sm shadow-inner shrink-0">${slotNum}</div>
+        <div class="flex-1 min-w-0">
+            <div class="font-semibold text-slate-900 truncate uppercase text-sm tracking-wide leading-tight">${teksUtama}</div>
+            <div class="text-[11px] font-medium text-slate-500 mt-0.5 uppercase tracking-wide truncate flex items-center">
+                <i class="fas fa-shield-alt text-slate-400 mr-1 text-[10px] opacity-80"></i>${teksSub}
+            </div>
+        </div>
+    </div>`;
+        }
+    </script>
+    <!-- 🌟 BUTTON TOGGLE CONTROL BAGAN (MELAYANG DI POJOK KANAN BAWAH) 🌟 -->
+    <div id="container-toggle-bagan"
+        class="hidden fixed bottom-6 right-6 z-[999] flex items-center gap-2 bg-white/90 backdrop-blur-sm p-2 rounded-xl border-2 border-slate-300 shadow-xl">
+        <span class="text-[10px] font-black text-slate-500 uppercase tracking-wider pl-2 hidden md:inline">Mode
+            Tampilan:</span>
+        <button onclick="toggleBaganProjector()" id="btn-toggle-bagan"
+            class="bg-blue-600 hover:bg-blue-500 text-white font-black text-xs py-2 px-4 rounded-lg flex items-center gap-2 transition-all active:scale-95 shadow-md uppercase tracking-wider">
+            <i class="fas fa-eye-slash"></i> Sembunyikan Bagan
+        </button>
+    </div>
+
+    <script>
+        // Logika Utama Penyimpanan Lokal (Default: Terbuka / false)
+        if (localStorage.getItem('massKempo_hideBagan') === null) {
+            localStorage.setItem('massKempo_hideBagan', 'false');
+        }
+
+        function toggleBaganProjector() {
+            const currentStatus = localStorage.getItem('massKempo_hideBagan');
+            if (currentStatus === 'true') {
+                localStorage.setItem('massKempo_hideBagan', 'false');
+            } else {
+                localStorage.setItem('massKempo_hideBagan', 'true');
+            }
+            if (typeof STATE !== 'undefined' && STATE.settings && STATE.settings.projectorCategory) {
+                renderProjector();
+            }
+        }
+    </script>
+</body>
+
+</html>

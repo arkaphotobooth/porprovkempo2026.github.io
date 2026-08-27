@@ -1,0 +1,98 @@
+/* Reset dasar */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: #1a1e29;
+    /* Warna gelap profesional */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.login-container {
+    width: 100%;
+    max-width: 400px;
+    padding: 20px;
+}
+
+.login-card {
+    background-color: #ffffff;
+    padding: 40px 30px;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.logo-placeholder {
+    font-size: 24px;
+    font-weight: bold;
+    color: #e53935;
+    /* Aksen merah berani */
+    text-align: center;
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+}
+
+.login-title {
+    text-align: center;
+    color: #333;
+    font-size: 18px;
+    font-weight: 500;
+    margin-bottom: 30px;
+}
+
+.input-group {
+    margin-bottom: 20px;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #555;
+    font-size: 14px;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border-color 0.3s;
+}
+
+.input-group input:focus {
+    outline: none;
+    border-color: #e53935;
+}
+
+.btn-primary {
+    width: 100%;
+    padding: 12px;
+    background-color: #e53935;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.btn-primary:hover {
+    background-color: #c62828;
+}
+
+.error-message {
+    color: #d32f2f;
+    font-size: 13px;
+    text-align: center;
+    margin-bottom: 15px;
+    display: none;
+    /* Disembunyikan secara bawaan */
+}

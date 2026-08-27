@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Terminal Wasit - MASS KEMPO</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Html5Qrcode Scanner -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+
+    <style>
+        body {
+            overscroll-behavior-y: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        #atlet-nama {
+            transition: all 0.3s ease-in-out;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 font-sans antialiased flex flex-col h-[100dvh] overflow-hidden">
+
+    <!-- ========================================== -->
+    <!-- 1. PORTAL WASIT (PEMBACA URL OTOMATIS) -->
+    <!-- ========================================== -->
+    <div id="pin-portal"
+        class="fixed inset-0 z-[100] bg-slate-900 flex flex-col justify-center items-center p-6 transition-opacity duration-300">
+        <div
+            class="bg-slate-800 p-8 rounded-2xl shadow-2xl w-full max-w-sm border border-slate-700 text-center relative overflow-hidden">
+            <div class="absolute -top-10 -right-10 w-32 h-32 bg-blue-500 rounded-full blur-3xl opacity-20"></div>
+
+            <h2 class="text-2xl font-black text-white mb-2 relative z-10"><i
+                    class="fas fa-gavel text-blue-500 mr-2"></i>PORTAL WASIT</h2>
+
+            <div id="portal-pemilihan-wasit" class="mt-6 mb-6 relative z-10">
+                <p id="portal-instruksi" class="text-xs text-slate-300 font-medium px-4 mb-4">Memindai penugasan dari
+                    Panitera...</p>
+
+                <div id="daftar-tombol-wasit" class="flex flex-col gap-3">
+                    <!-- Tombol nama wasit otomatis muncul di sini -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 2. MAIN APP (Persis image_f23f5a.png) -->
+    <!-- ========================================== -->
+    <div id="main-view" class="hidden w-full max-w-md mx-auto bg-[#f8f9fa] h-full relative flex flex-col shadow-2xl">
+
+        <header class="bg-white border-b border-gray-200 p-3 flex-shrink-0 z-20 sticky top-0 shadow-sm">
+            <!-- BARIS TOMBOL KONTROL -->
+            <div class="flex items-center gap-2 mb-3">
+                <select id="select-court"
+                    class="bg-slate-50 border border-gray-200 text-gray-500 text-xs rounded-lg p-2.5 w-full font-bold cursor-not-allowed appearance-none"
+                    disabled>
+                    <option value="">COURT</option>
+                    <option value="court_1">COURT 1</option>
+                    <option value="court_2">COURT 2</option>
+                    <option value="court_3">COURT 3</option>
+                </select>
+
+                <!-- GANTI SELECT POSISI DAN TOMBOL GEMBOK DENGAN INI -->
+                <div id="display-posisi"
+                    class="bg-slate-50 border border-gray-200 text-gray-500 text-[11px] rounded-lg p-2.5 w-full font-bold text-center uppercase tracking-widest truncate transition-colors duration-300">
+                    -- BELUM ADA POSISI --
+                </div>
+
+                <!-- Tombol Refresh (Tarik Data Sekali Saja) -->
+                <button onclick="tarikDataUlang()"
+                    class="bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-600 rounded-lg w-10 h-10 flex-shrink-0 flex items-center justify-center transition-colors shadow-sm"
+                    title="Sinkron Ulang Data">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+
+                <!-- Tombol Daftar Antrean Playlist (Ikon Buku) -->
+                <button onclick="openPlaylistModal()"
+                    class="bg-white border border-gray-200 text-blue-600 hover:bg-blue-50 rounded-lg w-10 h-10 flex-shrink-0 flex items-center justify-center transition-colors shadow-sm relative"
+                    title="Lihat Urutan Tampil / Playlist">
+                    <i class="fas fa-book-open text-sm"></i>
+                    <span id="badge-playlist-dot"
+                        class="hidden absolute top-1.5 right-1.5 w-2 h-2 bg-blue-500 rounded-full animate-ping"></span>
+                </button>
+
+                <!-- Tombol Home / Portal -->
+                <button onclick="kembaliKePortal()"
+                    class="bg-gray-800 hover:bg-gray-700 text-white rounded-lg w-10 h-10 flex-shrink-0 flex items-center justify-center transition-colors shadow-sm"
+                    title="Kembali ke Portal">
+                    <i class="fas fa-home"></i>
+                </button>
+            </div>
+
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-1.5">
+                    <div id="status-dot" class="w-2 h-2 rounded-full bg-red-500"></div>
+                    <span id="status-text"
+                        class="text-[9px] font-bold text-gray-400 tracking-wider uppercase">OFFLINE</span>
+                </div>
+
+                <div class="flex flex-col items-end">
+                    <div id="info-kategori"
+                        class="text-[10px] font-black text-gray-700 uppercase tracking-widest truncate w-48 text-right">
+                        MENUNGGU DATA...
+                    </div>
+                    <div id="info-nama-wasit" class="hidden text-[8px] font-bold text-blue-600 uppercase mt-0.5">
+                        <i class="fas fa-user-check mr-1"></i><span></span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- AREA KONTEN PENILAIAN -->
+        <main class="flex-1 overflow-y-auto hide-scrollbar p-4 pb-28 relative" id="main-content">
+
+            <!-- Layar Terkunci (Overlay) -->
+            <div id="lock-screen"
+                class="absolute inset-0 z-30 bg-[#f8f9fa]/95 backdrop-blur-sm flex flex-col items-center justify-center">
+                <i class="fas fa-lock text-4xl text-gray-300 mb-3"></i>
+                <h2 class="text-lg font-black text-gray-800 tracking-widest text-center">MENUNGGU<br>DATA</h2>
+                <p class="text-[10px] text-gray-500 mt-2 font-medium">Layar otomatis terbuka saat data ditembak.</p>
+            </div>
+
+            <!-- Akordeon Atlet -->
+            <div class="mb-6 border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                <div class="p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition"
+                    onclick="toggleAtletDetails()">
+                    <div class="flex items-center gap-3 w-4/5">
+                        <span id="atlet-urut"
+                            class="bg-blue-600 text-white text-[11px] font-black px-2.5 py-1.5 rounded">No. ?</span>
+                        <span id="atlet-kontingen"
+                            class="font-black text-sm text-gray-800 uppercase truncate">KONTINGEN</span>
+                    </div>
+                    <i id="atlet-chevron"
+                        class="fas fa-chevron-down text-gray-400 text-sm transition-transform duration-300"></i>
+                </div>
+                <div id="atlet-nama" class="hidden px-5 py-2 bg-white border-t border-gray-100">
+                    <!-- Di-generate JS -->
+                </div>
+            </div>
+
+            <!-- Form Waza -->
+            <div class="mb-5">
+                <h2 class="text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-widest px-1">KOMPOSISI (WAZA)
+                </h2>
+                <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm bg-white" id="waza-container">
+                    <!-- Baris di-generate via JS -->
+                </div>
+            </div>
+
+            <!-- Form Ekspresi -->
+            <div class="mb-5">
+                <h2 class="text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-widest px-1">EKSPRESI & KERAPIAN
+                </h2>
+                <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm bg-white"
+                    id="ekspresi-container">
+                    <!-- Baris di-generate via JS -->
+                </div>
+            </div>
+        </main>
+
+        <!-- FOOTER STICKY -->
+        <footer
+            class="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-40 pb-6 shadow-[0_-4px_10px_rgba(0,0,0,0.03)]">
+            <div class="flex gap-4 h-14">
+                <div
+                    class="w-1/3 border border-gray-200 bg-white rounded-xl flex flex-col items-center justify-center shadow-sm">
+                    <span class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">Total Nilai</span>
+                    <span id="total-display" class="text-3xl font-black text-gray-900 leading-none mb-1">0</span>
+                </div>
+                <button onclick="submitScore()" id="btn-submit"
+                    class="w-2/3 bg-[#e52e2e] hover:bg-red-700 active:bg-red-800 rounded-xl flex items-center justify-center gap-2 text-white transition-all shadow-md">
+                    <i class="fas fa-paper-plane text-base"></i>
+                    <span class="text-sm font-black tracking-widest uppercase">Kirim Nilai</span>
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 3. POP-UP MODAL SCANNER QR -->
+    <!-- ========================================== -->
+    <div id="qr-modal"
+        class="fixed inset-0 z-[150] bg-slate-900/90 backdrop-blur-sm hidden flex flex-col justify-center items-center p-4">
+        <div class="bg-white p-4 rounded-2xl shadow-2xl w-full max-w-sm">
+            <div class="flex justify-between items-center mb-4 border-b border-gray-200 pb-2">
+                <h3 class="font-black text-gray-800"><i class="fas fa-qrcode text-blue-500 mr-2"></i>Scan ID Wasit</h3>
+                <button onclick="closeQrModal()"
+                    class="text-gray-400 hover:text-red-500 w-8 h-8 rounded flex items-center justify-center transition-colors">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="reader"
+                class="w-full bg-slate-100 rounded-lg overflow-hidden border-2 border-dashed border-gray-300 min-h-[250px]">
+            </div>
+            <p class="text-[10px] text-gray-500 text-center mt-4">Arahkan kamera ke QR Code pada ID Card Wasit.</p>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 4. POP-UP ANIMASI SUKSES PENUGASAN -->
+    <!-- ========================================== -->
+    <div id="success-assign-modal"
+        class="fixed inset-0 z-[200] bg-slate-900/95 flex flex-col justify-center items-center p-6 hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white p-8 rounded-3xl shadow-[0_0_40px_rgba(34,197,94,0.3)] flex flex-col items-center text-center w-full max-w-sm transform scale-95 transition-transform duration-300"
+            id="success-assign-card">
+            <div class="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-6 animate-pulse">
+                <i class="fas fa-check text-5xl text-green-500"></i>
+            </div>
+            <h2 class="text-2xl font-black text-slate-800 mb-2 tracking-tight">TUGAS DITERIMA</h2>
+            <div class="bg-blue-50 px-4 py-3 rounded-xl border border-blue-100 mb-4 w-full">
+                <p class="text-[10px] text-blue-600 font-bold uppercase tracking-widest mb-1">POSISI ANDA SAAT INI</p>
+                <p class="text-2xl font-black text-blue-800" id="success-posisi-text">WASIT ?</p>
+            </div>
+            <p class="text-xs text-slate-500 font-medium"><i class="fas fa-lock mr-1 text-slate-400"></i> Sistem
+                mengunci posisi otomatis...</p>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 5. POP-UP MODAL DAFTAR PLAYLIST / ANTREAN -->
+    <!-- ========================================== -->
+    <div id="playlist-modal"
+        class="fixed inset-0 z-[150] bg-slate-900/90 backdrop-blur-sm hidden flex flex-col justify-center items-center p-4">
+        <div
+            class="bg-white rounded-2xl shadow-2xl w-full max-w-sm max-h-[85vh] flex flex-col overflow-hidden border border-gray-100 animate-fade-in">
+            <!-- Header Modal -->
+            <div class="bg-slate-900 text-white p-4 flex justify-between items-start">
+                <div class="flex flex-col pr-2">
+                    <div class="flex items-center gap-1.5 mb-1">
+                        <span
+                            class="bg-blue-600 text-white text-[9px] font-black px-2 py-0.5 rounded tracking-widest uppercase">ANTREAN</span>
+                        <span id="playlist-modal-subtitle"
+                            class="text-[10px] text-slate-300 font-bold uppercase tracking-wider">BLOK SAAT INI</span>
+                    </div>
+                    <h3 id="playlist-modal-title" class="font-black text-sm text-yellow-400 leading-tight">DAFTAR ATLET
+                    </h3>
+                </div>
+                <button onclick="closePlaylistModal()"
+                    class="text-slate-400 hover:text-white w-8 h-8 rounded-lg flex items-center justify-center transition-colors">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Konten List Antrean -->
+            <div id="playlist-modal-body" class="p-3 overflow-y-auto flex-1 hide-scrollbar space-y-2 bg-gray-50">
+                <!-- Di-generate via JS -->
+            </div>
+
+            <!-- Footer Modal -->
+            <div class="p-3 bg-white border-t border-gray-200 text-center">
+                <button onclick="closePlaylistModal()"
+                    class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider transition-colors shadow-sm">
+                    TUTUP
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. KONFIGURASI FIREBASE
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyA63UtPlhEdC9qKmmHVpDjGv_4RqWjK47k",
+            authDomain: "mass-pro-turnamen.firebaseapp.com",
+            projectId: "mass-pro-turnamen",
+            databaseURL: "https://mass-pro-turnamen-default-rtdb.asia-southeast1.firebasedatabase.app/",
+            storageBucket: "mass-pro-turnamen.firebasestorage.app",
+            messagingSenderId: "268290671498",
+            appId: "1:268290671498:web:d55e4960e392f7dfc8fe73"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // ==========================================
+        // 2. STATE & VARIABEL GLOBAL
+        // ==========================================
+        const COURT_PINS = {
+            "1111": "court_1",
+            "2222": "court_2",
+            "3333": "court_3"
+        };
+
+        let wasitCourt = localStorage.getItem('mass_wasit_court');
+        let wasitPosisi = localStorage.getItem('mass_wasit_posisi');
+        let wasitIdentitas = localStorage.getItem('mass_wasit_identitas');
+
+        let commandListenerRef = null;
+        let listenerRef = null;
+        let html5QrcodeScanner = null;
+        let partaiAktif = null;
+        let socketLokal = null;
+        let CURRENT_PLAYLIST_DATA = null;
+
+        let itemScores = [
+            { id: 1, label: "Waza 1", type: "waza", val: 8.0 },
+            { id: 2, label: "Waza 2", type: "waza", val: 8.0 },
+            { id: 3, label: "Waza 3", type: "waza", val: 8.0 },
+            { id: 4, label: "Waza 4", type: "waza", val: 8.0 },
+            { id: 5, label: "Waza 5", type: "waza", val: 8.0 },
+            { id: 6, label: "Waza 6", type: "waza", val: 8.0 },
+            { id: 7, label: "Rangkaian, Irama, Harmoni", type: "ekspresi", val: 8.0 },
+            { id: 8, label: "Tai gamae, Kuda-kuda, Keindahan", type: "ekspresi", val: 8.0 },
+            { id: 9, label: "Energi, Kiai, Ketrampilan", type: "ekspresi", val: 8.0 },
+            { id: 10, label: "Nafas, Pandangan Mata, Zanshin", type: "ekspresi", val: 8.0 }
+        ];
+
+        // ==========================================
+        // 3. INISIALISASI
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            renderScoringTable();
+            checkPortalState();
+
+            // 👇 TAMBAHKAN BLOK KODE INI UNTUK KONEKSI SOCKET LOKAL 👇
+            try {
+                if (typeof io !== 'undefined') {
+                    socketLokal = io();
+                    socketLokal.on('connect', () => console.log("🔥 Jaringan Cepat Lokal Terhubung!"));
+
+                    // 👇 TAMBAHAN TELINGA LOKAL DARI PANITERA 👇
+                    socketLokal.on('update_layar_tv', (data) => {
+                        if (data && data.channel === 'lokal_panitera' && data.court === wasitCourt) {
+                            if (data.payload && data.payload.action === 'logout_posisi') {
+                                alert("⚠️ KONEKSI DIPUTUS OLEH PANITERA!\n\nPosisi Anda telah dikembalikan ke Cadangan.");
+                                tendangWasitAktif();
+                            } else if (data.payload && data.payload.action === 'reset_juri_tunggal') {
+                                // Buka kunci khusus untuk wasit ini jika diminta panitera
+                                if (data.payload.nomorJuri == wasitPosisi) {
+                                    setScreenLock(false);
+                                    resetTombolKirim(false);
+                                }
+                            } else {
+                                eksekusiDataLayar(data.payload);
+                            }
+                        }
+                    });
+                }
+            } catch (err) {
+                console.warn("Socket lokal tidak aktif (Mode Cloud murni).");
+            }
+
+            database.ref('.info/connected').on('value', (snap) => {
+                const dot = document.getElementById('status-dot');
+                const txt = document.getElementById('status-text');
+                if (snap.val() === true) {
+                    dot.className = 'w-2 h-2 rounded-full bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.6)] animate-pulse';
+                    txt.innerText = 'ONLINE';
+                    txt.className = 'text-[9px] font-bold text-green-500 tracking-wider uppercase';
+                } else {
+                    dot.className = 'w-2 h-2 rounded-full bg-red-500';
+                    txt.innerText = 'OFFLINE';
+                    txt.className = 'text-[9px] font-bold text-gray-400 tracking-wider uppercase';
+                }
+            });
+        });
+
+        // ========================================================
+        // KENDALI UI PORTAL WASIT (HYBRID DUAL-DETECTION)
+        // ========================================================
+        let penugasanListenerRef = null;
+
+        function checkPortalState() {
+            const portal = document.getElementById('pin-portal');
+            const mainView = document.getElementById('main-view');
+            const displayPosisi = document.getElementById('display-posisi');
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlCourt = urlParams.get('court');
+
+            // 1. JIKA DIBUKA VIA SCAN QR (MEMBAWA PARAMETER LENGKAP)
+            if (urlCourt && urlParams.get('w1')) {
+                portal.classList.remove('hidden');
+                mainView.classList.add('hidden');
+                document.getElementById('portal-instruksi').innerText = `Pilih nama Anda (${urlCourt.replace('_', ' ').toUpperCase()}):`;
+
+                let html = '';
+                for (let i = 1; i <= 5; i++) {
+                    let namaWasit = urlParams.get(`w${i}`);
+                    if (namaWasit) {
+                        html += `<button onclick="kunciPosisiOtomatis('${urlCourt}', '${i}', '${namaWasit}')" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-xl shadow-md transition-transform hover:scale-[1.02] w-full text-sm flex items-center justify-between px-5">
+                            <span>Wasit ${i}</span>
+                            <span class="font-black">${namaWasit}</span>
+                        </button>`;
+                    }
+                }
+                document.getElementById('daftar-tombol-wasit').innerHTML = html;
+                return;
+            }
+
+            // 2. JIKA SUDAH PERNAH MEMILIH NAMA SEBELUMNYA (TERSIMPAN DI MEMORI HP)
+            if (wasitCourt && wasitPosisi) {
+                portal.classList.add('hidden');
+                mainView.classList.remove('hidden');
+
+                document.getElementById('select-court').value = wasitCourt;
+                displayPosisi.innerText = `WASIT ${wasitPosisi}`;
+                displayPosisi.className = 'bg-blue-50 border border-blue-200 text-blue-700 text-xs rounded-lg p-2.5 w-full font-black text-center tracking-widest uppercase transition-colors';
+
+                listenToCommand(wasitCourt);
+                listenToPanitera();
+
+                if (wasitIdentitas) {
+                    const nameContainer = document.getElementById('info-nama-wasit');
+                    nameContainer.classList.remove('hidden');
+                    nameContainer.querySelector('span').innerText = wasitIdentitas;
+                }
+                return;
+            }
+
+            // 3. JIKA DIBUKA LANGSUNG TANPA PARAMETER -> TAMPILKAN PEMILIH COURT & TARIK DATA REALTIME
+            portal.classList.remove('hidden');
+            mainView.classList.add('hidden');
+
+            let targetCourt = urlCourt || wasitCourt || 'court_1';
+            document.getElementById('portal-instruksi').innerHTML = `
+                <div class="mb-3">
+                    <label class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Pilih Court Tugas:</label>
+                    <select id="portal-select-court" onchange="gantiCourtPortal(this.value)" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2 text-white font-bold text-xs outline-none">
+                        <option value="court_1" ${targetCourt === 'court_1' ? 'selected' : ''}>COURT 1</option>
+                        <option value="court_2" ${targetCourt === 'court_2' ? 'selected' : ''}>COURT 2</option>
+                        <option value="court_3" ${targetCourt === 'court_3' ? 'selected' : ''}>COURT 3</option>
+                    </select>
+                </div>
+                <span>Memuat daftar penugasan dari Panitera...</span>
+            `;
+
+            tarikPenugasanLive(targetCourt);
+        }
+
+        function gantiCourtPortal(courtName) {
+            tarikPenugasanLive(courtName);
+        }
+
+        function tarikPenugasanLive(courtName) {
+            const listContainer = document.getElementById('daftar-tombol-wasit');
+            listContainer.innerHTML = `<div class="text-slate-400 text-xs py-4"><i class="fas fa-spinner fa-spin mr-2"></i>Menghubungkan ke ${courtName.toUpperCase()}...</div>`;
+
+            if (penugasanListenerRef) penugasanListenerRef.off();
+
+            if (database) {
+                penugasanListenerRef = database.ref(`live_embu/${courtName}/penugasan`);
+                penugasanListenerRef.on('value', (snap) => {
+                    const data = snap.val();
+                    if (data && data.wasit) {
+                        let html = '';
+                        const n = data.numJudges || 5;
+                        for (let i = 1; i <= n; i++) {
+                            let nama = data.wasit[`w${i}`];
+                            if (nama) {
+                                html += `<button onclick="kunciPosisiOtomatis('${courtName}', '${i}', '${nama}')" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-xl shadow-md transition-transform hover:scale-[1.02] w-full text-sm flex items-center justify-between px-5">
+                                    <span>Wasit ${i}</span>
+                                    <span class="font-black">${nama}</span>
+                                </button>`;
+                            }
+                        }
+                        listContainer.innerHTML = html || '<p class="text-yellow-500 text-xs">Belum ada wasit ditugaskan di Court ini.</p>';
+                    } else {
+                        listContainer.innerHTML = `
+                            <div class="p-4 bg-slate-900 border border-slate-700 rounded-xl shadow-inner text-center">
+                                <i class="fas fa-user-clock text-3xl text-slate-500 mb-2"></i>
+                                <p class="text-slate-400 text-xs leading-relaxed">Panitera di <b>${courtName.toUpperCase()}</b> belum menekan tombol Penugasan Wasit.</p>
+                            </div>
+                        `;
+                    }
+                });
+            }
+        }
+
+        // ==========================================
+        // 5. KENDALI GEMBOK POSISI WASIT
+        // ==========================================
+        function kunciPosisiOtomatis(court, posisi, nama) {
+            wasitCourt = court;
+            wasitPosisi = posisi.toString();
+            wasitIdentitas = nama;
+
+            localStorage.setItem('mass_wasit_court', wasitCourt);
+            localStorage.setItem('mass_wasit_posisi', wasitPosisi);
+            localStorage.setItem('mass_wasit_identitas', wasitIdentitas);
+
+            // KUNCI ESTETIKA: Bersihkan URL agar jika direfresh, tidak kembali ke layar pilih nama
+            window.history.replaceState(null, null, window.location.pathname);
+
+            checkPortalState(); // Buka layar penilaian!
+        }
+
+        // ==========================================
+        // 6. SINYAL TENDANG & LOGOUT
+        // ==========================================
+        let sessionStartTime = Date.now();
+
+        function listenToCommand(courtName) {
+            if (commandListenerRef) commandListenerRef.off();
+            sessionStartTime = Date.now(); // Catat waktu wasit login ke posisi
+
+            commandListenerRef = database.ref(`live_embu/${courtName}/command`);
+            commandListenerRef.on('value', (snap) => {
+                const cmd = snap.val();
+                if (cmd && cmd.action === 'logout_posisi') {
+                    // 🔥 Validasi waktu: Hanya eksekusi jika perintah dikirim setelah wasit masuk
+                    if (cmd.timestamp && cmd.timestamp >= (sessionStartTime - 1000)) {
+                        alert("⚠️ ROTASI WASIT!\n\nSesi tugas Anda telah direset oleh Panitera untuk rotasi wasit baru.");
+                        tendangWasitAktif();
+                        database.ref(`live_embu/${courtName}/command`).remove();
+                    }
+                }
+            });
+        }
+
+        function tendangWasitAktif() {
+            // Hapus Posisi DAN Court sekaligus, agar wasit dilempar kembali ke Portal Depan
+            localStorage.removeItem('mass_wasit_posisi');
+            localStorage.removeItem('mass_wasit_court');
+            wasitPosisi = null;
+            wasitCourt = null;
+
+            // wasitIdentitas JANGAN DIHAPUS, agar saat terlempar ke depan, dia tidak perlu scan nama lagi
+
+            if (listenerRef) listenerRef.off();
+            if (commandListenerRef) commandListenerRef.off();
+
+            checkPortalState();
+        }
+
+        function kembaliKePortal() {
+            if (confirm("Yakin ingin mengakhiri sesi dan keluar lapangan?\n\nAnda akan dikembalikan ke halaman depan.")) {
+                tendangWasitAktif();
+            }
+        }
+
+        function tarikDataUlang() {
+            if (!wasitCourt) return alert("Anda belum masuk ke lapangan.");
+
+            const iconRefresh = document.querySelector('button[onclick="tarikDataUlang()"] i');
+            iconRefresh.classList.add('fa-spin'); // Animasi muter
+
+            // Menarik data sekali saja (once) dari RTDB
+            database.ref(`live_embu/${wasitCourt}`).once('value')
+                .then((snapshot) => {
+                    // Panggil ulang logika render data atlet
+                    if (listenerRef) listenerRef.off(); // Matikan listener lama
+                    listenToPanitera(); // Nyalakan ulang
+                    alert("Data berhasil disinkronkan ulang!");
+                })
+                .catch(err => alert("Gagal menarik data: " + err))
+                .finally(() => {
+                    iconRefresh.classList.remove('fa-spin');
+                });
+        }
+        // ==========================================
+        // 7. PENERIMA DATA DARI PANITERA
+        // ==========================================
+        let currentPartaiId = null;
+
+        function listenToPanitera() {
+            if (listenerRef) listenerRef.off();
+
+            listenerRef = database.ref(`live_embu/${wasitCourt}`);
+            listenerRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                eksekusiDataLayar(data);
+            });
+        }
+
+        // 👇 FUNGSI BARU UNTUK MEMISAHKAN UI AGAR BISA DIPANGGIL FIREBASE MAUPUN SOCKET LOKAL 👇
+        function eksekusiDataLayar(data) {
+            if (!data) return;
+
+            // 1. JIKA STATUS STANDBY
+            if (data.status === 'standby') {
+                partaiAktif = null;
+                currentPartaiId = null;
+                document.getElementById('info-kategori').innerText = "MENUNGGU DATA...";
+                document.getElementById('lock-screen').innerHTML = `
+                    <i class="fas fa-lock text-4xl text-gray-300 mb-3"></i>
+                    <h2 class="text-lg font-black text-gray-800 tracking-widest text-center">MENUNGGU<br>DATA</h2>
+                    <p class="text-[10px] text-gray-500 mt-2 font-medium">Layar otomatis terbuka saat panitera mengaktifkan penilaian.</p>
+                `;
+                setScreenLock(true);
+                return;
+            }
+
+            // 2. VALIDASI JUMLAH WASIT (Misal 3 Juri, maka Wasit 4 & 5 dikunci)
+            if (data.numJudges && parseInt(wasitPosisi) > parseInt(data.numJudges)) {
+                document.getElementById('lock-screen').innerHTML = `
+                    <i class="fas fa-user-shield text-4xl text-yellow-500 mb-3"></i>
+                    <h2 class="text-base font-black text-gray-800 tracking-wider text-center">POSISI CADANGAN</h2>
+                    <p class="text-[10px] text-gray-500 mt-2 font-medium text-center px-4">Kategori ini hanya menggunakan ${data.numJudges} Wasit.</p>
+                `;
+                setScreenLock(true);
+                return;
+            }
+
+            // 3. JIKA STATUS AKTIF
+            if (data.status === 'aktif') {
+                partaiAktif = data;
+
+                if (data.playlist_antrean) {
+                    CURRENT_PLAYLIST_DATA = data.playlist_antrean;
+                    const dotBadge = document.getElementById('badge-playlist-dot');
+                    if (dotBadge) dotBadge.classList.remove('hidden');
+                }
+
+                // JIKA PARTAI / SUDUT BARU
+                if (currentPartaiId !== data.partai_id) {
+                    currentPartaiId = data.partai_id;
+
+                    document.getElementById('info-kategori').innerText = data.kategori || "EMBU / FESTIVAL";
+                    const badgeUrut = document.getElementById('atlet-urut');
+                    badgeUrut.className = 'text-[11px] font-black px-2.5 py-1.5 rounded shrink-0 border';
+
+                    if (data.sistem === 'double_elimination') {
+                        const gameText = data.game ? `G-${data.game}` : "G-?";
+                        badgeUrut.innerText = gameText;
+
+                        if (data.pita === 'merah' || data.pita === 'aka') {
+                            badgeUrut.classList.add('bg-red-600', 'text-white', 'border-red-700');
+                        } else if (data.pita === 'putih' || data.pita === 'shiro') {
+                            badgeUrut.classList.add('bg-white', 'text-gray-800', 'border-gray-400', 'shadow-sm');
+                        } else {
+                            badgeUrut.classList.add('bg-gray-700', 'text-white', 'border-gray-800');
+                        }
+                    } else {
+                        badgeUrut.innerText = `No. ${data.no_urut || "?"}`;
+                        badgeUrut.classList.add('bg-blue-600', 'text-white', 'border-blue-700');
+                    }
+
+                    document.getElementById('atlet-kontingen').innerText = data.kontingen || "KONTINGEN";
+
+                    let namaArray = (data.nama || "NAMA ATLET").split('&').map(n => n.trim());
+                    document.getElementById('atlet-nama').innerHTML = `<div class="flex flex-col">${namaArray.map((nama, i) => `<div class="flex justify-between items-center py-3 border-b border-gray-100 last:border-0"><span class="text-xs font-bold text-gray-700 leading-tight uppercase">${nama}</span><span class="text-[9px] bg-blue-50 text-blue-600 font-bold px-2 py-1 rounded ml-3 shrink-0 uppercase tracking-wider">Atlet ${i + 1}</span></div>`).join('')}</div>`;
+                    document.getElementById('atlet-nama').classList.add('hidden');
+
+                    let chevron = document.getElementById('atlet-chevron');
+                    if (chevron) chevron.classList.remove('rotate-180');
+
+                    if (data.waza && Array.isArray(data.waza)) {
+                        for (let i = 0; i < 6; i++) {
+                            let wazaItem = itemScores.find(item => item.id === (i + 1));
+                            if (wazaItem) wazaItem.label = (data.waza[i] && data.waza[i] !== "") ? data.waza[i] : `Waza ${i + 1}`;
+                        }
+                    }
+
+                    // Reset form ke nilai awal 8.0 bersih untuk setiap partai baru
+                    renderScoringTable();
+                    resetAllScores();
+                }
+
+                // KENDALI KUNCI LAYAR
+                if (!data.juri || !data.juri[wasitPosisi]) {
+                    setScreenLock(false);
+                    resetTombolKirim(false);
+                } else {
+                    setScreenLock(true);
+                }
+            }
+        }
+
+        // Fungsi untuk memulihkan tombol kirim yang terkunci / masuk mode edit
+        function resetTombolKirim(isUlang = false) {
+            const btnKirim = document.getElementById('btn-submit');
+
+            if (btnKirim) {
+                btnKirim.disabled = false;
+
+                // Sapu bersih SEMUA sisa warna dan efek kaku dari state sebelumnya
+                btnKirim.classList.remove('bg-green-600', 'bg-[#e52e2e]', 'bg-orange-500', 'cursor-not-allowed', 'opacity-70', 'hover:bg-red-700', 'hover:bg-orange-600');
+
+                if (isUlang) {
+                    // MODE REVISI: Beri warna Oranye agar wasit sadar
+                    btnKirim.classList.add('bg-orange-500', 'hover:bg-orange-600');
+                    btnKirim.innerHTML = '<i class="fas fa-sync-alt mr-2"></i> KIRIM ULANG';
+                } else {
+                    // MODE NORMAL: Kembalikan ke warna Merah bawaan
+                    btnKirim.classList.add('bg-[#e52e2e]', 'hover:bg-red-700');
+                    btnKirim.innerHTML = '<i class="fas fa-paper-plane mr-2"></i> KIRIM NILAI';
+                }
+            }
+        }
+
+        // ==========================================
+        // 8. KONTROL UI & QR CODE SCANNER
+        // ==========================================
+        function setScreenLock(isLockedScreen) {
+            const lockScreen = document.getElementById('lock-screen');
+            if (isLockedScreen) lockScreen.classList.remove('hidden');
+            else lockScreen.classList.add('hidden');
+        }
+
+        function toggleAtletDetails() {
+            const divNama = document.getElementById('atlet-nama');
+            const icon = document.getElementById('atlet-chevron');
+            if (divNama.classList.contains('hidden')) {
+                divNama.classList.remove('hidden');
+                icon.classList.add('rotate-180');
+            } else {
+                divNama.classList.add('hidden');
+                icon.classList.remove('rotate-180');
+            }
+        }
+
+        // Variabel global untuk menyimpan instance kamera
+        let html5QrCode;
+
+        function openQrModal() {
+            const modal = document.getElementById('qr-modal');
+            modal.classList.remove('hidden');
+
+            // Pastikan div tempat kamera muncul memiliki id="reader"
+            html5QrCode = new Html5Qrcode("reader");
+
+            // Langsung paksa buka kamera belakang (environment) tanpa bertanya
+            html5QrCode.start(
+                { facingMode: "environment" },
+                {
+                    fps: 10,
+                    qrbox: { width: 250, height: 250 },
+                    aspectRatio: 1.0
+                },
+                (decodedText, decodedResult) => {
+                    // Panggil fungsi sukses Anda di sini
+                    onScanSuccess(decodedText);
+
+                    // Hentikan kamera setelah sukses scan
+                    closeQrModal();
+                },
+                (errorMessage) => {
+                    // Abaikan error frame by frame agar konsol tidak penuh
+                }
+            ).catch((err) => {
+                alert("Gagal mengakses kamera otomatis. Pastikan izin kamera sudah diberikan.");
+            });
+        }
+
+        function closeQrModal() {
+            const modal = document.getElementById('qr-modal');
+            modal.classList.add('hidden');
+
+            // Matikan kamera saat modal ditutup
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop().catch(err => console.error("Gagal mematikan kamera", err));
+            }
+        }
+
+        function onScanSuccess(decodedText) {
+            // [ANTI-BUG]: Jeda scanner sementara agar tidak dobel scan
+            if (html5QrCode && html5QrCode.getState() === Html5QrcodeScannerState.SCANNING) {
+                html5QrCode.pause();
+            }
+
+            // ==========================================
+            // CEK: Apakah ini Master QR dari Panitera?
+            // Ciri khas: memiliki karakter pemisah "|"
+            // ==========================================
+            if (decodedText.includes("|")) {
+
+                // Panggil shortId dan identitas dari memori lokal (hasil scan tahap 1)
+                const myShortId = localStorage.getItem('mass_wasit_shortId');
+
+                if (!wasitIdentitas || !myShortId) {
+                    alert("Tindakan Ditolak!\n\nAnda belum men-scan ID Card Anda. Harap tutup, Reset Identitas, dan scan Kartu ID Anda terlebih dahulu.");
+                    closeQrModal();
+                    return; // Hentikan proses
+                }
+
+                // Format Asumsi Master QR Anda: "court_1|EMBU|W-001|W-002|W-003|W-004|W-005"
+                let parts = decodedText.split("|");
+                let qrCourt = parts[0];
+                let wasitIds = parts.slice(-5); // Ambil 5 data terakhir
+
+                // PENTING: Gunakan 'myShortId' untuk pencocokan, BUKAN nama.
+                // Pastikan Panitera membuat Master QR berisi deretan Short ID.
+                let posisiIndex = wasitIds.indexOf(myShortId);
+
+                if (posisiIndex !== -1) {
+                    let posisiReal = posisiIndex + 1; // Indeks 0 jadi Wasit 1
+
+                    closeQrModal();
+
+                    // Lanjutkan ke fungsi penugasan Anda
+                    prosesPenugasanOtomatis(qrCourt, posisiReal);
+                } else {
+                    alert(`Short ID Anda (${myShortId}) TIDAK DITEMUKAN dalam tugas Court ini.\n\nSilakan lapor ke Panitera.`);
+                    if (html5QrCode) html5QrCode.resume();
+                }
+            }
+            // ==========================================
+            // JIKA BUKAN MASTER QR (Berarti Scan ID Card Pertama Kali)
+            // ==========================================
+            else {
+                // Ambil data dari Firebase berdasarkan URL Barcode
+                const dbRef = firebase.database().ref('turnamen_data/barcodes');
+
+                dbRef.orderByChild('barcodeUrl').equalTo(decodedText).once('value')
+                    .then((snapshot) => {
+                        if (snapshot.exists()) {
+                            snapshot.forEach((childSnapshot) => {
+                                const dataWasit = childSnapshot.val();
+
+                                // Set variabel global & local storage
+                                wasitIdentitas = dataWasit.nama;
+                                const shortIdWasit = dataWasit.shortId;
+
+                                localStorage.setItem('mass_wasit_identitas', wasitIdentitas);
+                                localStorage.setItem('mass_wasit_shortId', shortIdWasit);
+
+                                closeQrModal();
+                                checkPortalState(); // Perbarui UI jadi state ready
+
+                                // Feedback sukses (Opsional: bisa dihilangkan jika terlalu mengganggu)
+                                alert(`Identitas Tersimpan: ${wasitIdentitas}\n\nSekarang Anda siap men-scan Master QR dari Panitera.`);
+                            });
+                        } else {
+                            alert("ID Kartu tidak dikenali di sistem! Coba scan lagi.");
+                            if (html5QrCode) html5QrCode.resume();
+                        }
+                    })
+                    .catch((error) => {
+                        console.error("Error database: ", error);
+                        alert("Gagal menghubungi server. Cek internet Anda.");
+                        if (html5QrCode) html5QrCode.resume();
+                    });
+            }
+        }
+
+        // ========================================================
+        // FUNGSI RESET IDENTITAS WASIT
+        // ========================================================
+        function resetIdentitas() {
+            // Tambahkan konfirmasi agar tidak tidak sengaja kepencet
+            if (confirm("Yakin ingin mereset dan mengganti ID Kartu Wasit?")) {
+                // 1. Hapus dari memori lokal (localStorage)
+                localStorage.removeItem('mass_wasit_identitas');
+                localStorage.removeItem('mass_wasit_shortId');
+                localStorage.removeItem('mass_wasit_node_id');
+
+                // 2. Kosongkan variabel global
+                wasitIdentitas = null;
+
+                // 3. (Opsional) Jika wasit sedang nyangkut di dalam lapangan, keluarkan juga
+                localStorage.removeItem('mass_wasit_court');
+                localStorage.removeItem('mass_wasit_posisi');
+                wasitCourt = null;
+                wasitPosisi = null;
+
+                // 4. Perbarui tampilan layar (kembali ke state awal minta scan)
+                checkPortalState();
+            }
+        }
+
+        // ========================================================
+        // FUNGSI ANIMASI & PENGUNCI POSISI
+        // ========================================================
+        function prosesPenugasanOtomatis(court, posisi) {
+            // 1. Kunci Data di Memori
+            wasitCourt = court;
+            wasitPosisi = posisi.toString();
+            localStorage.setItem('mass_wasit_court', wasitCourt);
+            localStorage.setItem('mass_wasit_posisi', wasitPosisi);
+
+            // 2. Siapkan UI Animasi
+            const modal = document.getElementById('success-assign-modal');
+            const card = document.getElementById('success-assign-card');
+            document.getElementById('success-posisi-text').innerText = `WASIT ${wasitPosisi}`;
+            document.getElementById('display-posisi').innerText = `WASIT ${wasitPosisi}`; // Update background label
+
+            // Tampilkan Modal
+            modal.classList.remove('hidden');
+
+            // Jeda 50ms agar animasi CSS terpanggil mulus
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                card.classList.remove('scale-95');
+                card.classList.add('scale-100');
+            }, 50);
+
+            // 3. Tahan Layar Sukses 1.5 Detik, Lalu Buka Aplikasi Utama
+            setTimeout(() => {
+                // Fade out
+                modal.classList.add('opacity-0');
+                card.classList.remove('scale-100');
+                card.classList.add('scale-95');
+
+                // Hapus dari DOM & Mulai Dengar Server
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    checkPortalState();
+                }, 300); // Waktu yang sama dengan duration-300 di Tailwind
+            }, 1800); // Tahan cukup lama untuk dibaca
+        }
+
+        function onScanFailure(error) { /* Abaikan */ }
+
+        // ==========================================
+        // 9. LOGIKA TABEL PENILAIAN (Persis image_f23f5a)
+        // ==========================================
+        function renderScoringTable() {
+            const wazaCont = document.getElementById('waza-container');
+            const eksCont = document.getElementById('ekspresi-container');
+
+            wazaCont.innerHTML = '';
+            eksCont.innerHTML = '';
+            let wazaIndex = 1; let eksIndex = 1;
+
+            itemScores.forEach((item, index) => {
+                let isWaza = item.type === 'waza';
+                let displayNum = isWaza ? wazaIndex++ : eksIndex++;
+
+                let html = `
+                <div class="flex items-center justify-between py-4 px-4 bg-white border-b border-gray-100 last:border-0">
+                    <div class="flex-1 pr-3 flex gap-3">
+                        <span class="text-sm font-bold text-gray-400 shrink-0 text-right">${displayNum}.</span>
+                        <span class="text-sm font-bold text-gray-700 break-words leading-snug uppercase">${item.label}</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <button onclick="ubahNilai(${item.id}, -1)" class="w-11 h-11 rounded-full border border-gray-300 flex justify-center items-center text-gray-500 bg-white hover:bg-gray-50 active:bg-gray-100 transition shadow-sm">
+                            <i class="fa-solid fa-minus text-sm"></i>
+                        </button>
+                        <div id="val-${item.id}" class="w-7 text-center font-black text-2xl text-gray-900">${Math.round(item.val)}</div>
+                        <button onclick="ubahNilai(${item.id}, 1)" class="w-11 h-11 rounded-full border border-gray-300 flex justify-center items-center text-gray-500 bg-white hover:bg-gray-50 active:bg-gray-100 transition shadow-sm">
+                            <i class="fa-solid fa-plus text-sm"></i>
+                        </button>
+                    </div>
+                </div>`;
+                if (item.type === 'waza') wazaCont.innerHTML += html;
+                else eksCont.innerHTML += html;
+            });
+            hitungTotal();
+        }
+
+        function ubahNilai(id, step) {
+            let idx = itemScores.findIndex(i => i.id === id);
+            if (idx > -1) {
+                itemScores[idx].val += step;
+                if (itemScores[idx].val < 0) itemScores[idx].val = 0;
+                if (itemScores[idx].val > 10) itemScores[idx].val = 10;
+                document.getElementById(`val-${id}`).innerText = Math.round(itemScores[idx].val);
+                hitungTotal();
+            }
+        }
+
+        function hitungTotal() {
+            let sum = 0;
+            itemScores.forEach(i => sum += i.val);
+            document.getElementById('total-display').innerText = Math.round(sum);
+        }
+
+        function resetAllScores() {
+            itemScores.forEach(i => i.val = 8.0);
+            itemScores.forEach(i => {
+                let el = document.getElementById(`val-${i.id}`);
+                if (el) el.innerText = "8";
+            });
+            hitungTotal();
+
+            const btn = document.getElementById('btn-submit');
+            btn.innerHTML = `<i class="fas fa-paper-plane text-sm"></i><span class="text-xs font-black tracking-widest uppercase ml-2">Kirim Nilai</span>`;
+
+            // Sapu bersih warna hijau/oranye, lalu kembalikan ke merah
+            btn.classList.remove('bg-green-600', 'bg-orange-500', 'hover:bg-orange-600');
+            btn.classList.add('bg-[#e52e2e]', 'hover:bg-red-700');
+            btn.disabled = false;
+        }
+
+        async function submitScore() {
+            if (!partaiAktif) return alert("Belum ada data atlet aktif.");
+            if (!wasitPosisi) return alert("Posisi wasit belum dikunci!");
+
+            let grandTotal = 0; let teknikTotal = 0; let arrayRincian = [];
+            itemScores.forEach(i => {
+                grandTotal += i.val;
+                if (i.type === 'waza') teknikTotal += i.val;
+                arrayRincian.push(i.val);
+            });
+
+            if (grandTotal === 0 && !confirm("Total nilai masih 0. Yakin ingin mengirim?")) return;
+
+            localStorage.setItem('mass_saved_waza_' + partaiAktif.partai_id, JSON.stringify(itemScores));
+
+            const btn = document.getElementById('btn-submit');
+            btn.innerHTML = `<i class="fas fa-spinner fa-spin text-sm"></i><span class="text-xs font-black tracking-widest uppercase ml-2">Mengirim...</span>`;
+            btn.disabled = true;
+
+            const myName = wasitIdentitas || "UNKNOWN";
+            const payloadData = {
+                total: grandTotal, teknik: teknikTotal,
+                rincian: arrayRincian.join('|'), nama_wasit: myName
+            };
+
+            try {
+                // Lapis 1: SELALU TEMBAK FIREBASE (Jantung Utama - Backup)
+                await database.ref(`live_embu/${wasitCourt}/juri/${wasitPosisi}`).set(payloadData);
+
+                // 👇 SUNTIKAN BARU: Lapis 2 - JARINGAN MESH LOKAL SOCKET.IO (Tanpa Delay) 👇
+                if (typeof socketLokal !== 'undefined' && socketLokal !== null && socketLokal.connected) {
+                    socketLokal.emit('broadcast_to_tv', {
+                        channel: 'lokal_wasit',
+                        court: wasitCourt,
+                        posisi: wasitPosisi,
+                        partai_id: partaiAktif.partai_id,
+                        payload: payloadData
+                    });
+                }
+
+                // 👇 SUNTIKAN BARU: Lapis 3 - BACKEND API NODE.JS (SQLite UPSERT) 👇
+                if (window.location.protocol === 'http:' && window.location.hostname !== 'localhost') {
+                    try {
+                        let currentIP = window.location.hostname;
+                        let port = window.location.port ? `:${window.location.port}` : ':3000';
+
+                        await fetch(`http://${currentIP}${port}/api/save_score`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                partai_id: partaiAktif.partai_id,
+                                court: wasitCourt,
+                                juri_index: parseInt(wasitPosisi),
+                                rincian: arrayRincian,
+                                nilai_teknik: teknikTotal,
+                                nilai_total: grandTotal,
+                                nama_wasit: myName,
+                                short_id_wasit: localStorage.getItem('mass_wasit_shortId') || ""
+                            })
+                        });
+                    } catch (e) {
+                        console.warn("API Lokal diabaikan, bergantung sepenuhnya pada Socket/Firebase.");
+                    }
+                }
+
+                // ==========================================
+                // TRANSISI UI SUKSES
+                // ==========================================
+                btn.innerHTML = `<i class="fas fa-check text-sm"></i><span class="text-xs font-black tracking-widest uppercase ml-2">Terkirim!</span>`;
+                btn.classList.remove('bg-[#e52e2e]', 'bg-orange-500', 'hover:bg-red-700', 'hover:bg-orange-600');
+                btn.classList.add('bg-green-600');
+
+                setTimeout(() => {
+                    document.getElementById('lock-screen').innerHTML = `
+                <div class="flex flex-col items-center justify-center p-6 bg-white rounded-2xl shadow-xl border border-gray-100 max-w-xs text-center">
+                    <i class="fas fa-check-circle text-6xl text-green-500 mb-4 drop-shadow-[0_4px_10px_rgba(34,197,94,0.3)]"></i>
+                    <h2 class="text-2xl font-black text-gray-800 tracking-wider">NILAI MASUK</h2>
+                    <p class="text-[10px] text-gray-500 mt-2 font-medium">Menunggu panitera memanggil atlet berikutnya atau merevisi nilai.</p>
+                </div>
+            `;
+                    setScreenLock(true);
+
+                    setTimeout(() => {
+                        document.getElementById('lock-screen').innerHTML = `
+                    <i class="fas fa-lock text-4xl text-gray-300 mb-3"></i>
+                    <h2 class="text-lg font-black text-gray-800 tracking-widest text-center">MENUNGGU<br>DATA</h2>
+                    <p class="text-[10px] text-gray-500 mt-2 font-medium">Layar otomatis terbuka saat data ditembak.</p>
+                `;
+                    }, 2500);
+                }, 1000);
+
+            } catch (err) {
+                alert("Gagal mengirim nilai ke server. Cek koneksi Anda.");
+                resetAllScores();
+            }
+        }
+
+        // ==========================================
+        // KENDALI POP-UP DAFTAR ANTREAN PLAYLIST
+        // ==========================================
+        function openPlaylistModal() {
+            const modal = document.getElementById('playlist-modal');
+            const titleEl = document.getElementById('playlist-modal-title');
+            const subTitleEl = document.getElementById('playlist-modal-subtitle');
+            const bodyEl = document.getElementById('playlist-modal-body');
+
+            if (!CURRENT_PLAYLIST_DATA || !CURRENT_PLAYLIST_DATA.items || CURRENT_PLAYLIST_DATA.items.length === 0) {
+                titleEl.innerText = "ANTREAN KOSONG";
+                subTitleEl.innerText = "STATUS";
+                bodyEl.innerHTML = `
+            <div class="p-8 text-center text-gray-400">
+                <i class="fas fa-clipboard-list text-4xl mb-3 text-gray-300"></i>
+                <p class="text-xs font-bold leading-relaxed">Belum ada daftar antrean playlist yang dikirim dari Panitera.</p>
+            </div>
+        `;
+                modal.classList.remove('hidden');
+                return;
+            }
+
+            titleEl.innerText = CURRENT_PLAYLIST_DATA.title || "-";
+            subTitleEl.innerText = CURRENT_PLAYLIST_DATA.subtitle || "BLOK SAAT INI";
+
+            let html = "";
+
+            // 1. TAMPILAN EMBU H2H / DOUBLE ELIMINATION / RANDORI (Sesuai image_c89fe6.jpg)
+            if (CURRENT_PLAYLIST_DATA.type === 'h2h') {
+                html = CURRENT_PLAYLIST_DATA.items.map(item => {
+                    // Cek apakah partai ini sedang aktif dinilai saat ini
+                    let isCurrent = partaiAktif && (partaiAktif.partai_id && partaiAktif.partai_id.includes(`match-${item.matchId}-`));
+
+                    let borderClass = isCurrent
+                        ? 'border-blue-500 bg-blue-50/40 ring-2 ring-blue-400/40 shadow-sm'
+                        : (item.isDone ? 'border-gray-200 bg-gray-100/60 opacity-60' : 'border-gray-200 bg-white shadow-sm');
+
+                    let statusBadge = item.isDone
+                        ? `<span class="text-[9px] bg-green-100 text-green-700 font-bold px-1.5 py-0.5 rounded"><i class="fas fa-check mr-1"></i>Selesai</span>`
+                        : (isCurrent
+                            ? `<span class="text-[9px] bg-blue-600 text-white font-bold px-2 py-0.5 rounded animate-pulse">Sedang Main</span>`
+                            : `<span class="text-[9px] bg-gray-100 text-gray-500 font-bold px-1.5 py-0.5 rounded">Menunggu</span>`);
+
+                    return `
+                <div class="p-3 rounded-xl border ${borderClass} transition-all">
+                    <div class="flex justify-between items-center mb-2 pb-1.5 border-b border-gray-100">
+                        <span class="font-mono font-black text-xs ${isCurrent ? 'text-blue-600' : 'text-purple-600'}">${item.label}</span>
+                        <span class="text-[9px] font-bold text-gray-400 uppercase tracking-widest">${item.babak || ''}</span>
+                        ${statusBadge}
+                    </div>
+                    <div class="space-y-1 text-xs">
+                        <div class="flex justify-between items-center">
+                            <span class="font-bold text-red-600 truncate flex-1">${item.merahNama}</span>
+                            <span class="text-[9px] font-bold text-gray-500 uppercase ml-2 shrink-0">(${item.merahKont})</span>
+                        </div>
+                        <div class="text-[9px] text-gray-400 text-center font-black italic">VS</div>
+                        <div class="flex justify-between items-center">
+                            <span class="font-bold text-gray-800 truncate flex-1">${item.putihNama}</span>
+                            <span class="text-[9px] font-bold text-gray-500 uppercase ml-2 shrink-0">(${item.putihKont})</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+                }).join('');
+
+                // 2. TAMPILAN EMBU BAKU / FESTIVAL (Sesuai image_c89c66.jpg)
+            } else {
+                html = CURRENT_PLAYLIST_DATA.items.map(item => {
+                    // Cek apakah atlet ini sedang dinilai saat ini
+                    let isCurrent = partaiAktif && (partaiAktif.partai_id && partaiAktif.partai_id.startsWith(`${item.id}|`));
+
+                    let borderClass = isCurrent
+                        ? 'border-blue-500 bg-blue-50/40 ring-2 ring-blue-400/40 shadow-sm'
+                        : (item.isDone ? 'border-gray-200 bg-gray-100/60 opacity-60' : 'border-gray-200 bg-white shadow-sm');
+
+                    let statusBadge = item.isDone
+                        ? `<span class="text-[9px] bg-green-100 text-green-700 font-bold px-1.5 py-0.5 rounded"><i class="fas fa-check mr-1"></i>Selesai</span>`
+                        : (isCurrent
+                            ? `<span class="text-[9px] bg-blue-600 text-white font-bold px-2 py-0.5 rounded animate-pulse">Sedang Main</span>`
+                            : `<span class="text-[9px] bg-gray-100 text-gray-500 font-bold px-1.5 py-0.5 rounded">Menunggu</span>`);
+
+                    return `
+                <div class="p-3 rounded-xl border ${borderClass} flex items-center justify-between transition-all">
+                    <div class="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+                        <span class="font-mono font-black text-xs ${isCurrent ? 'text-blue-600 bg-blue-100' : 'text-gray-700 bg-gray-100'} px-2 py-1 rounded shrink-0">${item.label}</span>
+                        <div class="flex flex-col min-w-0 flex-1">
+                            <span class="font-bold text-xs text-gray-800 truncate ${item.isDone ? 'line-through text-gray-400' : ''}">${item.nama}</span>
+                            <span class="text-[10px] font-bold text-amber-600 uppercase truncate">${item.kontingen}</span>
+                        </div>
+                    </div>
+                    <div class="shrink-0">
+                        ${statusBadge}
+                    </div>
+                </div>
+            `;
+                }).join('');
+            }
+
+            bodyEl.innerHTML = html;
+            modal.classList.remove('hidden');
+        }
+
+        function closePlaylistModal() {
+            const modal = document.getElementById('playlist-modal');
+            if (modal) modal.classList.add('hidden');
+        }
+    </script>
+</body>
+
+</html>
