@@ -1,4 +1,4 @@
-// login.js - Dual-Route Authentication & Automatic SQLite Bootstrap
+// login.js - Dual-Route Authentication & Automatic Cloud Session Binding
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
@@ -12,10 +12,15 @@ const gatewayHubConfig = {
     appId: "1:441174258010:web:27fa2ad32f2284565e8363"
 };
 
-// Inisialisasi Instance Firestore Khusus Gateway
 const gatewayApp = getApps().find(app => app.name === "gatewayHubApp") 
     || initializeApp(gatewayHubConfig, "gatewayHubApp");
 const db = getFirestore(gatewayApp);
+
+const isCloud = window.location.hostname.includes('github.io') || 
+                window.location.hostname.includes('netlify.app') || 
+                (!window.location.hostname.includes('localhost') && 
+                 !window.location.hostname.startsWith('192.168.') && 
+                 !window.location.hostname.startsWith('127.0.0.1'));
 
 // DOM Elements
 const loginForm = document.getElementById('loginForm');
@@ -23,7 +28,6 @@ const manifestForm = document.getElementById('manifestForm');
 const loginBtn = document.getElementById('loginBtn');
 const errorMessage = document.getElementById('errorMessage');
 
-// Toggle Tab Jalur (Online Cloud vs Offline Manifest)
 const tabOnline = document.getElementById('tabOnline');
 const tabOffline = document.getElementById('tabOffline');
 
@@ -46,7 +50,7 @@ if (tabOnline && tabOffline) {
 }
 
 // =========================================================================
-// 2. JALUR ONLINE CLOUD SSO (DYNAMIC TENANT PROVISIONING)
+// 2. JALUR ONLINE CLOUD SSO
 // =========================================================================
 if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
@@ -58,10 +62,10 @@ if (loginForm) {
 
         loginBtn.textContent = 'Memvalidasi Lisensi & Cloud...';
         loginBtn.disabled = true;
-        errorMessage.style.display = 'none';
+        if (errorMessage) errorMessage.style.display = 'none';
 
         try {
-            // A. Ambil Data Event dari Firestore Project Hub
+            // A. Tarik Data Event dari Firestore Project Hub
             const qEvent = query(collection(db, "event_proposals"), where("id", "==", eventIdInput));
             const eventSnap = await getDocs(qEvent);
 
@@ -72,56 +76,52 @@ if (loginForm) {
 
             const eventData = eventSnap.docs[0].data();
 
-            // Validasi Status Approval Super Admin
             if (eventData.status !== 'approved') {
                 showError(`Turnamen '${eventData.name}' belum disetujui Super Admin (Status: ${(eventData.status || 'pending').toUpperCase()}).`);
                 return;
             }
 
-            // Validasi Sandi Sederhana
             if (passwordInput.length < 3) {
                 showError("Kata sandi minimal 3 karakter.");
                 return;
             }
 
-            // B. Injeksi Otomatis ke Backend Lokal SQLite (/api/config)
-            await fetch('/api/config', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    eventName: eventData.name,
-                    eventDate: eventData.dateStart,
-                    eventLocation: `${eventData.location}, ${eventData.city}`
-                })
-            });
+            const targetRtdb = (eventData.serverConfig && eventData.serverConfig.rtdbConfig) 
+                || eventData.rtdbConfig 
+                || {};
 
-            // C. INJEKSI CONFIG JARINGAN & SERVER CLOUD (/api/network)
-        // Membaca otomatis baik dari root map maupun serverConfig
-        const targetRtdb = (eventData.serverConfig && eventData.serverConfig.rtdbConfig) 
-            || eventData.rtdbConfig 
-            || {};
+            const targetFirestore = (eventData.serverConfig && eventData.serverConfig.firestoreConfig) 
+                || eventData.firestoreConfig 
+                || {};
 
-        const targetFirestore = (eventData.serverConfig && eventData.serverConfig.firestoreConfig) 
-            || eventData.firestoreConfig 
-            || {};
+            // B. Jika di server lokal, suntikkan ke SQLite backend
+            if (!isCloud) {
+                try {
+                    await fetch('/api/config', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            eventName: eventData.name,
+                            eventDate: eventData.dateStart,
+                            eventLocation: `${eventData.location}, ${eventData.city}`
+                        })
+                    });
 
-        await fetch('/api/network', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                mode: eventData.networkMode || 'hybrid',
-                rtdb_config: targetRtdb,
-                firestore_config: targetFirestore
-            })
-        });
+                    await fetch('/api/network', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            mode: eventData.networkMode || 'hybrid',
+                            rtdb_config: targetRtdb,
+                            firestore_config: targetFirestore
+                        })
+                    });
+                } catch (err) {
+                    console.warn("Backend lokal tidak merespons, melanjutkan via Cloud Session.");
+                }
+            }
 
-            // D. Simpan Sesi Login Lokal
-            sessionStorage.setItem('isLoggedIn', 'true');
-            sessionStorage.setItem('username', usernameInput);
-            sessionStorage.setItem('activeEventId', eventData.id);
-            sessionStorage.setItem('activeEventName', eventData.name);
-
-            // Tentukan Peran Pengguna
+            // Tentukan Peran
             let userRole = 'seksi_pertandingan';
             if (usernameInput.startsWith('court_') || usernameInput.includes('panitera')) {
                 userRole = 'panitera';
@@ -129,9 +129,33 @@ if (loginForm) {
             } else if (usernameInput.includes('acara')) {
                 userRole = 'seksi_acara';
             }
-            sessionStorage.setItem('role', userRole);
 
-            // Redirect ke Halaman Tujuan
+            // C. SIMPAN SESI LENGKAP KE LOCALSTORAGE & SESSIONSTORAGE
+            const sessionPayload = {
+                isLoggedIn: true,
+                role: userRole,
+                username: usernameInput,
+                eventId: eventData.id,
+                eventName: eventData.name,
+                name: eventData.name,
+                dateStart: eventData.dateStart || '',
+                location: `${eventData.location || ''}, ${eventData.city || ''}`,
+                networkMode: eventData.networkMode || 'full_cloud',
+                serverConfig: {
+                    rtdbConfig: targetRtdb,
+                    firestoreConfig: targetFirestore
+                }
+            };
+
+            localStorage.setItem('mass_kempo_session', JSON.stringify(sessionPayload));
+
+            sessionStorage.setItem('isLoggedIn', 'true');
+            sessionStorage.setItem('role', userRole);
+            sessionStorage.setItem('username', usernameInput);
+            sessionStorage.setItem('activeEventId', eventData.id);
+            sessionStorage.setItem('activeEventName', eventData.name);
+
+            // D. Pengalihan Halaman
             redirectRole(userRole);
 
         } catch (error) {
@@ -145,7 +169,7 @@ if (loginForm) {
 }
 
 // =========================================================================
-// 3. JALUR OFFLINE LAN (INGESTION EVENT-MANIFEST.JSON)
+// 3. JALUR OFFLINE LAN (MANIFEST)
 // =========================================================================
 let parsedManifestData = null;
 const dropzone = document.getElementById('dropzoneManifest');
@@ -185,44 +209,34 @@ if (manifestForm) {
         e.preventDefault();
         if (!parsedManifestData) return;
 
-        try {
-            // Suntik Identitas Event
-            await fetch('/api/config', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    eventName: parsedManifestData.event_info.name,
-                    eventDate: parsedManifestData.event_info.date_start,
-                    eventLocation: `${parsedManifestData.event_info.location}, ${parsedManifestData.event_info.city}`
-                })
-            });
+        const sessionPayload = {
+            isLoggedIn: true,
+            role: 'seksi_pertandingan',
+            username: 'admin_offline',
+            eventId: parsedManifestData.event_info.id || 'OFFLINE-EVENT',
+            eventName: parsedManifestData.event_info.name,
+            name: parsedManifestData.event_info.name,
+            dateStart: parsedManifestData.event_info.date_start || '',
+            location: `${parsedManifestData.event_info.location || ''}, ${parsedManifestData.event_info.city || ''}`,
+            networkMode: parsedManifestData.network.mode || 'lokal',
+            serverConfig: {
+                rtdbConfig: parsedManifestData.network.rtdb_config || {},
+                firestoreConfig: parsedManifestData.network.firestore_config || {}
+            }
+        };
 
-            // Suntik Config Jaringan
-            await fetch('/api/network', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    mode: parsedManifestData.network.mode || 'lokal',
-                    rtdb_config: parsedManifestData.network.rtdb_config || {},
-                    firestore_config: parsedManifestData.network.firestore_config || {}
-                })
-            });
+        localStorage.setItem('mass_kempo_session', JSON.stringify(sessionPayload));
+        sessionStorage.setItem('isLoggedIn', 'true');
+        sessionStorage.setItem('role', 'seksi_pertandingan');
+        sessionStorage.setItem('username', 'admin_offline');
+        sessionStorage.setItem('activeEventName', parsedManifestData.event_info.name);
 
-            sessionStorage.setItem('isLoggedIn', 'true');
-            sessionStorage.setItem('role', 'seksi_pertandingan');
-            sessionStorage.setItem('username', 'admin_offline');
-            sessionStorage.setItem('activeEventName', parsedManifestData.event_info.name);
-
-            window.location.href = './dashboard.html';
-
-        } catch (err) {
-            alert("Gagal menyuntikkan data manifest ke SQLite lokal: " + err.message);
-        }
+        window.location.href = './dashboard.html';
     };
 }
 
 // =========================================================================
-// 4. HELPER FUNCTIONS & AUTO-REDIRECT
+// 4. HELPER & REDIRECT
 // =========================================================================
 function redirectRole(role) {
     if (role === 'panitera') {
