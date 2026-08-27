@@ -4706,13 +4706,15 @@ setJudges = function (n) {
     renderDropdownWasit();
 };
 
-// Tambahkan kata 'async' di depan function
+// =========================================================
+// 🌟 GENERATOR QR PENUGASAN WASIT (SMART ADAPTIVE URL)
+// =========================================================
 async function openQRTugasModal() {
     let numJudges = parseInt(localStorage.getItem('local_judges')) || 5;
     let selectedNames = [];
     let penugasanObj = {};
 
-    // 1. Validasi form pengisian wasit
+    // 1. Validasi Form Pemilihan Wasit
     for (let i = 1; i <= numJudges; i++) {
         let selectEl = document.getElementById(`pilih-w${i}`);
         if (!selectEl || !selectEl.value) return alert(`Lengkapi form! Kursi Wasit ${i} belum diisi.`);
@@ -4724,17 +4726,17 @@ async function openQRTugasModal() {
 
     let safeCourtId = typeof DEVICE_ROLE !== 'undefined' && DEVICE_ROLE !== 'admin' ? DEVICE_ROLE : 'court_1';
 
-    // 🔥 POP-UP KONFIRMASI ROTASI WASIT
+    // 2. Konfirmasi Rotasi Wasit
     if (!confirm(`⚠️ KONFIRMASI ROTASI WASIT (${safeCourtId.replace('_', ' ').toUpperCase()}):\n\nMenampilkan QR baru akan mereset tugas wasit yang sedang aktif dan mengembalikan HP mereka ke halaman portal.\n\nLanjutkan untuk membuat sesi baru?`)) {
         return;
     }
 
-    // Kirim sinyal reset tugas dengan timestamp terkini
     const logoutPayload = {
         action: 'logout_posisi',
         timestamp: Date.now()
     };
 
+    // 3. Kirim Sinyal Reset via Firebase & Socket.io
     if (database) {
         database.ref(`live_embu/${safeCourtId}/command`).set(logoutPayload).catch(e => console.warn(e));
         database.ref(`live_embu/${safeCourtId}/penugasan`).set({
@@ -4745,7 +4747,7 @@ async function openQRTugasModal() {
         }).catch(e => console.warn(e));
     }
 
-    if (typeof localSocket !== 'undefined' && localSocket) {
+    if (typeof localSocket !== 'undefined' && localSocket && localSocket.connected) {
         localSocket.emit('broadcast_to_tv', {
             channel: 'lokal_panitera',
             court: safeCourtId,
@@ -4758,40 +4760,67 @@ async function openQRTugasModal() {
         });
     }
 
-    // Generate URL dan QR Code
+    // 4. 🔥 SMART URL RESOLVER (Prioritas: Input Admin -> Cloud Setting -> LAN IP -> Fallback Origin)
     let baseUrl = "";
-    let pathUrl = "/scoring/wasit.html";
-    const isCloudOnlyMode = SYSTEM_MODE.toLowerCase() === 'firebase';
+    let pathUrl = "";
 
-    if (isCloudOnlyMode && STATE.settings && STATE.settings.wasitBaseUrl) {
-        baseUrl = STATE.settings.wasitBaseUrl;
+    // A. Cek apakah ada URL Wasit khusus yang diinput di Tab Admin / Local Storage / Cloud Settings
+    const inputWasitUrl = document.getElementById('setting-wasit-url') ? document.getElementById('setting-wasit-url').value.trim() : "";
+    const savedWasitUrl = (STATE.settings && (STATE.settings.wasitUrl || STATE.settings.wasitBaseUrl)) ? (STATE.settings.wasitUrl || STATE.settings.wasitBaseUrl).trim() : "";
+    const localSavedWasitUrl = (localStorage.getItem('mass_wasit_url') || "").trim();
+
+    const customWasitUrl = inputWasitUrl || savedWasitUrl || localSavedWasitUrl;
+
+    if (customWasitUrl) {
+        // Menggunakan URL Cloud Khusus (misal: https://scoringwasit.netlify.app)
+        baseUrl = customWasitUrl;
         pathUrl = "";
     } else {
+        // B. Jika tidak ada URL khusus, deteksi apakah ini Server Lokal Node.js (LAN / Hybrid)
         try {
             const response = await fetch('/api/server-ip');
-            const data = await response.json();
-            const port = window.location.port ? ':' + window.location.port : '';
-            baseUrl = `http://${data.ip}${port}`;
+            if (response.ok) {
+                const data = await response.json();
+                const port = window.location.port ? ':' + window.location.port : '';
+                baseUrl = `http://${data.ip}${port}`;
+                pathUrl = "/scoring/wasit.html";
+            } else {
+                throw new Error("Bukan API server lokal");
+            }
         } catch (error) {
+            // C. Fallback Domain Saat Ini
             baseUrl = window.location.origin;
+            pathUrl = window.location.pathname.includes('/scoring/') ? "/scoring/wasit.html" : "/wasit.html";
         }
     }
 
+    // 5. Susun Parameter Query String dengan Rapi
     if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
-    let qrString = `${baseUrl}${pathUrl}?court=${safeCourtId}&${selectedNames.join('&')}`;
+    const fullTargetUrl = `${baseUrl}${pathUrl}`;
+    const separator = fullTargetUrl.includes('?') ? '&' : '?';
+    const qrString = `${fullTargetUrl}${separator}court=${safeCourtId}&${selectedNames.join('&')}`;
 
-    document.getElementById("qr-tugas-canvas").innerHTML = "";
-    new QRCode(document.getElementById("qr-tugas-canvas"), {
-        text: qrString,
-        width: 250,
-        height: 250,
-        colorDark: "#0f172a",
-        colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.L
-    });
+    // 6. Render Canvas QR Code
+    const qrCanvas = document.getElementById("qr-tugas-canvas");
+    if (qrCanvas) {
+        qrCanvas.innerHTML = "";
+        new QRCode(qrCanvas, {
+            text: qrString,
+            width: 250,
+            height: 250,
+            colorDark: "#0f172a",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.L
+        });
+    }
 
-    document.getElementById('qr-tugas-subtitle').innerText = `${safeCourtId.replace('_', ' ').toUpperCase()} • ${numJudges} JURI • MODE EMBU`;
-    document.getElementById('qr-tugas-modal').classList.remove('hidden');
+    const subtitleEl = document.getElementById('qr-tugas-subtitle');
+    if (subtitleEl) {
+        subtitleEl.innerText = `${safeCourtId.replace('_', ' ').toUpperCase()} • ${numJudges} JURI • MODE EMBU`;
+    }
+
+    const modalTugas = document.getElementById('qr-tugas-modal');
+    if (modalTugas) modalTugas.classList.remove('hidden');
 }
 
 function closeQRTugasModal() {
@@ -8688,58 +8717,57 @@ loadRandoriMatch = function () {
 
 // --- SISTEM SMART URL & QR GENERATOR ---
 
-function saveScannerUrl() {
-    let url = document.getElementById('setting-scanner-url').value.trim();
-    if (!url) return alert("URL tidak boleh kosong!");
-
-    // Pastikan tidak ada spasi atau slash (/) berlebih di ujung
-    if (url.endsWith('/')) url = url.slice(0, -1);
-
-    if (!STATE.settings) STATE.settings = {};
-    STATE.settings.scannerBaseUrl = url;
-    saveToLocalStorage();
-    alert("URL Mobile Scanner berhasil disimpan!\nQR Code siap digunakan.");
-}
-
-// Fungsi untuk menyimpan URL aplikasi wasit
+// =========================================================
+// ⚙️ PENGATURAN URL TERMINAL WASIT & SCANNER DI TAB ADMIN
+// =========================================================
 function saveWasitUrl() {
-    let url = document.getElementById('setting-wasit-url').value.trim();
-    if (!url) return alert("URL Aplikasi Wasit tidak boleh kosong!");
+    const inputEl = document.getElementById('setting-wasit-url');
+    if (!inputEl) return;
 
-    // Pastikan tidak ada slash (/) berlebih di ujung URL
-    if (url.endsWith('/')) url = url.slice(0, -1);
-
-    // Inisialisasi object pengaturan jika belum ada
+    const val = inputEl.value.trim();
     if (!STATE.settings) STATE.settings = {};
-    STATE.settings.wasitBaseUrl = url;
 
-    // Simpan ke memori dan tembak ke Firebase
+    STATE.settings.wasitUrl = val;
+    STATE.settings.wasitBaseUrl = val;
+    localStorage.setItem('mass_wasit_url', val);
+
     saveToLocalStorage();
-    alert("URL Aplikasi Wasit berhasil disimpan!\nSistem QR Penugasan siap menggunakan tautan ini.");
+    alert("✅ URL Aplikasi Wasit berhasil disimpan:\n" + (val || "(Default Lokal)"));
 }
 
-// Tambahkan logika untuk mengisi nilai otomatis saat Tab Admin dibuka
-// (Injeksi ke dalam fungsi switchTab yang sudah ada)
-const originalSwitchTabWasit = switchTab;
-switchTab = function (targetTab) {
-    originalSwitchTabWasit(targetTab);
-    if (targetTab === 'admin') {
-        let urlWasitEl = document.getElementById('setting-wasit-url');
-        if (urlWasitEl) {
-            urlWasitEl.value = (STATE.settings && STATE.settings.wasitBaseUrl) ? STATE.settings.wasitBaseUrl : '';
-        }
-    }
+function saveScannerUrl() {
+    const inputEl = document.getElementById('setting-scanner-url');
+    if (!inputEl) return;
+
+    const val = inputEl.value.trim();
+    if (!STATE.settings) STATE.settings = {};
+
+    STATE.settings.scannerUrl = val;
+    localStorage.setItem('mass_scanner_url', val);
+
+    saveToLocalStorage();
+    alert("✅ URL Mobile Scanner berhasil disimpan:\n" + (val || "(Default Lokal)"));
 }
 
-// Injeksi ke fungsi switchTab (Biar input form-nya terisi otomatis saat Tab Admin dibuka)
 const originalSwitchTab = switchTab;
 switchTab = function (targetTab) {
     originalSwitchTab(targetTab);
     if (targetTab === 'admin') {
-        let urlEl = document.getElementById('setting-scanner-url');
-        if (urlEl) urlEl.value = (STATE.settings && STATE.settings.scannerBaseUrl) ? STATE.settings.scannerBaseUrl : '';
+        let urlScannerEl = document.getElementById('setting-scanner-url');
+        if (urlScannerEl) {
+            urlScannerEl.value = (STATE.settings && (STATE.settings.scannerUrl || STATE.settings.scannerBaseUrl)) 
+                ? (STATE.settings.scannerUrl || STATE.settings.scannerBaseUrl) 
+                : (localStorage.getItem('mass_scanner_url') || "");
+        }
+
+        let urlWasitEl = document.getElementById('setting-wasit-url');
+        if (urlWasitEl) {
+            urlWasitEl.value = (STATE.settings && (STATE.settings.wasitUrl || STATE.settings.wasitBaseUrl)) 
+                ? (STATE.settings.wasitUrl || STATE.settings.wasitBaseUrl) 
+                : (localStorage.getItem('mass_wasit_url') || "");
+        }
     }
-}
+};
 
 // Fungsi Buka Pop-up & Gambar QR Setup (Berisi JSON)
 async function openQrOperatorModal() {
