@@ -109,18 +109,35 @@ async function initSystem() {
     if (isStaticCloudHost && ACTIVE_SESSION && ACTIVE_SESSION.serverConfig && ACTIVE_SESSION.serverConfig.rtdbConfig) {
         SYSTEM_MODE = 'online';
         const rtdbConfig = ACTIVE_SESSION.serverConfig.rtdbConfig;
+        const firestoreConfig = ACTIVE_SESSION.serverConfig.firestoreConfig || ACTIVE_SESSION.serverConfig.firestore_config;
 
         try {
-            // Inisialisasi Firebase RTDB dari Sesi
+            // A. RUMAH UTAMA: Inisialisasi Firebase RTDB dari Sesi
             if (!firebase.apps.length) {
                 firebase.initializeApp(rtdbConfig);
             }
             database = firebase.database();
 
+            // B. RUMAH KEDUA: Inisialisasi Firestore untuk Penarikan Waza & Pendaftaran
+            try {
+                if (firestoreConfig && Object.keys(firestoreConfig).length > 0) {
+                    let appPendaftaran = firebase.apps.find(app => app.name === 'AplikasiPendaftaran');
+                    if (!appPendaftaran) {
+                        appPendaftaran = firebase.initializeApp(firestoreConfig, 'AplikasiPendaftaran');
+                    }
+                    firestoreDB = appPendaftaran.firestore();
+                } else if (firebase.apps.length > 0) {
+                    // Fallback jika menggunakan project Firebase yang sama
+                    firestoreDB = firebase.firestore();
+                }
+            } catch (fsErr) {
+                console.warn("Inisialisasi Firestore sekunder tertunda:", fsErr);
+            }
+
             // Pantau Status Koneksi Realtime
             database.ref('.info/connected').on('value', (snap) => {
                 if (snap.val() === true) {
-                    if (statusDot) statusDot.className = 'w-2.5 h-2.5 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.8)] transition-colors duration-300';
+                    if (statusDot) statusDot.className = 'w-2.5 h-2.5 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(168,85,247,0.8)] transition-colors duration-300';
                     if (statusText) statusText.innerText = `ONLINE (CLOUD - ${DEVICE_ROLE.toUpperCase()})`;
                 } else {
                     if (statusDot) statusDot.className = 'w-2.5 h-2.5 bg-yellow-500 rounded-full animate-pulse';
@@ -142,7 +159,6 @@ async function initSystem() {
                         if (data.settings) STATE.settings = data.settings;
                     }
                 } else {
-                    // Jika cloud masih bersih, kirim data kategori awal dari sesi
                     saveToLocalStorage();
                 }
                 refreshActiveUI();
@@ -166,6 +182,18 @@ async function initSystem() {
         if (!isLocalMode && networkData.rtdb_config && Object.keys(networkData.rtdb_config).length > 0) {
             if (!firebase.apps.length) firebase.initializeApp(networkData.rtdb_config);
             database = firebase.database();
+
+            if (networkData.firestore_config && Object.keys(networkData.firestore_config).length > 0) {
+                try {
+                    let appPendaftaran = firebase.apps.find(app => app.name === 'AplikasiPendaftaran');
+                    if (!appPendaftaran) {
+                        appPendaftaran = firebase.initializeApp(networkData.firestore_config, 'AplikasiPendaftaran');
+                    }
+                    firestoreDB = appPendaftaran.firestore();
+                } catch (e) {
+                    console.warn("Firestore sekunder gagal dimuat:", e);
+                }
+            }
 
             database.ref('.info/connected').on('value', (snap) => {
                 if (snap.val() === true) {
