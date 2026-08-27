@@ -1,5 +1,27 @@
-// sistem.js
+// sistem.js - Adaptor Otomatis: Cloud (Netlify / Firebase) & Lokal (Node.js / SQLite)
 document.addEventListener('DOMContentLoaded', () => {
+    // =========================================================
+    // 0. DETEKSI LINGKUNGAN & PEMBACAAN SESI LOGIN OTOMATIS
+    // =========================================================
+    const isCloud = window.location.hostname.includes('netlify.app') || 
+                    (!window.location.hostname.includes('localhost') && 
+                     !window.location.hostname.startsWith('192.168.') && 
+                     !window.location.hostname.startsWith('127.0.0.1'));
+
+    function getActiveSession() {
+        const raw = localStorage.getItem('mass_kempo_session');
+        if (raw) {
+            try { return JSON.parse(raw); } catch (e) { }
+        }
+        return null;
+    }
+
+    function saveActiveSession(updatedData) {
+        const current = getActiveSession() || {};
+        const merged = { ...current, ...updatedData };
+        localStorage.setItem('mass_kempo_session', JSON.stringify(merged));
+    }
+
     // =========================================================
     // 1. LOGIKA PERPINDAHAN TAB
     // =========================================================
@@ -9,14 +31,13 @@ document.addEventListener('DOMContentLoaded', () => {
     tabLinks.forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            // Hapus kelas active dari semua
             tabLinks.forEach(l => l.classList.remove('active'));
             tabPanes.forEach(p => p.classList.remove('active'));
 
-            // Tambah kelas active ke yang diklik
             link.classList.add('active');
             const targetId = link.getAttribute('data-target');
-            document.getElementById(targetId).classList.add('active');
+            const targetPane = document.getElementById(targetId);
+            if (targetPane) targetPane.classList.add('active');
         });
     });
 
@@ -34,24 +55,35 @@ document.addEventListener('DOMContentLoaded', () => {
         formEvent.addEventListener('submit', async (e) => {
             e.preventDefault();
             const eventData = {
-                eventName: document.getElementById('eventName').value,
+                eventName: document.getElementById('eventName').value.trim(),
                 eventDate: document.getElementById('eventDate').value,
-                eventLocation: document.getElementById('eventLocation').value
+                eventLocation: document.getElementById('eventLocation').value.trim()
             };
 
-            try {
-                // Pastikan endpoint menggunakan absolute URL agar konsisten
-                const response = await fetch('/api/config', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(eventData)
+            if (isCloud) {
+                // Simpan ke Sesi Cloud Lokal
+                saveActiveSession({
+                    name: eventData.eventName,
+                    eventName: eventData.eventName,
+                    dateStart: eventData.eventDate,
+                    location: eventData.eventLocation
                 });
+                alert('✅ Identitas Event Berhasil Disimpan di Cloud!');
+            } else {
+                // Simpan ke Backend Node.js Lokal
+                try {
+                    const response = await fetch('/api/config', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(eventData)
+                    });
 
-                if (response.ok) {
-                    alert('Identitas Event Berhasil Disimpan!');
+                    if (response.ok) {
+                        alert('✅ Identitas Event Berhasil Disimpan di Server Lokal!');
+                    }
+                } catch (error) {
+                    alert('Gagal menyimpan. Pastikan server lokal (Node.js) berjalan.');
                 }
-            } catch (error) {
-                alert('Gagal menyimpan. Pastikan server lokal (Node.js) berjalan.');
             }
         });
     }
@@ -59,21 +91,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // =========================================================
     // 4. LOGIKA SIMPAN KONFIGURASI JARINGAN (SMART PASTE)
     // =========================================================
-
-    // Fungsi Pintar untuk mengekstrak { object } dari copy-paste
     function extractConfig(rawText) {
-        if (!rawText || rawText.trim() === "") return {}; // Jika kosong, kembalikan objek kosong
+        if (!rawText || rawText.trim() === "") return {};
         try {
             const startIndex = rawText.indexOf('{');
             const endIndex = rawText.lastIndexOf('}');
             if (startIndex === -1 || endIndex === -1) throw new Error("Kurung kurawal {} tidak ditemukan");
 
             const objectString = rawText.substring(startIndex, endIndex + 1);
-            // Mengubah format string JS (walau tanpa tanda kutip ganda) menjadi Object murni
             return new Function('return ' + objectString)();
         } catch (error) {
             console.error("Gagal mengekstrak config:", error);
-            return null; // Menandakan ada yang salah format
+            return null;
         }
     }
 
@@ -85,11 +114,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const rtdbRaw = document.getElementById('rtdb_raw').value;
             const fsRaw = document.getElementById('fs_raw').value;
 
-            // Ekstrak data dari kolom paste
             const rtdbConfig = extractConfig(rtdbRaw);
             const firestoreConfig = extractConfig(fsRaw);
 
-            // Validasi jika format salah
             if (rtdbConfig === null || firestoreConfig === null) {
                 alert("Format salah! Pastikan Anda mem-paste kode yang mengandung kurung kurawal { ... } dengan benar.");
                 return;
@@ -99,35 +126,50 @@ document.addEventListener('DOMContentLoaded', () => {
             btnSimpanJaringan.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
             btnSimpanJaringan.disabled = true;
 
-            const payload = {
-                mode: document.getElementById('netMode').value,
-                rtdb_config: rtdbConfig,
-                firestore_config: firestoreConfig
-            };
+            const mode = document.getElementById('netMode').value;
 
-            try {
-                const response = await fetch('/api/network', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+            if (isCloud) {
+                saveActiveSession({
+                    networkMode: mode,
+                    serverConfig: {
+                        rtdbConfig: rtdbConfig,
+                        firestoreConfig: firestoreConfig
+                    }
                 });
-
-                const result = await response.json();
-                alert(result.message || 'Pengaturan Database & Jaringan Berhasil Diterapkan!');
-            } catch (error) {
-                console.error("Error Simpan Jaringan:", error);
-                alert("Gagal menyambung ke Mesin Lokal (Node.js).");
-            } finally {
+                alert('✅ Pengaturan Database & Jaringan Cloud Berhasil Diterapkan!');
                 btnSimpanJaringan.innerHTML = originalText;
                 btnSimpanJaringan.disabled = false;
+            } else {
+                const payload = {
+                    mode: mode,
+                    rtdb_config: rtdbConfig,
+                    firestore_config: firestoreConfig
+                };
+
+                try {
+                    const response = await fetch('/api/network', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const result = await response.json();
+                    alert(result.message || 'Pengaturan Database & Jaringan Berhasil Diterapkan!');
+                } catch (error) {
+                    console.error("Error Simpan Jaringan:", error);
+                    alert("Gagal menyambung ke Mesin Lokal (Node.js).");
+                } finally {
+                    btnSimpanJaringan.innerHTML = originalText;
+                    btnSimpanJaringan.disabled = false;
+                }
             }
         });
     }
+
     // =========================================================
-    // LOGIKA TARIK DATA CLOUD KE LOKAL (TAB DATABASE)
+    // 5. LOGIKA TARIK DATA CLOUD KE LOKAL (TAB DATABASE)
     // =========================================================
     const btnTarikCloud = document.getElementById('btnTarikCloud');
-
     if (btnTarikCloud) {
         btnTarikCloud.addEventListener('click', async (e) => {
             e.preventDefault();
@@ -146,22 +188,27 @@ document.addEventListener('DOMContentLoaded', () => {
             btnTarikCloud.disabled = true;
 
             try {
-                // 1. Ambil config Firebase dari backend lokal
-                const netRes = await fetch('/api/network');
-                const netData = await netRes.json();
+                let rtdbConfig = null;
 
-                if (!netData.rtdb_config || Object.keys(netData.rtdb_config).length === 0) {
+                if (isCloud) {
+                    const session = getActiveSession();
+                    rtdbConfig = session?.serverConfig?.rtdbConfig;
+                } else {
+                    const netRes = await fetch('/api/network');
+                    const netData = await netRes.json();
+                    rtdbConfig = netData.rtdb_config;
+                }
+
+                if (!rtdbConfig || Object.keys(rtdbConfig).length === 0) {
                     alert("GAGAL: Konfigurasi Firebase (RTDB) kosong. Silakan isi di tab 'Jaringan' terlebih dahulu.");
                     return;
                 }
 
-                // 2. Inisialisasi Firebase sementara (jika belum ada)
-                if (!firebase.apps.length) {
-                    firebase.initializeApp(netData.rtdb_config);
+                if (typeof firebase !== 'undefined' && !firebase.apps.length) {
+                    firebase.initializeApp(rtdbConfig);
                 }
                 const tempDatabase = firebase.database();
 
-                // 3. Tarik data dari Cloud (sekali jalan)
                 const snapshot = await tempDatabase.ref('turnamen_data').once('value');
 
                 if (!snapshot.exists()) {
@@ -171,148 +218,192 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const cloudData = snapshot.val();
 
-                // 4. Kirim data yang didapat ke backend lokal SQLite
-                const saveRes = await fetch('/api/data_turnamen', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(cloudData)
-                });
-
-                if (saveRes.ok) {
-                    alert("SUKSES! Data dari Cloud berhasil diunduh dan diamankan di database laptop ini (SQLite).");
+                if (isCloud) {
+                    localStorage.setItem('mass_kempo_master_data', JSON.stringify(cloudData));
+                    alert("SUKSES! Data Cloud berhasil diunduh ke penyimpanan browser lokal.");
                 } else {
-                    alert("Terjadi kesalahan saat menyimpan data ke SQLite.");
+                    const saveRes = await fetch('/api/data_turnamen', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(cloudData)
+                    });
+
+                    if (saveRes.ok) {
+                        alert("SUKSES! Data dari Cloud berhasil diunduh dan diamankan di database SQLite lokal.");
+                    } else {
+                        alert("Terjadi kesalahan saat menyimpan data ke SQLite.");
+                    }
                 }
 
             } catch (error) {
                 console.error("Gagal menarik data:", error);
-                alert("Terjadi kesalahan! Pastikan Anda terhubung ke internet dan konfigurasi jaringan valid.");
+                alert("Terjadi kesalahan! Pastikan konfigurasi jaringan RTDB valid.\nError: " + error.message);
             } finally {
-                // Kembalikan tombol ke kondisi semula
                 btnTarikCloud.innerHTML = originalText;
                 btnTarikCloud.disabled = false;
             }
         });
     }
-});
 
-// =========================================================
-// 5. FUNGSI PENDUKUNG (Diluar DOMContentLoaded)
-// =========================================================
+    // =========================================================
+    // 6. LOGIKA PUSH DATA KE CLOUD
+    // =========================================================
+    const btnPushCloud = document.getElementById('btnPushCloud');
+    if (btnPushCloud) {
+        btnPushCloud.addEventListener('click', async (e) => {
+            e.preventDefault();
 
-// Fungsi mengambil data dari Server Node.js
-async function loadEventConfig() {
-    try {
-        const response = await fetch('/api/config');
-        if (response.ok) {
-            const data = await response.json();
-            if (document.getElementById('eventName')) document.getElementById('eventName').value = data.eventName || '';
-            if (document.getElementById('eventDate')) document.getElementById('eventDate').value = data.eventDate || '';
-            if (document.getElementById('eventLocation')) document.getElementById('eventLocation').value = data.eventLocation || '';
-        }
-    } catch (error) {
-        console.log("Menggunakan database lokal default, pastikan server Node.js menyala.");
-    }
-}
+            const konfirmasi = confirm(
+                "PERINGATAN KRITIS!\n\n" +
+                "Tindakan ini akan mem-backup data ke Cloud (Firebase).\n" +
+                "Apakah Anda yakin ingin melanjutkan?"
+            );
 
-// Fungsi Load Data Jaringan Saat Dibuka
-async function loadNetworkConfig() {
-    try {
-        const response = await fetch('/api/network');
-        if (response.ok) {
-            const data = await response.json();
+            if (!konfirmasi) return;
 
-            if (data) {
-                if (document.getElementById('netMode')) document.getElementById('netMode').value = data.mode || 'lokal';
+            const originalText = btnPushCloud.innerHTML;
+            btnPushCloud.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sedang Mendorong Data...';
+            btnPushCloud.disabled = true;
 
-                // =========================================================
-                // PASTIKAN KODE INI ADA DI SISTEM.JS ANDA
-                // =========================================================
-                const ipElement = document.getElementById('ipAddressDisplay');
-                if (ipElement) {
-                    ipElement.innerText = data.ip_address || 'IP Tidak Terdeteksi';
+            try {
+                let rtdbConfig = null;
+
+                if (isCloud) {
+                    const session = getActiveSession();
+                    rtdbConfig = session?.serverConfig?.rtdbConfig;
+                } else {
+                    const netRes = await fetch('/api/network');
+                    const netData = await netRes.json();
+                    rtdbConfig = netData.rtdb_config;
                 }
 
-                // Tulis ulang JSON menjadi format Copy-Paste di Textarea RTDB
-                if (data.rtdb_config && Object.keys(data.rtdb_config).length > 0) {
-                    const rtdbText = "const rtdbConfig = " + JSON.stringify(data.rtdb_config, null, 4) + ";";
+                if (!rtdbConfig || Object.keys(rtdbConfig).length === 0) {
+                    alert("GAGAL: Konfigurasi Firebase (RTDB) kosong. Silakan isi di tab 'Jaringan' terlebih dahulu.");
+                    return;
+                }
+
+                if (typeof firebase !== 'undefined' && !firebase.apps.length) {
+                    firebase.initializeApp(rtdbConfig);
+                }
+                const tempDatabase = firebase.database();
+
+                let masterData = {};
+                if (isCloud) {
+                    masterData = JSON.parse(localStorage.getItem('mass_kempo_master_data') || '{}');
+                } else {
+                    const localRes = await fetch('/api/data_turnamen');
+                    if (!localRes.ok) throw new Error("Gagal mengambil data dari database lokal (SQLite).");
+                    masterData = await localRes.json();
+                }
+
+                await tempDatabase.ref('turnamen_data').set({
+                    categories: masterData.categories || [],
+                    participants: masterData.participants || [],
+                    matches: masterData.matches || [],
+                    barcodes: masterData.barcodes || [],
+                    settings: masterData.settings || {},
+                    rundown_state: { schedule: masterData.rundown || [] },
+                    updatedAt: new Date().toISOString()
+                });
+
+                alert("✅ SUKSES! Seluruh data berhasil diamankan (di-backup) ke Cloud Firebase.");
+
+            } catch (error) {
+                console.error("Gagal push data:", error);
+                alert("Terjadi kesalahan! Error: " + error.message);
+            } finally {
+                btnPushCloud.innerHTML = originalText;
+                btnPushCloud.disabled = false;
+            }
+        });
+    }
+
+    // =========================================================
+    // 7. FUNGSI PEMUAT DATA (HYDRATION ENGINE)
+    // =========================================================
+    async function loadEventConfig() {
+        if (isCloud) {
+            const session = getActiveSession();
+            if (session) {
+                if (document.getElementById('eventName')) {
+                    document.getElementById('eventName').value = session.eventName || session.name || '';
+                }
+                if (document.getElementById('eventDate')) {
+                    document.getElementById('eventDate').value = session.dateStart || session.eventDate || '';
+                }
+                if (document.getElementById('eventLocation')) {
+                    document.getElementById('eventLocation').value = session.location || session.eventLocation || session.city || '';
+                }
+            }
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/config');
+            if (response.ok) {
+                const data = await response.json();
+                if (document.getElementById('eventName')) document.getElementById('eventName').value = data.eventName || '';
+                if (document.getElementById('eventDate')) document.getElementById('eventDate').value = data.eventDate || '';
+                if (document.getElementById('eventLocation')) document.getElementById('eventLocation').value = data.eventLocation || '';
+            }
+        } catch (error) {
+            console.log("Mode offline: Menunggu server lokal.");
+        }
+    }
+
+    async function loadNetworkConfig() {
+        const ipElement = document.getElementById('ipAddressDisplay');
+
+        if (isCloud) {
+            const session = getActiveSession();
+
+            // Ubah tampilan IP menjadi domain Cloud Netlify
+            if (ipElement) {
+                ipElement.parentElement.innerHTML = `<i class="fas fa-cloud text-success"></i> <b>${window.location.origin}</b> (Mode Cloud Server Aktif)`;
+            }
+
+            if (session) {
+                if (document.getElementById('netMode')) {
+                    document.getElementById('netMode').value = session.networkMode || 'firebase';
+                }
+
+                if (session.serverConfig?.rtdbConfig && Object.keys(session.serverConfig.rtdbConfig).length > 0) {
+                    const rtdbText = "const rtdbConfig = " + JSON.stringify(session.serverConfig.rtdbConfig, null, 4) + ";";
                     if (document.getElementById('rtdb_raw')) document.getElementById('rtdb_raw').value = rtdbText;
                 }
 
-                // Tulis ulang JSON menjadi format Copy-Paste di Textarea Firestore
-                if (data.firestore_config && Object.keys(data.firestore_config).length > 0) {
-                    const fsText = "const firestoreConfig = " + JSON.stringify(data.firestore_config, null, 4) + ";";
+                if (session.serverConfig?.firestoreConfig && Object.keys(session.serverConfig.firestoreConfig).length > 0) {
+                    const fsText = "const firestoreConfig = " + JSON.stringify(session.serverConfig.firestoreConfig, null, 4) + ";";
                     if (document.getElementById('fs_raw')) document.getElementById('fs_raw').value = fsText;
                 }
             }
+            return;
         }
-    } catch (error) {
-        console.error("Gagal memuat data jaringan:", error);
-    }
-}
-
-// =========================================================
-// LOGIKA DORONG DATA LOKAL KE CLOUD (BACKUP FIREBASE)
-// =========================================================
-const btnPushCloud = document.getElementById('btnPushCloud');
-
-if (btnPushCloud) {
-    btnPushCloud.addEventListener('click', async (e) => {
-        e.preventDefault();
-
-        const konfirmasi = confirm(
-            "PERINGATAN KRITIS!\n\n" +
-            "Tindakan ini akan menyedot SEMUA data dari database laptop ini (SQLite) dan MENIMPA data di Cloud (Firebase).\n" +
-            "Data lama di Cloud akan tertimpa sepenuhnya.\n\n" +
-            "Apakah Anda yakin ingin mem-backup data ke Cloud sekarang?"
-        );
-
-        if (!konfirmasi) return;
-
-        const originalText = btnPushCloud.innerHTML;
-        btnPushCloud.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sedang Mendorong Data...';
-        btnPushCloud.disabled = true;
 
         try {
-            // 1. Ambil config Firebase dari backend lokal
-            const netRes = await fetch('/api/network');
-            const netData = await netRes.json();
+            const response = await fetch('/api/network');
+            if (response.ok) {
+                const data = await response.json();
+                if (data) {
+                    if (document.getElementById('netMode')) document.getElementById('netMode').value = data.mode || 'lokal';
 
-            if (!netData.rtdb_config || Object.keys(netData.rtdb_config).length === 0) {
-                alert("GAGAL: Konfigurasi Firebase (RTDB) kosong. Silakan isi di tab 'Jaringan' terlebih dahulu.");
-                return;
+                    if (ipElement) {
+                        ipElement.innerText = data.ip_address || 'IP Tidak Terdeteksi';
+                    }
+
+                    if (data.rtdb_config && Object.keys(data.rtdb_config).length > 0) {
+                        const rtdbText = "const rtdbConfig = " + JSON.stringify(data.rtdb_config, null, 4) + ";";
+                        if (document.getElementById('rtdb_raw')) document.getElementById('rtdb_raw').value = rtdbText;
+                    }
+
+                    if (data.firestore_config && Object.keys(data.firestore_config).length > 0) {
+                        const fsText = "const firestoreConfig = " + JSON.stringify(data.firestore_config, null, 4) + ";";
+                        if (document.getElementById('fs_raw')) document.getElementById('fs_raw').value = fsText;
+                    }
+                }
             }
-
-            // 2. Inisialisasi Firebase sementara (jika belum ada)
-            if (!firebase.apps.length) {
-                firebase.initializeApp(netData.rtdb_config);
-            }
-            const tempDatabase = firebase.database();
-
-            // 3. Ambil data MASTER dari SQLite Lokal
-            const localRes = await fetch('/api/data_turnamen');
-            if (!localRes.ok) throw new Error("Gagal mengambil data dari database lokal (SQLite).");
-            const localData = await localRes.json();
-
-            // 4. Tembakkan ke Firebase Cloud!
-            await tempDatabase.ref('turnamen_data').set({
-                categories: localData.categories || [],
-                participants: localData.participants || [],
-                matches: localData.matches || [],
-                barcodes: localData.barcodes || [],
-                settings: localData.settings || {},
-                rundown_state: { schedule: localData.rundown || [] }
-            });
-
-            alert("✅ SUKSES! Seluruh data lokal berhasil diamankan (di-backup) ke Cloud Firebase.");
-
         } catch (error) {
-            console.error("Gagal push data:", error);
-            alert("Terjadi kesalahan! Pastikan Anda terhubung ke internet dan konfigurasi jaringan valid.\nError: " + error.message);
-        } finally {
-            // Kembalikan tombol ke kondisi semula
-            btnPushCloud.innerHTML = originalText;
-            btnPushCloud.disabled = false;
+            console.error("Gagal memuat data jaringan lokal:", error);
         }
-    });
-}
+    }
+});
