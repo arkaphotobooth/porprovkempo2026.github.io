@@ -1,3 +1,25 @@
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+import { getFirestore, collection, query, where, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+const gatewayConfig = {
+    apiKey: "AIzaSyCu529GrIFkC-QXZjjst5mVacRo_nyHH8c",
+    authDomain: "projecthubmass-kempo.firebaseapp.com",
+    projectId: "projecthubmass-kempo",
+    storageBucket: "projecthubmass-kempo.firebasestorage.app",
+    messagingSenderId: "441174258010",
+    appId: "1:441174258010:web:27fa2ad32f2284565e8363"
+};
+
+const app = getApps().find(a => a.name === "gatewayHubApp") || initializeApp(gatewayConfig, "gatewayHubApp");
+const db = getFirestore(app);
+
+const isCloud = window.location.hostname.includes('github.io') || window.location.hostname.includes('netlify.app');
+
+function getActiveSession() {
+    const raw = localStorage.getItem('mass_kempo_session');
+    return raw ? JSON.parse(raw) : null;
+}
+
 // sistem.js - Adaptor Otomatis: Cloud (Netlify / Firebase) & Lokal (Node.js / SQLite)
 document.addEventListener('DOMContentLoaded', () => {
     // =========================================================
@@ -61,28 +83,37 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             if (isCloud) {
-                // Simpan ke Sesi Cloud Lokal
-                saveActiveSession({
-                    name: eventData.eventName,
-                    eventName: eventData.eventName,
-                    dateStart: eventData.eventDate,
-                    location: eventData.eventLocation
-                });
-                alert('✅ Identitas Event Berhasil Disimpan di Cloud!');
+                const session = getActiveSession();
+                if (session && session.eventId) {
+                    try {
+                        const q = query(collection(db, "event_proposals"), where("id", "==", session.eventId));
+                        const snap = await getDocs(q);
+                        if (!snap.empty) {
+                            await updateDoc(doc(db, "event_proposals", snap.docs[0].id), {
+                                name: eventData.eventName,
+                                dateStart: eventData.eventDate,
+                                location: eventData.eventLocation,
+                                updatedAt: new Date().toISOString()
+                            });
+                        }
+                        session.name = eventData.eventName;
+                        session.eventName = eventData.eventName;
+                        localStorage.setItem('mass_kempo_session', JSON.stringify(session));
+                        alert('✅ Profil Event Berhasil Disimpan & Disinkronkan ke Cloud!');
+                    } catch (err) {
+                        alert('Gagal simpan ke Cloud: ' + err.message);
+                    }
+                }
             } else {
-                // Simpan ke Backend Node.js Lokal
                 try {
                     const response = await fetch('/api/config', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(eventData)
                     });
-
-                    if (response.ok) {
-                        alert('✅ Identitas Event Berhasil Disimpan di Server Lokal!');
-                    }
+                    if (response.ok) alert('Identitas Event Berhasil Disimpan!');
                 } catch (error) {
-                    alert('Gagal menyimpan. Pastikan server lokal (Node.js) berjalan.');
+                    alert('Gagal menyimpan ke server lokal.');
                 }
             }
         });
@@ -129,35 +160,45 @@ document.addEventListener('DOMContentLoaded', () => {
             const mode = document.getElementById('netMode').value;
 
             if (isCloud) {
-                saveActiveSession({
-                    networkMode: mode,
-                    serverConfig: {
-                        rtdbConfig: rtdbConfig,
-                        firestoreConfig: firestoreConfig
-                    }
-                });
-                alert('✅ Pengaturan Database & Jaringan Cloud Berhasil Diterapkan!');
-                btnSimpanJaringan.innerHTML = originalText;
-                btnSimpanJaringan.disabled = false;
-            } else {
-                const payload = {
-                    mode: mode,
-                    rtdb_config: rtdbConfig,
-                    firestore_config: firestoreConfig
-                };
+                const session = getActiveSession();
+                if (session && session.eventId) {
+                    try {
+                        // 1. Update ke Cloud Firestore agar semua laptop panitera terupdate
+                        const q = query(collection(db, "event_proposals"), where("id", "==", session.eventId));
+                        const snap = await getDocs(q);
+                        if (!snap.empty) {
+                            await updateDoc(doc(db, "event_proposals", snap.docs[0].id), {
+                                networkMode: mode,
+                                serverConfig: { rtdbConfig, firestoreConfig },
+                                updatedAt: new Date().toISOString()
+                            });
+                        }
 
+                        // 2. Update local storage laptop ini
+                        session.networkMode = mode;
+                        session.serverConfig = { rtdbConfig, firestoreConfig };
+                        localStorage.setItem('mass_kempo_session', JSON.stringify(session));
+
+                        alert('✅ SUKSES! Konfigurasi Jaringan Tersimpan di Cloud.\nSemua laptop panitera otomatis terkonfigurasi!');
+                    } catch (err) {
+                        alert('Gagal memperbarui ke Cloud: ' + err.message);
+                    } finally {
+                        btnSimpanJaringan.innerHTML = originalText;
+                        btnSimpanJaringan.disabled = false;
+                    }
+                }
+            } else {
+                const payload = { mode, rtdb_config: rtdbConfig, firestore_config: firestoreConfig };
                 try {
                     const response = await fetch('/api/network', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
                     });
-
                     const result = await response.json();
                     alert(result.message || 'Pengaturan Database & Jaringan Berhasil Diterapkan!');
                 } catch (error) {
-                    console.error("Error Simpan Jaringan:", error);
-                    alert("Gagal menyambung ke Mesin Lokal (Node.js).");
+                    alert("Gagal menyambung ke server lokal.");
                 } finally {
                     btnSimpanJaringan.innerHTML = originalText;
                     btnSimpanJaringan.disabled = false;
@@ -322,87 +363,56 @@ document.addEventListener('DOMContentLoaded', () => {
     // 7. FUNGSI PEMUAT DATA (HYDRATION ENGINE)
     // =========================================================
     async function loadEventConfig() {
-        if (isCloud) {
-            const session = getActiveSession();
-            if (session) {
-                if (document.getElementById('eventName')) {
-                    document.getElementById('eventName').value = session.eventName || session.name || '';
-                }
-                if (document.getElementById('eventDate')) {
-                    document.getElementById('eventDate').value = session.dateStart || session.eventDate || '';
-                }
-                if (document.getElementById('eventLocation')) {
-                    document.getElementById('eventLocation').value = session.location || session.eventLocation || session.city || '';
-                }
-            }
-            return;
+    if (isCloud) {
+        const session = getActiveSession();
+        if (session) {
+            if (document.getElementById('eventName')) document.getElementById('eventName').value = session.eventName || session.name || '';
+            if (document.getElementById('eventDate')) document.getElementById('eventDate').value = session.dateStart || '';
+            if (document.getElementById('eventLocation')) document.getElementById('eventLocation').value = session.location || '';
         }
+        return;
+    }
+    try {
+        const response = await fetch('/api/config');
+        if (response.ok) {
+            const data = await response.json();
+            if (document.getElementById('eventName')) document.getElementById('eventName').value = data.eventName || '';
+            if (document.getElementById('eventDate')) document.getElementById('eventDate').value = data.eventDate || '';
+            if (document.getElementById('eventLocation')) document.getElementById('eventLocation').value = data.eventLocation || '';
+        }
+    } catch (e) { }
+}
 
-        try {
-            const response = await fetch('/api/config');
-            if (response.ok) {
-                const data = await response.json();
-                if (document.getElementById('eventName')) document.getElementById('eventName').value = data.eventName || '';
-                if (document.getElementById('eventDate')) document.getElementById('eventDate').value = data.eventDate || '';
-                if (document.getElementById('eventLocation')) document.getElementById('eventLocation').value = data.eventLocation || '';
-            }
-        } catch (error) {
-            console.log("Mode offline: Menunggu server lokal.");
+async function loadNetworkConfig() {
+    const ipElement = document.getElementById('ipAddressDisplay');
+
+    if (isCloud) {
+        const session = getActiveSession();
+        if (ipElement) {
+            ipElement.parentElement.innerHTML = `<i class="fas fa-cloud text-success"></i> <b>${window.location.origin}</b> (Mode Cloud Server Aktif)`;
         }
+        if (session) {
+            if (document.getElementById('netMode')) document.getElementById('netMode').value = session.networkMode || 'firebase';
+            if (session.serverConfig?.rtdbConfig) {
+                document.getElementById('rtdb_raw').value = "const rtdbConfig = " + JSON.stringify(session.serverConfig.rtdbConfig, null, 4) + ";";
+            }
+            if (session.serverConfig?.firestoreConfig) {
+                document.getElementById('fs_raw').value = "const firestoreConfig = " + JSON.stringify(session.serverConfig.firestoreConfig, null, 4) + ";";
+            }
+        }
+        return;
     }
 
-    async function loadNetworkConfig() {
-        const ipElement = document.getElementById('ipAddressDisplay');
-
-        if (isCloud) {
-            const session = getActiveSession();
-
-            // Ubah tampilan IP menjadi domain Cloud Netlify
-            if (ipElement) {
-                ipElement.parentElement.innerHTML = `<i class="fas fa-cloud text-success"></i> <b>${window.location.origin}</b> (Mode Cloud Server Aktif)`;
-            }
-
-            if (session) {
-                if (document.getElementById('netMode')) {
-                    document.getElementById('netMode').value = session.networkMode || 'firebase';
-                }
-
-                if (session.serverConfig?.rtdbConfig && Object.keys(session.serverConfig.rtdbConfig).length > 0) {
-                    const rtdbText = "const rtdbConfig = " + JSON.stringify(session.serverConfig.rtdbConfig, null, 4) + ";";
-                    if (document.getElementById('rtdb_raw')) document.getElementById('rtdb_raw').value = rtdbText;
-                }
-
-                if (session.serverConfig?.firestoreConfig && Object.keys(session.serverConfig.firestoreConfig).length > 0) {
-                    const fsText = "const firestoreConfig = " + JSON.stringify(session.serverConfig.firestoreConfig, null, 4) + ";";
-                    if (document.getElementById('fs_raw')) document.getElementById('fs_raw').value = fsText;
-                }
-            }
-            return;
+    try {
+        const response = await fetch('/api/network');
+        if (response.ok) {
+            const data = await response.json();
+            if (document.getElementById('netMode')) document.getElementById('netMode').value = data.mode || 'lokal';
+            if (ipElement) ipElement.innerText = data.ip_address || 'IP Tidak Terdeteksi';
+            if (data.rtdb_config) document.getElementById('rtdb_raw').value = "const rtdbConfig = " + JSON.stringify(data.rtdb_config, null, 4) + ";";
+            if (data.firestore_config) document.getElementById('fs_raw').value = "const firestoreConfig = " + JSON.stringify(data.firestore_config, null, 4) + ";";
         }
-
-        try {
-            const response = await fetch('/api/network');
-            if (response.ok) {
-                const data = await response.json();
-                if (data) {
-                    if (document.getElementById('netMode')) document.getElementById('netMode').value = data.mode || 'lokal';
-
-                    if (ipElement) {
-                        ipElement.innerText = data.ip_address || 'IP Tidak Terdeteksi';
-                    }
-
-                    if (data.rtdb_config && Object.keys(data.rtdb_config).length > 0) {
-                        const rtdbText = "const rtdbConfig = " + JSON.stringify(data.rtdb_config, null, 4) + ";";
-                        if (document.getElementById('rtdb_raw')) document.getElementById('rtdb_raw').value = rtdbText;
-                    }
-
-                    if (data.firestore_config && Object.keys(data.firestore_config).length > 0) {
-                        const fsText = "const firestoreConfig = " + JSON.stringify(data.firestore_config, null, 4) + ";";
-                        if (document.getElementById('fs_raw')) document.getElementById('fs_raw').value = fsText;
-                    }
-                }
-            }
-        } catch (error) {
+    } catch (e) {
             console.error("Gagal memuat data jaringan lokal:", error);
         }
     }
