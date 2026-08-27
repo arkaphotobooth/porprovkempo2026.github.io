@@ -52,49 +52,120 @@ function normStr(str) {
 }
 
 // =========================================================
-// 3. FUNGSI SAKLAR OTOMATIS: INISIALISASI SISTEM
+// 🌐 ADAPTIVE ZERO-CONFIG SESSION LOADER (CLOUD & LOCAL)
+// =========================================================
+function loadSessionData() {
+    try {
+        const rawSession = localStorage.getItem('mass_kempo_session');
+        if (!rawSession) return null;
+        
+        const session = JSON.parse(rawSession);
+        
+        // 1. Tentukan Peran Lapangan (Court) dari Sesi
+        if (session.courtId || session.username) {
+            const courtName = (session.courtId || session.username).toLowerCase().replace(/\s+/g, '_');
+            DEVICE_ROLE = courtName;
+            localStorage.setItem('mass_device_role', courtName);
+            sessionStorage.setItem('role', session.role || 'panitera');
+            sessionStorage.setItem('courtId', courtName);
+        }
+
+        // 2. Pre-Populate Kategori Pertandingan jika Memori Masih Kosong
+        if (session.categories && Array.isArray(session.categories) && session.categories.length > 0) {
+            if (!STATE.categories || STATE.categories.length === 0) {
+                STATE.categories = session.categories.map((c, i) => ({
+                    id: c.id || (Date.now() + i),
+                    name: c.name,
+                    type: c.type === 'embu' ? (c.format && c.format.toLowerCase().includes('pasangan') ? 2 : (c.format && c.format.toLowerCase().includes('regu') ? 3 : 1)) : 1,
+                    discipline: c.type || (c.format && c.format.toLowerCase().includes('randori') ? 'randori' : 'embu')
+                }));
+            }
+        }
+
+        return session;
+    } catch (e) {
+        console.warn("Gagal membaca mass_kempo_session:", e);
+        return null;
+    }
+}
+
+// Jalankan pembacaan sesi seawal mungkin
+const ACTIVE_SESSION = loadSessionData();
+
+// =========================================================
+// 3. FUNGSI SAKLAR OTOMATIS: INISIALISASI SISTEM (ADAPTIVE)
 // =========================================================
 async function initSystem() {
     const statusDot = document.getElementById('koneksi-dot');
     const statusText = document.getElementById('koneksi-text');
 
-    try {
-        if (statusText) statusText.innerText = 'MENGECEK SERVER...';
+    if (statusText) statusText.innerText = 'MENGECEK JARINGAN...';
 
-        const response = await fetch('/api/network');
-        const networkData = await response.json();
+    // 1. DETEKSI MODE CLOUD STATIS (GitHub Pages / Netlify / mass_kempo_session)
+    const isStaticCloudHost = window.location.hostname.includes('github.io') || 
+                              window.location.hostname.includes('netlify.app') || 
+                              (ACTIVE_SESSION && ACTIVE_SESSION.serverConfig && ACTIVE_SESSION.serverConfig.rtdbConfig);
 
-        SYSTEM_MODE = networkData.mode || 'lokal';
+    if (isStaticCloudHost && ACTIVE_SESSION && ACTIVE_SESSION.serverConfig && ACTIVE_SESSION.serverConfig.rtdbConfig) {
+        SYSTEM_MODE = 'online';
+        const rtdbConfig = ACTIVE_SESSION.serverConfig.rtdbConfig;
 
-        // KUNCI PERBAIKAN: Kenali ejaan 'lokal' (Indo) dan 'local' (Inggris)
-        const isLocalMode = SYSTEM_MODE.toLowerCase() === 'local' || SYSTEM_MODE.toLowerCase() === 'lokal';
-
-        // Jika BUKAN mode lokal, dan config firebase ada, maka jalankan Cloud
-        if (!isLocalMode && networkData.rtdb_config && Object.keys(networkData.rtdb_config).length > 0) {
-
-            // 1. RUMAH UTAMA: Inisialisasi RTDB (Skoring & Bagan)
+        try {
+            // Inisialisasi Firebase RTDB dari Sesi
             if (!firebase.apps.length) {
-                firebase.initializeApp(networkData.rtdb_config);
+                firebase.initializeApp(rtdbConfig);
             }
             database = firebase.database();
 
-            // 👇 SUNTIKAN DUA RUMAH: Inisialisasi Firestore di "Rumah Kedua" 👇
-            if (networkData.firestore_config && Object.keys(networkData.firestore_config).length > 0) {
-                try {
-                    // Cek apakah rumah kedua bernama 'AplikasiPendaftaran' sudah dibuat
-                    let appPendaftaran = firebase.apps.find(app => app.name === 'AplikasiPendaftaran');
-
-                    // Jika belum ada, buat koneksi baru khusus untuk Firestore
-                    if (!appPendaftaran) {
-                        appPendaftaran = firebase.initializeApp(networkData.firestore_config, 'AplikasiPendaftaran');
-                    }
-
-                    // Arahkan firestoreDB ke rumah kedua tersebut
-                    firestoreDB = appPendaftaran.firestore();
-                } catch (e) {
-                    console.warn("Firestore sekunder gagal dimuat:", e);
+            // Pantau Status Koneksi Realtime
+            database.ref('.info/connected').on('value', (snap) => {
+                if (snap.val() === true) {
+                    if (statusDot) statusDot.className = 'w-2.5 h-2.5 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.8)] transition-colors duration-300';
+                    if (statusText) statusText.innerText = `ONLINE (CLOUD - ${DEVICE_ROLE.toUpperCase()})`;
+                } else {
+                    if (statusDot) statusDot.className = 'w-2.5 h-2.5 bg-yellow-500 rounded-full animate-pulse';
+                    if (statusText) statusText.innerText = 'MENGHUBUNGKAN...';
                 }
-            }
+            });
+
+            // Sinkronisasi Data Turnamen Global dari RTDB
+            database.ref('turnamen_data').on('value', (snapshot) => {
+                isDataLoaded = true;
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    if (data) {
+                        if (data.categories && data.categories.length > 0) STATE.categories = data.categories;
+                        STATE.participants = data.participants || [];
+                        STATE.matches = data.matches || [];
+                        STATE.barcodes = data.barcodes || [];
+                        STATE.rundown = (data.rundown_state && data.rundown_state.schedule) ? data.rundown_state.schedule : [];
+                        if (data.settings) STATE.settings = data.settings;
+                    }
+                } else {
+                    // Jika cloud masih bersih, kirim data kategori awal dari sesi
+                    saveToLocalStorage();
+                }
+                refreshActiveUI();
+            });
+
+            return; // Selesai inisialisasi mode Cloud
+        } catch (cloudErr) {
+            console.error("Gagal inisialisasi Firebase dari session:", cloudErr);
+        }
+    }
+
+    // 2. JALUR LOKAL LAN / HYBRID (NODE.JS SERVER)
+    try {
+        const response = await fetch('/api/network');
+        if (!response.ok) throw new Error("Bukan server Node.js lokal");
+        const networkData = await response.json();
+
+        SYSTEM_MODE = networkData.mode || 'lokal';
+        const isLocalMode = SYSTEM_MODE.toLowerCase() === 'local' || SYSTEM_MODE.toLowerCase() === 'lokal';
+
+        if (!isLocalMode && networkData.rtdb_config && Object.keys(networkData.rtdb_config).length > 0) {
+            if (!firebase.apps.length) firebase.initializeApp(networkData.rtdb_config);
+            database = firebase.database();
 
             database.ref('.info/connected').on('value', (snap) => {
                 if (snap.val() === true) {
@@ -122,37 +193,28 @@ async function initSystem() {
             });
 
         } else {
-            // JIKA BENAR-BENAR LOKAL MURNI
+            // Mode Lokal LAN Murni
             if (statusDot) statusDot.className = 'w-2.5 h-2.5 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.8)] transition-colors duration-300';
             if (statusText) statusText.innerText = 'LOKAL MURNI (LAN)';
 
-            try {
-                const dataRes = await fetch('/api/data_turnamen');
-                if (dataRes.ok) {
-                    const localData = await dataRes.json();
-                    isDataLoaded = true;
-                    STATE.categories = localData.categories || [];
-                    STATE.participants = localData.participants || [];
-                    STATE.matches = localData.matches || [];
-                    STATE.barcodes = localData.barcodes || [];
-
-                    // 👇 PERBAIKAN: Samakan jalur pembacaan jadwal (Support Firebase Structure & Legacy JSON) 👇
-                    STATE.rundown = (localData.rundown_state && localData.rundown_state.schedule) ? localData.rundown_state.schedule : (localData.rundown || []);
-                    // 👆 ========================================================= 👆
-
-                    if (localData.settings) STATE.settings = localData.settings;
-                    refreshActiveUI();
-                } else {
-                    console.warn("Backend Node.js belum siap menyuplai data lokal.");
-                }
-            } catch (fetchErr) {
-                console.warn("Menunggu endpoint /api/data_turnamen disiapkan.");
+            const dataRes = await fetch('/api/data_turnamen');
+            if (dataRes.ok) {
+                const localData = await dataRes.json();
+                isDataLoaded = true;
+                STATE.categories = localData.categories || [];
+                STATE.participants = localData.participants || [];
+                STATE.matches = localData.matches || [];
+                STATE.barcodes = localData.barcodes || [];
+                STATE.rundown = (localData.rundown_state && localData.rundown_state.schedule) ? localData.rundown_state.schedule : (localData.rundown || []);
+                if (localData.settings) STATE.settings = localData.settings;
+                refreshActiveUI();
             }
         }
     } catch (error) {
-        console.error("Gagal terhubung ke Node.js. Pastikan server lokal menyala:", error);
-        if (statusDot) statusDot.className = 'w-2.5 h-2.5 bg-red-600 rounded-full';
-        if (statusText) statusText.innerText = 'SERVER MATI';
+        console.warn("Server lokal Node.js tidak aktif / berjalan di hosting statis.");
+        if (statusDot) statusDot.className = 'w-2.5 h-2.5 bg-yellow-500 rounded-full';
+        if (statusText) statusText.innerText = 'OFFLINE / CACHE LOKAL';
+        refreshActiveUI();
     }
 }
 
@@ -180,38 +242,43 @@ document.addEventListener('DOMContentLoaded', () => {
     injectAdminExportButtons();
 });
 
-// 5. UBAH FUNGSI LOKAL MENJADI CLOUD
-// Membajak fungsi asli Anda agar menembak ke Firebase, bukan ke laptop lokal
+// =========================================================
+// 5. PENYIMPANAN ADAPTIF (FIREBASE CLOUD & LOCAL DB)
+// =========================================================
 function saveToLocalStorage() {
-    if (!isDataLoaded) return;
-
-    // Saklar 3 Mode
     const isLocalMode = SYSTEM_MODE.toLowerCase() === 'local' || SYSTEM_MODE.toLowerCase() === 'lokal';
     const isHybridMode = SYSTEM_MODE.toLowerCase() === 'hybrid';
+    const isCloudMode = SYSTEM_MODE.toLowerCase() === 'online' || SYSTEM_MODE.toLowerCase() === 'firebase';
 
-    // 1. LOKAL & HYBRID: Selalu kirim ke Node.js untuk dipecah ke Laci SQL
-    if (isLocalMode || isHybridMode) {
+    // 1. LOKAL & HYBRID: Kirim ke server Node.js SQLite (hanya jika bukan cloud statis)
+    if ((isLocalMode || isHybridMode) && !window.location.hostname.includes('github.io') && !window.location.hostname.includes('netlify.app')) {
         fetch('/api/data_turnamen', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                categories: STATE.categories, participants: STATE.participants,
-                matches: STATE.matches, barcodes: STATE.barcodes,
-                settings: STATE.settings, rundown: STATE.rundown // Jadwal Aman!
+                categories: STATE.categories, 
+                participants: STATE.participants,
+                matches: STATE.matches, 
+                barcodes: STATE.barcodes,
+                settings: STATE.settings, 
+                rundown: STATE.rundown
             })
         }).then(res => {
             if (res.ok && typeof localSocket !== 'undefined' && localSocket) {
                 localSocket.emit('broadcast_to_tv', { channel: 'global_state_update' });
             }
-        }).catch(err => console.error("Error Simpan Lokal:", err));
+        }).catch(err => console.warn("Penyimpanan lokal LAN dilewati:", err));
     }
 
-    // 2. HYBRID & FULL CLOUD: Tembak nilai MATANG ke Firebase
-    if (!isLocalMode && database) {
+    // 2. HYBRID & CLOUD: Simpan langsung ke node utama Firebase RTDB
+    if ((!isLocalMode || isCloudMode) && database) {
         database.ref('turnamen_data').update({
-            categories: STATE.categories, participants: STATE.participants,
-            matches: STATE.matches, barcodes: STATE.barcodes,
-            settings: STATE.settings, rundown_state: { schedule: STATE.rundown }
+            categories: STATE.categories, 
+            participants: STATE.participants,
+            matches: STATE.matches, 
+            barcodes: STATE.barcodes,
+            settings: STATE.settings, 
+            rundown_state: { schedule: STATE.rundown }
         }).catch(error => console.error("GAGAL SIMPAN FIREBASE:", error));
     }
 }
@@ -9046,6 +9113,12 @@ function kunciLayarWasit() {
 let localSocket = null;
 
 function initLocalRealtimeMesh() {
+    // 🔥 PENGAMAN: Jangan muat socket.io jika berjalan di domain cloud statis
+    if (window.location.hostname.includes('github.io') || window.location.hostname.includes('netlify.app')) {
+        console.log("☁️ Berjalan di Cloud Hosting Statis: Menggunakan Firebase RTDB.");
+        return;
+    }
+
     const script = document.createElement('script');
     script.src = '/socket.io/socket.io.js';
 
