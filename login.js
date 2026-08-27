@@ -65,7 +65,86 @@ if (loginForm) {
         if (errorMessage) errorMessage.style.display = 'none';
 
         try {
-            oginForm.addEventLis
+            // A. Ambil Data Event dari Firestore Project Hub
+            const qEvent = query(collection(db, "event_proposals"), where("id", "==", eventIdInput));
+            const eventSnap = await getDocs(qEvent);
+
+            if (eventSnap.empty) {
+                showError(`Nomor Registrasi Event '${eventIdInput}' tidak ditemukan di Project Hub.`);
+                return;
+            }
+
+            const eventDoc = eventSnap.docs[0];
+            const eventData = eventDoc.data();
+
+            // Validasi Status Approval Super Admin
+            if (eventData.status !== 'approved') {
+                showError(`Turnamen '${eventData.name}' belum disetujui Super Admin.`);
+                return;
+            }
+
+            // B. TARIK KONFIGURASI SERVER DARI system_settings/server_clusters
+            let targetRtdb = {};
+            let targetFirestore = {};
+
+            const assignedServerId = eventData.assignedServer || 'server_3';
+            try {
+                const clusterSnap = await getDocs(collection(db, "system_settings"));
+                clusterSnap.forEach(docSnap => {
+                    if (docSnap.id === 'server_clusters') {
+                        const clusterData = docSnap.data();
+                        const serverNode = clusterData[assignedServerId] || {};
+                        targetRtdb = serverNode.rtdbConfig || serverNode.config || {};
+                        targetFirestore = serverNode.firestoreConfig || {};
+                    }
+                });
+            } catch (errCluster) {
+                console.warn("Gagal mengambil server_clusters:", errCluster);
+            }
+
+            // Fallback jika tersimpan langsung di dokumen event
+            if (Object.keys(targetRtdb).length === 0 && eventData.serverConfig) {
+                targetRtdb = eventData.serverConfig.rtdbConfig || {};
+                targetFirestore = eventData.serverConfig.firestoreConfig || {};
+            }
+
+            // C. SIMPAN SESI LENGKAP KE LOCALSTORAGE & SESSIONSTORAGE
+            let userRole = 'seksi_pertandingan';
+            if (usernameInput.startsWith('court_') || usernameInput.includes('panitera')) {
+                userRole = 'panitera';
+                sessionStorage.setItem('courtId', usernameInput);
+            } else if (usernameInput.includes('acara')) {
+                userRole = 'seksi_acara';
+            }
+
+            const sessionPayload = {
+                isLoggedIn: true,
+                role: userRole,
+                username: usernameInput,
+                eventId: eventData.id,
+                eventName: eventData.name,
+                name: eventData.name,
+                dateStart: eventData.dateStart || '',
+                location: `${eventData.location || ''}, ${eventData.city || ''}`,
+                networkMode: eventData.networkMode || 'firebase',
+                assignedServer: assignedServerId,
+                categories: eventData.categories || [],
+                serverConfig: {
+                    rtdbConfig: targetRtdb,
+                    firestoreConfig: targetFirestore
+                }
+            };
+
+            localStorage.setItem('mass_kempo_session', JSON.stringify(sessionPayload));
+
+            sessionStorage.setItem('isLoggedIn', 'true');
+            sessionStorage.setItem('role', userRole);
+            sessionStorage.setItem('username', usernameInput);
+            sessionStorage.setItem('activeEventId', eventData.id);
+            sessionStorage.setItem('activeEventName', eventData.name);
+
+            // D. Redirect
+            redirectRole(userRole);
 
         } catch (error) {
             console.error("Error validasi login:", error);
