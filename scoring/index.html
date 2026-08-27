@@ -1639,40 +1639,37 @@
         </div>
     </div>
 
-    <!-- 👇 MODAL BARU: DOWNLOAD APK SCANNER 👇 -->
-    <div id="apk-download-modal"
-        class="fixed inset-0 bg-slate-950/95 backdrop-blur-md hidden flex items-center justify-center z-[110] animate-fade-in p-4">
+    <!-- MODAL ADAPTIF: DOWNLOAD APK / LINK WEB SCANNER -->
+<div id="apk-download-modal"
+    class="fixed inset-0 bg-slate-950/95 backdrop-blur-md hidden flex items-center justify-center z-[130] animate-fade-in p-4">
+    <div
+        class="bg-dark-card border border-green-500/50 p-8 rounded-3xl shadow-[0_0_50px_rgba(34,197,94,0.2)] w-full max-w-sm flex flex-col items-center text-left transform transition-all relative overflow-hidden">
+        <button onclick="tutupModalDownloadAPK()"
+            class="absolute top-4 right-4 text-slate-500 hover:text-red-400 transition-colors"><i
+                class="fas fa-times text-xl"></i></button>
+
+        <h3 id="modal-scanner-title"
+            class="text-sm font-black text-green-400 tracking-widest uppercase mb-2 border-b border-slate-700 pb-3 w-full text-center">
+            <i class="fas fa-download mr-2"></i>DOWNLOAD APK SCANNER
+        </h3>
+
+        <!-- Tempat QR Code digambar -->
         <div
-            class="bg-dark-card border border-green-500/50 p-8 rounded-3xl shadow-[0_0_50px_rgba(34,197,94,0.2)] w-full max-w-sm flex flex-col items-center text-left transform transition-all relative overflow-hidden">
-            <button onclick="tutupModalDownloadAPK()"
-                class="absolute top-4 right-4 text-slate-500 hover:text-red-400 transition-colors"><i
-                    class="fas fa-times text-xl"></i></button>
+            class="bg-white p-4 rounded-2xl shadow-inner mb-6 mt-4 flex items-center justify-center w-[200px] h-[200px] mx-auto">
+            <div id="qr-apk-canvas"></div>
+        </div>
 
-            <h3
-                class="text-sm font-black text-green-400 tracking-widest uppercase mb-2 border-b border-slate-700 pb-3 w-full text-center">
-                <i class="fas fa-download mr-2"></i>DOWNLOAD APK SCANNER
-            </h3>
-
-            <!-- Tempat QR Code URL APK digambar -->
-            <div
-                class="bg-white p-4 rounded-2xl shadow-inner mb-6 mt-4 flex items-center justify-center w-[200px] h-[200px] mx-auto">
-                <div id="qr-apk-canvas"></div>
-            </div>
-
-            <!-- Prosedur Instalasi -->
-            <div class="bg-slate-900 border border-slate-700 p-4 rounded-xl shadow-inner w-full">
-                <p class="text-xs font-bold text-slate-300 mb-2 border-b border-slate-700 pb-2"><i
-                        class="fas fa-list-ol text-blue-400 mr-2"></i>Prosedur Instalasi:</p>
-                <ol class="text-[10px] text-slate-400 list-decimal pl-4 space-y-1.5 leading-relaxed">
-                    <li>Buka kamera bawaan HP (atau Google Lens) dan scan QR di atas.</li>
-                    <li>Ketuk link yang muncul untuk mengunduh (download) file APK.</li>
-                    <li>Buka file yang terunduh dan tekan <b>'Install'</b>.</li>
-                    <li>Bila muncul peringatan keamanan, pilih <b>'Settings/Pengaturan'</b> &rarr; aktifkan <b>'Allow
-                            from this source'</b> (Izinkan dari sumber ini).</li>
-                </ol>
-            </div>
+        <!-- Prosedur / Langkah Petunjuk -->
+        <div class="bg-slate-900 border border-slate-700 p-4 rounded-xl shadow-inner w-full">
+            <p id="modal-scanner-step-title" class="text-xs font-bold text-slate-300 mb-2 border-b border-slate-700 pb-2">
+                <i class="fas fa-list-ol text-blue-400 mr-2"></i>Prosedur Instalasi:
+            </p>
+            <ol id="modal-scanner-step-list" class="text-[10px] text-slate-400 list-decimal pl-4 space-y-1.5 leading-relaxed">
+                <!-- Diisi otomatis oleh JavaScript sesuai mode jaringan -->
+            </ol>
         </div>
     </div>
+</div>
     <!-- 👆 AKHIR MODAL BARU 👆 -->
 
     <!-- 👇 MODAL EDIT RANGE BERAT 👇 -->
