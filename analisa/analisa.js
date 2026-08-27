@@ -24,15 +24,16 @@ const MASS_ANALISA = (function () {
     };
 
     let state = {
-        mode: 'lokal',
+        mode: 'lokal', // 'lokal' | 'cloud' | 'file' | 'cache'
         database: null,
+        rtdbListener: null,
         rawTurnamenData: null,
+        uploadedBackupData: null,
         normalizedEntries: [],
         filteredEntries: [],
         wasitNames: ['Wasit 1', 'Wasit 2', 'Wasit 3', 'Wasit 4', 'Wasit 5'],
         wasitStats: [],
         chartInstance: null,
-        // State Kontrol Garis Grafik
         showTotalLines: true,
         showTechLines: true,
         showBaseline: true,
@@ -41,68 +42,198 @@ const MASS_ANALISA = (function () {
 
     // 1. ENGINE AUTO-INGESTION: Deteksi Mode Server & Tarik Data Otomatis
     async function initSystemAndFetch() {
-        updateSyncStatus('Mengecek server turnamen...', 'loading');
+        // Jika sedang dalam mode file backup manual, prioritaskan render data file aktif
+        if (state.mode === 'file' && state.uploadedBackupData) {
+            parseTurnamenData(state.uploadedBackupData);
+            updateSyncStatus('Mode File Backup JSON', 'file');
+            return;
+        }
 
+        updateSyncStatus('Mendeteksi Sumber Data...', 'loading');
+
+        const hostname = window.location.hostname;
+        const isStaticHost = hostname.includes('github.io') || 
+                             hostname.includes('netlify.app') || 
+                             hostname.includes('pages.dev') || 
+                             hostname.includes('vercel.app') ||
+                             window.location.protocol === 'file:';
+
+        // 1. Jalur Static / Cloud Host
+        if (isStaticHost) {
+            const connected = tryLoadFromSessionAndFirebase();
+            if (!connected) {
+                tryLoadFromLocalStorage();
+            }
+            return;
+        }
+
+        // 2. Jalur Local Server Node.js / SQLite
         try {
             const netRes = await fetch('/api/network');
+            if (!netRes.ok) throw new Error("Endpoint network tidak aktif");
+
             const netData = await netRes.json();
             state.mode = (netData.mode || 'lokal').toLowerCase();
 
-            const isLocalMode = state.mode === 'local' || state.mode === 'lokal';
-
-            if (!isLocalMode && netData.rtdb_config && Object.keys(netData.rtdb_config).length > 0) {
-                if (typeof firebase !== 'undefined') {
-                    if (!firebase.apps.length) {
-                        firebase.initializeApp(netData.rtdb_config);
-                    }
-                    state.database = firebase.database();
-
-                    state.database.ref('turnamen_data').on('value', (snapshot) => {
-                        if (snapshot.exists()) {
-                            state.rawTurnamenData = snapshot.val();
-                            parseTurnamenData(state.rawTurnamenData);
-                            updateSyncStatus(`Online RTDB (${state.mode.toUpperCase()})`, 'success');
-                        }
-                    });
-                    return;
-                }
+            if (state.mode !== 'lokal' && state.mode !== 'local' && netData.rtdb_config) {
+                initFirebaseRTDB(netData.rtdb_config);
+                return;
             }
 
             const localRes = await fetch('/api/data_turnamen');
-            if (localRes.ok) {
-                const localData = await localRes.json();
+            if (!localRes.ok) throw new Error("Gagal mengambil data turnamen lokal");
+
+            const localData = await localRes.json();
+            state.rawTurnamenData = localData;
+            parseTurnamenData(localData);
+            updateSyncStatus('Lokal Murni (LAN SQLite)', 'cache');
+
+        } catch (err) {
+            console.warn("Backend lokal tidak terdeteksi, beralih ke sesi browser:", err.message);
+            const connected = tryLoadFromSessionAndFirebase();
+            if (!connected) {
+                tryLoadFromLocalStorage();
+            }
+        }
+    }
+
+    function tryLoadFromSessionAndFirebase() {
+        try {
+            const rawSession = localStorage.getItem('mass_kempo_session');
+            if (!rawSession) return false;
+
+            const session = JSON.parse(rawSession);
+            const rtdbConfig = session.serverConfig?.rtdbConfig || session.rtdbConfig;
+
+            if (rtdbConfig && rtdbConfig.apiKey && rtdbConfig.databaseURL) {
+                initFirebaseRTDB(rtdbConfig);
+                return true;
+            }
+        } catch (e) {
+            console.error("Gagal membaca mass_kempo_session:", e);
+        }
+        return false;
+    }
+
+    function initFirebaseRTDB(rtdbConfig) {
+        if (typeof firebase === 'undefined') {
+            updateSyncStatus('Firebase SDK Tidak Ditemukan', 'error');
+            return;
+        }
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(rtdbConfig);
+        }
+        state.database = firebase.database();
+        state.mode = 'cloud';
+
+        if (state.rtdbListener) {
+            state.database.ref('turnamen_data').off('value', state.rtdbListener);
+        }
+
+        state.rtdbListener = state.database.ref('turnamen_data').on('value', (snapshot) => {
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                state.rawTurnamenData = data;
+                parseTurnamenData(data);
+                updateSyncStatus('Terhubung (Cloud Realtime)', 'cloud');
+            } else {
+                updateSyncStatus('Cloud Kosong (Menunggu Data)', 'loading');
+            }
+        }, (err) => {
+            console.error("RTDB Error:", err);
+            tryLoadFromLocalStorage();
+        });
+    }
+
+    function tryLoadFromLocalStorage() {
+        try {
+            const masterRaw = localStorage.getItem('mass_kempo_master_data');
+            if (masterRaw) {
+                const localData = JSON.parse(masterRaw);
                 state.rawTurnamenData = localData;
                 parseTurnamenData(localData);
-                updateSyncStatus('Lokal Murni (LAN SQLite)', 'success');
-            } else {
-                throw new Error("Gagal mengakses endpoint /api/data_turnamen");
+                updateSyncStatus('Offline (Data Cache Lokal)', 'cache');
+                return;
             }
-
-        } catch (error) {
-            console.error("Gagal auto-ingest data turnamen:", error);
-            updateSyncStatus('Koneksi Terputus (Offline)', 'error');
+        } catch (e) {
+            console.error("Gagal membaca mass_kempo_master_data:", e);
         }
+        updateSyncStatus('Koneksi Terputus (Offline)', 'error');
     }
 
     function updateSyncStatus(text, status) {
         const txtEl = document.getElementById('syncText');
         const dotEl = document.getElementById('syncDot');
         const badgeEl = document.getElementById('syncBadge');
-        if (!txtEl || !dotEl) return;
+        if (!txtEl || !dotEl || !badgeEl) return;
 
         txtEl.textContent = text;
-        if (status === 'loading') {
-            dotEl.className = "w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse";
-            badgeEl.className = "flex items-center gap-2 px-3 py-2 bg-amber-950/40 border border-amber-800/60 rounded-lg text-xs font-semibold text-amber-300";
-        } else if (status === 'success') {
-            dotEl.className = "w-2.5 h-2.5 rounded-full bg-emerald-400";
-            badgeEl.className = "flex items-center gap-2 px-3 py-2 bg-emerald-950/40 border border-emerald-800/60 rounded-lg text-xs font-semibold text-emerald-300";
-        } else {
-            dotEl.className = "w-2.5 h-2.5 rounded-full bg-rose-500";
-            badgeEl.className = "flex items-center gap-2 px-3 py-2 bg-rose-950/40 border border-rose-800/60 rounded-lg text-xs font-semibold text-rose-300";
+        
+        switch (status) {
+            case 'loading':
+                dotEl.className = "w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse";
+                badgeEl.className = "flex items-center gap-2 px-3 py-1.5 bg-amber-950/40 border border-amber-800/60 rounded-xl text-xs font-semibold text-amber-300";
+                break;
+            case 'cloud':
+                dotEl.className = "w-2.5 h-2.5 rounded-full bg-emerald-400";
+                badgeEl.className = "flex items-center gap-2 px-3 py-1.5 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-xs font-semibold text-emerald-300";
+                break;
+            case 'file':
+                dotEl.className = "w-2.5 h-2.5 rounded-full bg-blue-400";
+                badgeEl.className = "flex items-center gap-2 px-3 py-1.5 bg-blue-950/40 border border-blue-800/60 rounded-xl text-xs font-semibold text-blue-300";
+                break;
+            case 'cache':
+                dotEl.className = "w-2.5 h-2.5 rounded-full bg-cyan-400";
+                badgeEl.className = "flex items-center gap-2 px-3 py-1.5 bg-cyan-950/40 border border-cyan-800/60 rounded-xl text-xs font-semibold text-cyan-300";
+                break;
+            default:
+                dotEl.className = "w-2.5 h-2.5 rounded-full bg-rose-500";
+                badgeEl.className = "flex items-center gap-2 px-3 py-1.5 bg-rose-950/40 border border-rose-800/60 rounded-xl text-xs font-semibold text-rose-300";
+                break;
         }
     }
 
+function handleJsonFileUpload(file) {
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            try {
+                const parsed = JSON.parse(e.target.result);
+                
+                // Normalisasi jika backup dibungkus dalam node turnamen_data
+                const dataTurnamen = parsed.turnamen_data ? parsed.turnamen_data : parsed;
+
+                const hasMatches = Array.isArray(dataTurnamen.matches);
+                const hasParticipants = Array.isArray(dataTurnamen.participants);
+
+                if (!hasMatches && !hasParticipants) {
+                    alert('Format file JSON tidak valid. Pastikan file berisi data pertandingan MASS KEMPO.');
+                    return;
+                }
+
+                // Matikan listener RTDB jika sedang aktif agar tidak tertimpa
+                if (state.database && state.rtdbListener) {
+                    state.database.ref('turnamen_data').off('value', state.rtdbListener);
+                    state.rtdbListener = null;
+                }
+
+                state.mode = 'file';
+                state.uploadedBackupData = dataTurnamen;
+                state.rawTurnamenData = dataTurnamen;
+
+                parseTurnamenData(dataTurnamen);
+                updateSyncStatus(`Mode File Backup JSON (${file.name})`, 'file');
+
+            } catch (err) {
+                console.error("Gagal parse file JSON:", err);
+                alert('Gagal memproses file JSON. Format file rusak atau bukan JSON valid.');
+            }
+        };
+        reader.readAsText(file);
+    }
+    
     // 2. PARSER DATA 2 TIPE PERTANDINGAN
     function parseTurnamenData(data) {
         if (!data) return;
@@ -716,7 +847,7 @@ const MASS_ANALISA = (function () {
         });
     }
 
-    return {
+   return {
         init: function () {
             initSystemAndFetch();
 
@@ -724,6 +855,8 @@ const MASS_ANALISA = (function () {
             const poolEl = document.getElementById('filterPool');
             const subEl = document.getElementById('filterSub');
             const btnRef = document.getElementById('btnRefresh');
+            const btnUpload = document.getElementById('btnUploadJson');
+            const inputJson = document.getElementById('inputJsonFile');
 
             if (catEl) {
                 catEl.addEventListener('change', () => {
@@ -734,15 +867,28 @@ const MASS_ANALISA = (function () {
             if (poolEl) poolEl.addEventListener('change', applyFilterAndRender);
             if (subEl) subEl.addEventListener('change', applyFilterAndRender);
             if (btnRef) btnRef.addEventListener('click', initSystemAndFetch);
+
+            // Handler Tombol & Input File Picker JSON
+            if (btnUpload && inputJson) {
+                btnUpload.addEventListener('click', () => {
+                    inputJson.value = ''; // Reset file input
+                    inputJson.click();
+                });
+
+                inputJson.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        handleJsonFileUpload(file);
+                    }
+                });
+            }
         },
 
-        // Handler Toggle Checklist Wasit
         toggleWasit: function (index) {
             state.visibleWasit[index] = !state.visibleWasit[index];
             renderTrendChart();
         },
 
-        // Handler Toggle Sakelar Garis (Total, Teknik, Baseline)
         toggleMetric: function (type) {
             if (type === 'total') state.showTotalLines = !state.showTotalLines;
             if (type === 'tech') state.showTechLines = !state.showTechLines;
