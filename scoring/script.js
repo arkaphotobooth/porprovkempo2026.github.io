@@ -1543,7 +1543,7 @@ function bukaModalPindahKelas(id) {
 }
 
 // =========================================================================
-// 3. FUNGSI PINDAH KELAS (SUPER OPTIMIZED: 0 READ JIKA ADA ID FIRESTORE)
+// 3. FUNGSI PINDAH KELAS (TARGET FIELD: 'kelas' PADA FIRESTORE)
 // =========================================================================
 async function eksekusiPindahKelas() {
     let id = parseInt(document.getElementById('pindah-atlet-id').value);
@@ -1553,11 +1553,13 @@ async function eksekusiPindahKelas() {
     if (!p || !targetKategori) return;
 
     if (confirm(`Pindahkan ${p.nama} ke kelas ${targetKategori}?`)) {
+        // 1. Update State Memori Lokal & RTDB Turnamen
         p.kategori = targetKategori;
         p.urut = 0; 
         p.pool = '-';
         saveToLocalStorage();
 
+        // 2. Update Field Asli 'kelas' di Firestore (pendaftaran_t2)
         if (firestoreDB) {
             try {
                 const btn = document.querySelector('#modal-pindah-kelas button.bg-orange-600');
@@ -1566,21 +1568,36 @@ async function eksekusiPindahKelas() {
                     btn.disabled = true; 
                 }
 
+                // Data update: ganti field 'kelas' & hapus field duplikat 'kategori' jika ada
+                const updatePayload = {
+                    kelas: targetKategori
+                };
+
+                // Bersihkan field 'kategori' agar dokumen Firestore tetap rapi
+                if (typeof firebase !== 'undefined' && firebase.firestore && firebase.firestore.FieldValue) {
+                    updatePayload.kategori = firebase.firestore.FieldValue.delete();
+                }
+
                 if (p.idFirestore) {
-                    await firestoreDB.collection('pendaftaran_t2').doc(p.idFirestore).update({
-                        kategori: targetKategori
-                    });
+                    // Jalur Cepat (0 Read): Langsung ke ID Dokumen
+                    await firestoreDB.collection('pendaftaran_t2').doc(p.idFirestore).update(updatePayload);
                 } else {
-                    const snapshot = await firestoreDB.collection('pendaftaran_t2')
-                        .where('nama', '==', p.nama)
+                    // Jalur Cadangan: Cari berdasarkan array atlet atau field nama
+                    let snapshot = await firestoreDB.collection('pendaftaran_t2')
+                        .where('atlet', 'array-contains', p.nama)
                         .limit(1)
                         .get();
 
+                    if (snapshot.empty) {
+                        snapshot = await firestoreDB.collection('pendaftaran_t2')
+                            .where('nama', '==', p.nama)
+                            .limit(1)
+                            .get();
+                    }
+
                     if (!snapshot.empty) {
                         p.idFirestore = snapshot.docs[0].id;
-                        await firestoreDB.collection('pendaftaran_t2').doc(p.idFirestore).update({
-                            kategori: targetKategori
-                        });
+                        await firestoreDB.collection('pendaftaran_t2').doc(p.idFirestore).update(updatePayload);
                     }
                 }
                 
@@ -1589,13 +1606,13 @@ async function eksekusiPindahKelas() {
                     btn.disabled = false; 
                 }
             } catch (e) {
-                console.error("Gagal pindah kelas di Firestore:", e);
+                console.error("Gagal sinkronisasi pindah kelas ke Firestore:", e);
             }
         }
 
         document.getElementById('modal-pindah-kelas').classList.add('hidden');
         renderTimbangTable();
-        alert("Atlet berhasil dipindahkan ke kelas baru!");
+        alert(`Atlet ${p.nama} berhasil dipindahkan ke kelas ${targetKategori}!`);
     }
 }
 
