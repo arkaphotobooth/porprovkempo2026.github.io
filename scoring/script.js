@@ -1080,11 +1080,25 @@ function saveMaxPoolSetting() {
 }
 
 function renderParticipantTable(resetPage = false) {
-    if (resetPage) currentAthletePage = 1; // Reset ke halaman 1 jika filter berubah
+    if (resetPage) currentAthletePage = 1; // Reset ke halaman 1 jika filter atau pencarian berubah
 
     const body = document.getElementById('table-peserta-body');
-    const filter = document.getElementById('filter-atlet-kategori').value;
+    const filterEl = document.getElementById('filter-atlet-kategori');
+    const filter = filterEl ? filterEl.value : 'all';
+    
+    const searchInput = document.getElementById('search-atlet');
+    const searchTxt = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+    // 1. Filter Kategori
     let list = filter && filter !== 'all' ? STATE.participants.filter(p => p.kategori === filter) : STATE.participants;
+
+    // 2. Filter Pencarian Teks (HANYA AKTIF JIKA MINIMAL 3 HURUF)
+    if (searchTxt.length >= 3) {
+        list = list.filter(p => 
+            (p.nama && p.nama.toLowerCase().includes(searchTxt)) || 
+            (p.kontingen && p.kontingen.toLowerCase().includes(searchTxt))
+        );
+    }
 
     // --- UPDATE UI PAGINATION ---
     const totalItems = list.length;
@@ -1099,7 +1113,11 @@ function renderParticipantTable(resetPage = false) {
         if (infoEl) infoEl.innerText = `Menampilkan 0 atlet`;
         if (btnPrev) btnPrev.disabled = true;
         if (btnNext) btnNext.disabled = true;
-        return body.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-500">Tidak ada data.</td></tr>`;
+
+        let emptyMsg = searchTxt.length >= 3 
+            ? `Tidak ada atlet yang cocok dengan kata kunci "<b>${searchTxt}</b>".` 
+            : `Tidak ada data peserta.`;
+        return body.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-500 text-xs">${emptyMsg}</td></tr>`;
     }
 
     const startIndex = (currentAthletePage - 1) * ATHLETES_PER_PAGE;
@@ -1112,10 +1130,10 @@ function renderParticipantTable(resetPage = false) {
 
     let sortedList = [...list].sort((a, b) => a.kategori === b.kategori ? a.urut - b.urut : a.kategori.localeCompare(b.kategori));
 
-    // POTONG DATA UNTUK HALAMAN INI SAJA (MAX 50)
+    // Potong data per halaman (Max 50)
     let paginatedList = sortedList.slice(startIndex, endIndex);
 
-    // --- STRATEGI A: MEMOIZATION (BUKU CONTEKAN) ---
+    // --- MEMOIZATION HASIL RANDORI ---
     let cachedRandoriResults = {};
     let cachedRandoriDrawn = {};
     let uniqueCategories = [...new Set(paginatedList.map(p => p.kategori))];
@@ -1130,7 +1148,6 @@ function renderParticipantTable(resetPage = false) {
             }
         }
     });
-    // -----------------------------------------------
 
     body.innerHTML = paginatedList.map(p => {
         let catObj = STATE.categories.find(c => c.name === p.kategori);
@@ -1140,7 +1157,7 @@ function renderParticipantTable(resetPage = false) {
         let baseStatus = '';
         let resultBadge = '';
 
-        // 1. TENTUKAN STATUS UNDIAN (Dasar)
+        // 1. Tentukan Status Undian
         if (isRandori) {
             if (isRandoriDrawn) {
                 baseStatus = p.pool !== '-' ? `POOL ${p.pool}` : 'Bagan Utama';
@@ -1156,7 +1173,7 @@ function renderParticipantTable(resetPage = false) {
             }
         }
 
-        // 2. TENTUKAN STATUS JUARA / GUGUR (Lencana)
+        // 2. Tentukan Lencana Juara / Gugur
         let isJuara = false;
 
         if (isRandori && isRandoriDrawn) {
