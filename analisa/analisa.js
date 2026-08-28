@@ -194,7 +194,15 @@ const MASS_ANALISA = (function () {
         }
     }
 
-function handleJsonFileUpload(file) {
+// Helper untuk konversi aman Object/Array dari Firebase atau JSON file
+    function toArray(val) {
+        if (!val) return [];
+        if (Array.isArray(val)) return val;
+        if (typeof val === 'object') return Object.values(val);
+        return [];
+    }
+
+    function handleJsonFileUpload(file) {
         if (!file) return;
 
         const reader = new FileReader();
@@ -202,18 +210,19 @@ function handleJsonFileUpload(file) {
             try {
                 const parsed = JSON.parse(e.target.result);
                 
-                // Normalisasi jika backup dibungkus dalam node turnamen_data
-                const dataTurnamen = parsed.turnamen_data ? parsed.turnamen_data : parsed;
+                // Normalisasi jika data dibungkus node: turnamen_data, data, atau langsung root
+                let dataTurnamen = parsed.turnamen_data || parsed.data || parsed;
 
-                const hasMatches = Array.isArray(dataTurnamen.matches);
-                const hasParticipants = Array.isArray(dataTurnamen.participants);
+                // Konversi aman untuk verifikasi
+                const matches = toArray(dataTurnamen.matches);
+                const participants = toArray(dataTurnamen.participants);
 
-                if (!hasMatches && !hasParticipants) {
-                    alert('Format file JSON tidak valid. Pastikan file berisi data pertandingan MASS KEMPO.');
+                if (matches.length === 0 && participants.length === 0) {
+                    alert('Format file JSON tidak valid. Pastikan file berisi data matches atau participants MASS KEMPO.');
                     return;
                 }
 
-                // Matikan listener RTDB jika sedang aktif agar tidak tertimpa
+                // Matikan listener RTDB jika aktif
                 if (state.database && state.rtdbListener) {
                     state.database.ref('turnamen_data').off('value', state.rtdbListener);
                     state.rtdbListener = null;
@@ -224,11 +233,11 @@ function handleJsonFileUpload(file) {
                 state.rawTurnamenData = dataTurnamen;
 
                 parseTurnamenData(dataTurnamen);
-                updateSyncStatus(`Mode File Backup JSON (${file.name})`, 'file');
+                updateSyncStatus(`Mode File Backup (${file.name})`, 'file');
 
             } catch (err) {
                 console.error("Gagal parse file JSON:", err);
-                alert('Gagal memproses file JSON. Format file rusak atau bukan JSON valid.');
+                alert('Gagal memproses file JSON: Format rusak atau bukan JSON valid.');
             }
         };
         reader.readAsText(file);
@@ -239,53 +248,66 @@ function handleJsonFileUpload(file) {
         if (!data) return;
 
         const parsed = [];
-        const participants = data.participants || [];
-        const matches = data.matches || [];
-        const categories = data.categories || [];
-        const barcodes = data.barcodes || [];
+        const participants = toArray(data.participants);
+        const matches = toArray(data.matches);
+        const categories = toArray(data.categories);
+        const barcodes = toArray(data.barcodes);
 
-        const wasitList = barcodes.filter(b => b.jabatan && String(b.jabatan).trim().toUpperCase() === 'WASIT');
+        // Ambil daftar nama wasit dari barcodes jika tersedia
+        const wasitList = barcodes.filter(b => b && b.jabatan && String(b.jabatan).trim().toUpperCase() === 'WASIT');
         if (wasitList.length >= 5) {
-            state.wasitNames = wasitList.slice(0, 5).map(w => w.nama);
+            state.wasitNames = wasitList.slice(0, 5).map(w => w.nama || `Wasit ${w.id || ''}`);
         }
 
         // SKEMA A: EMBU H2H
         matches.forEach(m => {
-            const catObj = categories.find(c => c.name === m.kategori);
+            if (!m) return;
+            const catObj = categories.find(c => c && c.name === m.kategori);
             const isEmbu = !catObj || catObj.discipline === 'embu';
 
             if (isEmbu) {
-                const gameNum = m.matchNum % 50 === 0 ? 50 : m.matchNum % 50;
+                const matchNum = Number(m.matchNum) || 1;
+                const gameNum = matchNum % 50 === 0 ? 50 : matchNum % 50;
 
-                if (m.rawMerah && Array.isArray(m.rawMerah) && m.rawMerah.length === 5 && m.skorMerah > 0) {
-                    const pMrh = participants.find(p => p.id === m.merahId);
+                const rawMerah = toArray(m.rawMerah);
+                const techMerah = toArray(m.rawMerahTech || m.techMerah || m.rawTechMerah);
+                const skorMerah = Number(m.skorMerah) || 0;
+
+                if (rawMerah.length === 5 && (skorMerah > 0 || rawMerah.some(v => Number(v) > 0))) {
+                    const pMrh = participants.find(p => p && p.id === m.merahId);
                     parsed.push(createEntry({
                         id: `H2H-M-${m.id}`,
-                        kategori: m.kategori,
+                        kategori: m.kategori || 'Tanpa Kategori',
                         matchType: 'H2H',
                         pool: m.pool || '-',
                         gameNum: `G-${gameNum}`,
                         subLabel: `Game ${gameNum} (${m.babak || 'Penyisihan'})`,
-                        peserta: pMrh ? pMrh.nama : 'Pita Merah',
-                        kontingen: pMrh ? pMrh.kontingen : '-',
-                        scores: m.rawMerah,
-                        petugas: m.petugasMerah || []
+                        peserta: pMrh ? pMrh.nama : (m.namaMerah || 'Pita Merah'),
+                        kontingen: pMrh ? pMrh.kontingen : (m.kontingenMerah || '-'),
+                        scores: rawMerah,
+                        techScores: techMerah,
+                        petugas: toArray(m.petugasMerah)
                     }));
                 }
 
-                if (m.rawPutih && Array.isArray(m.rawPutih) && m.rawPutih.length === 5 && m.skorPutih > 0) {
-                    const pPth = participants.find(p => p.id === m.putihId);
+                const rawPutih = toArray(m.rawPutih);
+                const techPutih = toArray(m.rawPutihTech || m.techPutih || m.rawTechPutih);
+                const skorPutih = Number(m.skorPutih) || 0;
+
+                if (rawPutih.length === 5 && (skorPutih > 0 || rawPutih.some(v => Number(v) > 0))) {
+                    const pPth = participants.find(p => p && p.id === m.putihId);
                     parsed.push(createEntry({
                         id: `H2H-P-${m.id}`,
-                        kategori: m.kategori,
+                        kategori: m.kategori || 'Tanpa Kategori',
                         matchType: 'H2H',
                         pool: m.pool || '-',
                         gameNum: `G-${gameNum}`,
                         subLabel: `Game ${gameNum} (${m.babak || 'Penyisihan'})`,
-                        peserta: pPth ? pPth.nama : 'Pita Putih',
-                        kontingen: pPth ? pPth.kontingen : '-',
-                        scores: m.rawPutih,
-                        petugas: m.petugasPutih || []
+                        peserta: pPth ? pPth.nama : (m.namaPutih || 'Pita Putih'),
+                        kontingen: pPth ? pPth.kontingen : (m.kontingenPutih || '-'),
+                        scores: rawPutih,
+                        techScores: techPutih,
+                        petugas: toArray(m.petugasPutih)
                     }));
                 }
             }
@@ -293,46 +315,61 @@ function handleJsonFileUpload(file) {
 
         // SKEMA B: EMBU BAKU & FESTIVAL
         participants.forEach(p => {
-            const catObj = categories.find(c => c.name === p.kategori);
+            if (!p || !p.scores) return;
+            const catObj = categories.find(c => c && c.name === p.kategori);
             const isFestival = catObj && catObj.discipline === 'festival';
 
-            if (p.scores) {
-                if (p.scores.b1 && p.scores.b1.raw && p.scores.b1.raw.length === 5 && p.scores.b1.final > 0) {
+            // Babak 1
+            if (p.scores.b1) {
+                const b1Raw = toArray(p.scores.b1.raw || p.scores.b1.scores);
+                const b1Tech = toArray(p.scores.b1.tech || p.scores.b1.rawTech || p.scores.b1.techScores);
+                const b1Final = Number(p.scores.b1.final || p.scores.b1.total) || 0;
+
+                if (b1Raw.length === 5 && (b1Final > 0 || b1Raw.some(v => Number(v) > 0))) {
                     const matchType = isFestival ? 'FESTIVAL' : 'BAKU';
                     const poolVal = p.pool || (isFestival ? 'A' : 'SINGLE');
                     
                     let subLabel = 'Babak 1 (Penyisihan)';
                     if (isFestival) subLabel = `Kelompok ${poolVal}`;
-                    else if (p.pool !== '-' && p.pool !== 'SINGLE') subLabel = `Pool ${p.pool} (Babak 1)`;
+                    else if (p.pool && p.pool !== '-' && p.pool !== 'SINGLE') subLabel = `Pool ${p.pool} (Babak 1)`;
 
                     parsed.push(createEntry({
                         id: `BAKU-B1-${p.id}`,
-                        kategori: p.kategori,
+                        kategori: p.kategori || 'Tanpa Kategori',
                         matchType: matchType,
                         pool: poolVal,
                         subLabel: subLabel,
                         babakKey: 'B1',
                         kelompokKey: poolVal,
-                        peserta: p.nama,
-                        kontingen: p.kontingen,
-                        scores: p.scores.b1.raw,
-                        petugas: []
+                        peserta: p.nama || 'Peserta',
+                        kontingen: p.kontingen || '-',
+                        scores: b1Raw,
+                        techScores: b1Tech,
+                        petugas: toArray(p.scores.b1.petugas)
                     }));
                 }
+            }
 
-                if (p.scores.b2 && p.scores.b2.raw && p.scores.b2.raw.length === 5 && p.scores.b2.final > 0) {
-                    const isFinal = p.isFinalist;
+            // Babak 2 / Final
+            if (p.scores.b2) {
+                const b2Raw = toArray(p.scores.b2.raw || p.scores.b2.scores);
+                const b2Tech = toArray(p.scores.b2.tech || p.scores.b2.rawTech || p.scores.b2.techScores);
+                const b2Final = Number(p.scores.b2.final || p.scores.b2.total) || 0;
+
+                if (b2Raw.length === 5 && (b2Final > 0 || b2Raw.some(v => Number(v) > 0))) {
+                    const isFinal = Boolean(p.isFinalist);
                     parsed.push(createEntry({
                         id: `BAKU-B2-${p.id}`,
-                        kategori: p.kategori,
+                        kategori: p.kategori || 'Tanpa Kategori',
                         matchType: 'BAKU',
                         pool: p.pool || 'SINGLE',
                         subLabel: isFinal ? 'Babak Final' : 'Babak 2',
                         babakKey: isFinal ? 'FINAL' : 'B2',
-                        peserta: p.nama,
-                        kontingen: p.kontingen,
-                        scores: p.scores.b2.raw,
-                        petugas: []
+                        peserta: p.nama || 'Peserta',
+                        kontingen: p.kontingen || '-',
+                        scores: b2Raw,
+                        techScores: b2Tech,
+                        petugas: toArray(p.scores.b2.petugas)
                     }));
                 }
             }
@@ -345,8 +382,8 @@ function handleJsonFileUpload(file) {
     }
 
     function createEntry(payload) {
-        const scores = (payload.scores || []).map(s => Number(s) || 0);
-        const techScores = (payload.techScores || []).map(t => Number(t) || 0);
+        const scores = toArray(payload.scores).map(s => Number(s) || 0);
+        const techScores = toArray(payload.techScores).map(t => Number(t) || 0);
 
         // Baseline Total (Trimmed Mean 3 Wasit Tengah)
         const sortedScores = [...scores].sort((a, b) => a - b);
@@ -356,15 +393,19 @@ function handleJsonFileUpload(file) {
             : 0;
 
         // Baseline Teknik (Trimmed Mean 3 Wasit Tengah Teknik)
-        const sortedTech = [...techScores].sort((a, b) => a - b);
-        const centralTech = sortedTech.slice(1, 4);
-        const baselineTech = centralTech.length > 0
-            ? parseFloat((centralTech.reduce((acc, v) => acc + v, 0) / centralTech.length).toFixed(2))
-            : 0;
+        let baselineTech = 0;
+        if (techScores.length === 5 && techScores.some(v => v > 0)) {
+            const sortedTech = [...techScores].sort((a, b) => a - b);
+            const centralTech = sortedTech.slice(1, 4);
+            baselineTech = centralTech.length > 0
+                ? parseFloat((centralTech.reduce((acc, v) => acc + v, 0) / centralTech.length).toFixed(2))
+                : 0;
+        }
 
-        // Fallback Nama Wasit: Ambil nama asli jika ada, jika tidak gunakan 'Wasit 1..5'[cite: 7]
-        if (payload.petugas && payload.petugas.length === 5) {
-            state.wasitNames = payload.petugas.map((n, idx) => (n && n.trim() !== '') ? n.trim() : `Wasit ${idx + 1}`);
+        // Update nama wasit lokal jika ada data petugas valid 5 wasit
+        const petugas = toArray(payload.petugas);
+        if (petugas.length === 5 && petugas.some(n => n && String(n).trim() !== '')) {
+            state.wasitNames = petugas.map((n, idx) => (n && String(n).trim() !== '') ? String(n).trim() : `Wasit ${idx + 1}`);
         }
 
         return {
@@ -804,12 +845,12 @@ function handleJsonFileUpload(file) {
                         grid: { color: 'rgba(51, 65, 85, 0.3)' },
                         ticks: { color: '#94a3b8', font: { size: 11 } }
                     },
-                    // Sumbu Y Kiri: Rentang Fix Nilai Total (80 - 95)
+                    // Sumbu Y Kiri: Total Skor
                     y: {
                         type: 'linear',
                         position: 'left',
-                        min: CONFIG.yTotalMin,
-                        max: CONFIG.yTotalMax,
+                        suggestedMin: CONFIG.yTotalMin,
+                        suggestedMax: CONFIG.yTotalMax,
                         grid: { color: 'rgba(51, 65, 85, 0.3)' },
                         ticks: {
                             stepSize: 1,
@@ -818,18 +859,18 @@ function handleJsonFileUpload(file) {
                         },
                         title: {
                             display: true,
-                            text: 'Total Skor (80 - 95)',
+                            text: 'Total Skor',
                             color: '#38bdf8',
                             font: { size: 10, weight: 'bold' }
                         }
                     },
-                    // Sumbu Y Kanan: Rentang Fix Nilai Teknik (45 - 65)
+                    // Sumbu Y Kanan: Nilai Teknik
                     y1: {
                         type: 'linear',
                         position: 'right',
-                        min: CONFIG.yTechMin,
-                        max: CONFIG.yTechMax,
-                        grid: { drawOnChartArea: false }, // Mencegah garis grid tabrakan
+                        suggestedMin: CONFIG.yTechMin,
+                        suggestedMax: CONFIG.yTechMax,
+                        grid: { drawOnChartArea: false },
                         ticks: {
                             stepSize: 2,
                             color: '#f59e0b',
@@ -837,7 +878,7 @@ function handleJsonFileUpload(file) {
                         },
                         title: {
                             display: true,
-                            text: 'Nilai Teknik (45 - 65)',
+                            text: 'Nilai Teknik',
                             color: '#f59e0b',
                             font: { size: 10, weight: 'bold' }
                         }
