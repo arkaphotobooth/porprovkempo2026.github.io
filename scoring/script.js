@@ -1428,21 +1428,102 @@ function renderTimbangTable() {
     }).join('');
 }
 
-function simpanBerat(id) {
+// =========================================================================
+// 1. FUNGSI SIMPAN BERAT (SUPER OPTIMIZED: 0 READ JIKA ADA ID FIRESTORE)
+// =========================================================================
+async function simpanBerat(id) {
     let p = STATE.participants.find(x => x.id === id);
     if (!p) return;
+    
     let val = document.getElementById(`input-berat-${id}`).value;
     p.beratBadan = val === '' ? '' : parseFloat(val);
-    saveToLocalStorage(); // Otomatis sync ke database/cloud
+    
+    // 1. Simpan ke Memori Browser & RTDB Turnamen
+    saveToLocalStorage();
+
+    // 2. Sinkronisasi ke Firestore Dokumen Pendaftaran
+    if (firestoreDB) {
+        try {
+            let btn = document.querySelector(`button[onclick="simpanBerat(${id})"]`);
+            if (btn) {
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin text-teal-400"></i>';
+                btn.disabled = true;
+            }
+
+            // Jalur Cepat (0 Read): Langsung tembak ID Dokumen
+            if (p.idFirestore) {
+                await firestoreDB.collection('pendaftaran_t2').doc(p.idFirestore).update({
+                    beratBadan: p.beratBadan
+                });
+            } else {
+                // Jalur Cadangan (1 Read): Cari by Nama jika idFirestore kosong
+                const snapshot = await firestoreDB.collection('pendaftaran_t2')
+                    .where('nama', '==', p.nama)
+                    .limit(1)
+                    .get();
+
+                if (!snapshot.empty) {
+                    p.idFirestore = snapshot.docs[0].id; // Simpan ID agar klik berikutnya 0 Read
+                    await firestoreDB.collection('pendaftaran_t2').doc(p.idFirestore).update({
+                        beratBadan: p.beratBadan
+                    });
+                }
+            }
+
+            if (btn) {
+                btn.innerHTML = '<i class="fas fa-check text-green-400"></i>';
+                setTimeout(() => { renderTimbangTable(); }, 500);
+                return;
+            }
+        } catch (error) {
+            console.error("Gagal simpan berat ke Firestore:", error);
+            alert("Gagal sinkronisasi berat badan ke Firestore.");
+        }
+    }
+    
     renderTimbangTable();
 }
 
-function coretAtletTM(id) {
+// =========================================================================
+// 2. FUNGSI CORET ATLET (SUPER OPTIMIZED: 0 READ JIKA ADA ID FIRESTORE)
+// =========================================================================
+async function coretAtletTM(id) {
     let p = STATE.participants.find(x => x.id === id);
     if (!p) return;
-    if (confirm(`Keputusan TM Mutlak:\nApakah Anda yakin ingin MENCORET/MENDISKUALIFIKASI atlet ${p.nama} karena tidak memenuhi syarat berat badan?\n\n(Atlet tidak akan dimasukkan ke dalam bagan pertandingan)`)) {
+
+    if (confirm(`Keputusan TM Mutlak:\nApakah Anda yakin ingin MENCORET/MENDISKUALIFIKASI atlet ${p.nama}?\n\n(Atlet tidak akan dimasukkan ke dalam bagan pertandingan)`)) {
+        
         p.statusTimbang = 'CORET';
         saveToLocalStorage();
+
+        if (firestoreDB) {
+            try {
+                document.body.style.cursor = 'wait';
+
+                if (p.idFirestore) {
+                    await firestoreDB.collection('pendaftaran_t2').doc(p.idFirestore).update({
+                        statusTimbang: 'CORET'
+                    });
+                } else {
+                    const snapshot = await firestoreDB.collection('pendaftaran_t2')
+                        .where('nama', '==', p.nama)
+                        .limit(1)
+                        .get();
+
+                    if (!snapshot.empty) {
+                        p.idFirestore = snapshot.docs[0].id;
+                        await firestoreDB.collection('pendaftaran_t2').doc(p.idFirestore).update({
+                            statusTimbang: 'CORET'
+                        });
+                    }
+                }
+                document.body.style.cursor = 'default';
+            } catch (e) {
+                document.body.style.cursor = 'default';
+                console.error("Gagal update status coret di Firestore:", e);
+            }
+        }
+        
         renderTimbangTable();
     }
 }
@@ -1461,7 +1542,10 @@ function bukaModalPindahKelas(id) {
     document.getElementById('modal-pindah-kelas').classList.remove('hidden');
 }
 
-function eksekusiPindahKelas() {
+// =========================================================================
+// 3. FUNGSI PINDAH KELAS (SUPER OPTIMIZED: 0 READ JIKA ADA ID FIRESTORE)
+// =========================================================================
+async function eksekusiPindahKelas() {
     let id = parseInt(document.getElementById('pindah-atlet-id').value);
     let targetKategori = document.getElementById('pindah-select-kategori').value;
 
@@ -1470,10 +1554,45 @@ function eksekusiPindahKelas() {
 
     if (confirm(`Pindahkan ${p.nama} ke kelas ${targetKategori}?`)) {
         p.kategori = targetKategori;
-        // Reset status bagan jika ada
-        p.urut = 0; p.pool = '-';
-
+        p.urut = 0; 
+        p.pool = '-';
         saveToLocalStorage();
+
+        if (firestoreDB) {
+            try {
+                const btn = document.querySelector('#modal-pindah-kelas button.bg-orange-600');
+                if (btn) { 
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Menyimpan...'; 
+                    btn.disabled = true; 
+                }
+
+                if (p.idFirestore) {
+                    await firestoreDB.collection('pendaftaran_t2').doc(p.idFirestore).update({
+                        kategori: targetKategori
+                    });
+                } else {
+                    const snapshot = await firestoreDB.collection('pendaftaran_t2')
+                        .where('nama', '==', p.nama)
+                        .limit(1)
+                        .get();
+
+                    if (!snapshot.empty) {
+                        p.idFirestore = snapshot.docs[0].id;
+                        await firestoreDB.collection('pendaftaran_t2').doc(p.idFirestore).update({
+                            kategori: targetKategori
+                        });
+                    }
+                }
+                
+                if (btn) { 
+                    btn.innerHTML = 'Pindahkan Sekarang'; 
+                    btn.disabled = false; 
+                }
+            } catch (e) {
+                console.error("Gagal pindah kelas di Firestore:", e);
+            }
+        }
+
         document.getElementById('modal-pindah-kelas').classList.add('hidden');
         renderTimbangTable();
         alert("Atlet berhasil dipindahkan ke kelas baru!");
