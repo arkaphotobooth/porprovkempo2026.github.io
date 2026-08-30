@@ -9593,7 +9593,7 @@ function triggerBatsuModal(corner, type, points) {
         opponentKontingen: opponent.kontingen,
         matchId: match.id,
         category: match.kategori,
-        gameDesc: formattedGameDesc, // 👈 Disimpan dalam format deskriptif
+        gameDesc: formattedGameDesc,
         court: typeof DEVICE_ROLE !== 'undefined' ? DEVICE_ROLE : 'court_1'
     };
 
@@ -9622,21 +9622,42 @@ function confirmSanctionExecution(sanctionLevel) {
     if (!PENDING_SANCTION_DATA) return;
 
     const { corner, points, athleteId, athleteName, gameDesc, category, opponentName, court } = PENDING_SANCTION_DATA;
-
-    // 1. Tambahkan Poin Penalti ke Lawan di Laga Berjalan
     const oppCorner = corner === 'merah' ? 'putih' : 'merah';
+
+    // ---------------------------------------------------------
+    // 1. JALUR KHUSUS: TAMBAH NILAI SAJA (TANPA SANKSI DISKUALIFIKASI)
+    // ---------------------------------------------------------
+    if (sanctionLevel === 'POIN_SAJA') {
+        RANDORI_STATE[oppCorner].score += points;
+        RANDORI_HISTORY.push({ 
+            corner: oppCorner, 
+            points: points, 
+            label: `${PENDING_SANCTION_DATA.type} (PENALTI)` 
+        });
+        updateRandoriUI();
+        closeSanctionModal();
+        if (typeof pushRandoriToTV === 'function') {
+            pushRandoriToTV();
+        }
+        return;
+    }
+
+    // ---------------------------------------------------------
+    // 2. JALUR BATSU KATEGORI & DISKUALIFIKASI TOTAL
+    // ---------------------------------------------------------
+    // A. Tambahkan Poin Penalti ke Lawan di Laga Berjalan
     RANDORI_STATE[oppCorner].score += points;
     RANDORI_STATE[corner].warnings = (RANDORI_STATE[corner].warnings || 0) + 1;
     RANDORI_HISTORY.push({ corner: oppCorner, points: points, label: `${PENDING_SANCTION_DATA.type} (SANKSI)` });
     updateRandoriUI();
 
-    // 2. Buat Catatan Riwayat Sanksi dengan Format Jelas
+    // B. Buat Catatan Riwayat Sanksi dengan Format Jelas
     const sanctionRecord = {
         statusSanksi: sanctionLevel,
         sanksiDetail: {
             tipe: sanctionLevel,
             penyebab: PENDING_SANCTION_DATA.type,
-            gameId: gameDesc, // 👈 Sekarang berisi "G-4 [Pool B] [Penyisihan 4]..."
+            gameId: gameDesc,
             kategori: category,
             lawan: opponentName,
             court: court,
@@ -9645,7 +9666,7 @@ function confirmSanctionExecution(sanctionLevel) {
         }
     };
 
-    // 3. 🔥 SEBARKAN STATUS KE SEMUA NOMOR PERTANDINGAN ATLET (TERMASUK EMBU BERPASANGAN / REGU)
+    // C. Sebarkan Status ke Semua Nomor Pertandingan Atlet (Termasuk Embu Pasangan/Regu)
     let targetAthleteRawName = athleteName.trim().toLowerCase();
 
     STATE.participants.forEach(p => {
@@ -9654,7 +9675,6 @@ function confirmSanctionExecution(sanctionLevel) {
         if (p.id === athleteId) {
             isMatch = true;
         } else if (sanctionLevel === 'DISKUALIFIKASI_TOTAL') {
-            // Cek apakah nama atlet ini ada di dalam nomor Embu (Tunggal / Pasangan / Regu)
             let individualNames = String(p.nama).split(/[,+&]/).map(n => n.trim().toLowerCase());
             if (individualNames.includes(targetAthleteRawName) || p.nama.toLowerCase().includes(targetAthleteRawName)) {
                 isMatch = true;
@@ -9667,7 +9687,7 @@ function confirmSanctionExecution(sanctionLevel) {
         }
     });
 
-    // 4. Siarkan & Simpan Massal ke Seluruh Jaringan
+    // D. Siarkan & Simpan Massal ke Seluruh Jaringan
     saveToLocalStorage();
 
     if (database) {
@@ -9686,7 +9706,6 @@ function confirmSanctionExecution(sanctionLevel) {
         pushRandoriToTV();
     }
 }
-
 /**
  * Render Tirai Blokir Proporsional & Tombol Eksekusi WO pada Embu
  */
