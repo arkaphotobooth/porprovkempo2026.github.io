@@ -1920,7 +1920,7 @@
                 </div>
                 <div>
                     <h3 class="text-white font-black text-base tracking-wide uppercase">Penetapan Sanksi Wasit</h3>
-                    <p id="modal-sanksi-sub" class="text-xs text-slate-400">Pilih tingkat sanksi pelanggaran berat</p>
+                    <p id="modal-sanksi-sub" class="text-xs text-slate-400">Pilih tingkat sanksi pelanggaran wasit</p>
                 </div>
             </div>
             <button onclick="closeSanctionModal()" class="text-slate-400 hover:text-white transition-colors">
@@ -1929,7 +1929,7 @@
         </div>
 
         <!-- Body Modal -->
-        <div class="p-6 space-y-4">
+        <div class="p-6 space-y-3.5">
             <div class="bg-slate-950/60 p-4 rounded-xl border border-slate-800 space-y-1">
                 <div class="flex justify-between text-xs">
                     <span class="text-slate-400 font-medium">Atlet Pelanggar:</span>
@@ -1945,7 +1945,21 @@
                 </div>
             </div>
 
-            <!-- Opsi 1: Batsu Kategori -->
+            <!-- OPSI 1: TAMBAH NILAI SAJA (BARU) -->
+            <button onclick="confirmSanctionExecution('POIN_SAJA')" class="w-full text-left p-4 rounded-xl border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 transition-all group">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-plus-circle text-blue-400 text-lg"></i>
+                        <div>
+                            <div class="text-sm font-black text-blue-400 uppercase tracking-wide">Tambah Nilai Saja</div>
+                            <div class="text-[11px] text-slate-300 mt-0.5">Hanya menambahkan poin penalti ke sudut lawan. Atlet tidak didiskualifikasi.</div>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right text-blue-500/60 group-hover:translate-x-1 transition-transform text-xs"></i>
+                </div>
+            </button>
+
+            <!-- OPSI 2: BATSU KATEGORI -->
             <button onclick="confirmSanctionExecution('BATSU_KATEGORI')" class="w-full text-left p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 transition-all group">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
@@ -1959,7 +1973,7 @@
                 </div>
             </button>
 
-            <!-- Opsi 2: Diskualifikasi Total -->
+            <!-- OPSI 3: DISKUALIFIKASI TOTAL -->
             <button onclick="confirmSanctionExecution('DISKUALIFIKASI_TOTAL')" class="w-full text-left p-4 rounded-xl border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 transition-all group">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
@@ -1982,7 +1996,7 @@
         </div>
     </div>
 </div>
-
+    
 <!-- ========================================================= -->
 <!-- 🛡️ MODAL OTORISASI KOORDINATOR PERTANDINGAN (RADAR HP)    -->
 <!-- ========================================================= -->
