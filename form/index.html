@@ -25,36 +25,110 @@
         const { useState, useEffect, useMemo } = React;
 
         // =========================================================
-        // 1. CONFIG PROJECT A (REALTIME DATABASE - DRAWING/URUTAN)
+        // ARSITEKTUR KONEKSI MULTI-MODE & STATE TERPUSAT
         // =========================================================
-        const rtdbConfig = {
-            apiKey: "AIzaSyA63UtPlhEdC9qKmmHVpDjGv_4RqWjK47k",
-            authDomain: "mass-pro-turnamen.firebaseapp.com",
-            projectId: "mass-pro-turnamen",
-            databaseURL: "https://mass-pro-turnamen-default-rtdb.asia-southeast1.firebasedatabase.app/",
-            storageBucket: "mass-pro-turnamen.firebasestorage.app",
-            messagingSenderId: "268290671498",
-            appId: "1:268290671498:web:d55e4960e392f7dfc8fe73"
+        let SYSTEM_MODE = 'offline';
+        let dbRTDB = null;
+        let dbFirestore = null;
+
+        // 1. State Terpusat
+        window.STATE = window.STATE || {
+            categories: [],
+            participants: [],
+            matches: [],
+            rundown: [],
+            settings: {}
         };
+        let STATE = window.STATE;
 
-        // =========================================================
-        // 2. CONFIG PROJECT B (FIRESTORE - MASTER PENDAFTARAN)
-        // =========================================================
-        const firestoreConfig = {
-            apiKey: "AIzaSyD0MSNQBRpfZBzRgMdz726lnB5YX_TnLpo",
-            authDomain: "integrasi-sistem-kempo.firebaseapp.com",
-            projectId: "integrasi-sistem-kempo",
-            storageBucket: "integrasi-sistem-kempo.firebasestorage.app",
-            messagingSenderId: "255724075177",
-            appId: "1:255724075177:web:c54fa5dee560b66e1611b8"
+        // 2. Jembatan Kompatibilitas Variabel Global (Mencegah SyntaxError)
+        if (typeof window.GLOBAL_DATA === 'undefined') window.GLOBAL_DATA = STATE;
+        if (typeof window.GLOBAL_SETTINGS === 'undefined') window.GLOBAL_SETTINGS = STATE.settings;
+
+        // 3. Engine Deteksi Jaringan & Inisialisasi Dinamis
+        const initSystem = async (onDataReceived) => {
+            let ACTIVE_SESSION = null;
+            try {
+                const sessionRaw = localStorage.getItem('mass_kempo_session');
+                if (sessionRaw) ACTIVE_SESSION = JSON.parse(sessionRaw);
+            } catch (e) {
+                console.warn("Gagal membaca mass_kempo_session:", e);
+            }
+
+            const isPublicHost = window.location.hostname.includes('github.io') || 
+                                 window.location.hostname.includes('netlify.app');
+            const hasCloudConfig = ACTIVE_SESSION?.serverConfig?.rtdbConfig;
+
+            // Mode A: Cloud Session (Hosting Publik / Sesi Cloud Aktif)
+            if (isPublicHost || hasCloudConfig) {
+                SYSTEM_MODE = 'online';
+                const rtdbConf = ACTIVE_SESSION?.serverConfig?.rtdbConfig;
+                if (rtdbConf) {
+                    if (!firebase.apps.length) {
+                        firebase.initializeApp(rtdbConf);
+                    }
+                    dbRTDB = firebase.database();
+                }
+
+                const firestoreConf = ACTIVE_SESSION?.serverConfig?.firestoreConfig;
+                if (firestoreConf) {
+                    let appFirestore = firebase.apps.find(a => a.name === 'AplikasiPendaftaran');
+                    if (!appFirestore) {
+                        appFirestore = firebase.initializeApp(firestoreConf, 'AplikasiPendaftaran');
+                    }
+                    dbFirestore = appFirestore.firestore();
+                }
+
+                // Listener Realtime RTDB (turnamen_data)
+                if (dbRTDB) {
+                    dbRTDB.ref('turnamen_data').on('value', (snapshot) => {
+                        if (snapshot.exists()) {
+                            onDataReceived(snapshot.val());
+                        }
+                    });
+                }
+            } else {
+                // Mode B: Local Server Detection (Hybrid / Local Node.js)
+                try {
+                    const netRes = await fetch('/api/network');
+                    if (netRes.ok) {
+                        const net = await netRes.json();
+                        const mode = net.type || net.mode;
+
+                        if (mode === 'hybrid' && net.rtdb_config) {
+                            SYSTEM_MODE = 'hybrid';
+                            if (!firebase.apps.length) {
+                                firebase.initializeApp(net.rtdb_config);
+                            }
+                            dbRTDB = firebase.database();
+                            dbRTDB.ref('turnamen_data').on('value', (snapshot) => {
+                                if (snapshot.exists()) {
+                                    onDataReceived(snapshot.val());
+                                }
+                            });
+                        } else if (mode === 'local') {
+                            SYSTEM_MODE = 'local';
+                            const dataRes = await fetch('/api/data_turnamen');
+                            if (dataRes.ok) {
+                                const localData = await dataRes.json();
+                                onDataReceived(localData);
+                            }
+                        }
+                    } else {
+                        throw new Error("Gagal terhubung ke endpoint lokal /api/network");
+                    }
+                } catch (err) {
+                    console.warn("Jaringan tidak terdeteksi, beralih ke cache offline:", err);
+                    SYSTEM_MODE = 'offline';
+                    const cached = localStorage.getItem('turnamen_data_cache');
+                    if (cached) {
+                        try {
+                            onDataReceived(JSON.parse(cached));
+                        } catch (e) {}
+                    }
+                }
+            }
         };
-
-        // INISIALISASI DUAL INSTANCE
-        const appRTDB = firebase.initializeApp(rtdbConfig, "appRTDB");
-        const dbRTDB = appRTDB.database();
-
-        const appFirestore = firebase.initializeApp(firestoreConfig, "appFirestore");
-        const dbFirestore = appFirestore.firestore();
 
         // Komponen Ikon (WAJIB ADA agar tidak error)
         const Icon = ({ name, className = "w-4 h-4" }) => {
@@ -597,103 +671,139 @@
                 e.target.value = null;
             };
 
-            useEffect(() => {
-                fetchAndMergeData();
-            }, []);
+            // Pipeline Pengolahan Data Terpusat & Cache
+            const processTournamentData = (turnamenData) => {
+                if (!turnamenData) return;
 
-            const fetchAndMergeData = async () => {
-                setLoading(true);
-                try {
-                    // 1. Tarik SELURUH data turnamen agar Categories dan Matches ikut terbawa
-                    const snapshot = await dbRTDB.ref('turnamen_data').once('value');
+                // Simpan cache lokal untuk kesiapan offline
+                localStorage.setItem('turnamen_data_cache', JSON.stringify(turnamenData));
 
-                    if (!snapshot.exists()) {
-                        setErrorMsg("Data jadwal pertandingan kosong.");
-                        setLoading(false);
-                        return;
-                    }
+                // 1. Sinkronisasi ke STATE terpusat
+                STATE.categories = turnamenData.categories || [];
+                STATE.matches = turnamenData.matches || [];
+                STATE.participants = turnamenData.participants || [];
+                STATE.rundown = turnamenData.rundown || [];
+                STATE.settings = turnamenData.settings || {};
 
-                    const turnamenData = snapshot.val();
+                // 2. Set State UI
+                setCategories(STATE.categories);
+                setMatches(STATE.matches);
 
-                    // 2. KEMBALIKAN STATE LAMA (Ini yang membuat dropdown dan Randori muncul!)
-                    setCategories(turnamenData.categories || []);
-                    setMatches(turnamenData.matches || []);
+                const listDariMaster = STATE.categories.filter(c => c && c.name).map(c => c.name);
+                setSelectedKategori(prev => (prev && listDariMaster.includes(prev)) ? prev : (listDariMaster[0] || ""));
 
-                    // Set default kategori di dropdown
-                    const listDariMaster = turnamenData.categories ? turnamenData.categories.map(c => c.name) : [];
-                    if (listDariMaster.length > 0 && !selectedKategori) {
-                        setSelectedKategori(listDariMaster[0]);
-                    }
+                // 3. Ekstrak data Participants
+                const participantsData = STATE.participants || [];
+                const participantsArray = Array.isArray(participantsData)
+                    ? participantsData
+                    : Object.values(participantsData);
 
-                    // 3. Ekstrak data Participants (Embu)
-                    const participantsData = turnamenData.participants || [];
-                    const participantsArray = Array.isArray(participantsData)
-                        ? participantsData
-                        : Object.values(participantsData);
+                setAllParticipants(participantsArray);
 
-                    // TAMBAHKAN BARIS INI: Simpan semua data mentah (tanpa difilter) untuk Randori
-                    setAllParticipants(participantsArray);
+                // Filter hanya yang urut > 0 (Drawing selesai)
+                const drawnParticipants = participantsArray.filter(p => p && p.urut > 0);
 
-                    // Filter hanya yang urut > 0 (Sudah di-drawing untuk Embu)
-                    const drawnParticipants = participantsArray.filter(p => p && p.urut > 0);
+                // 4. Integrasi Master Pendaftaran dari LocalStorage
+                const localMasterRaw = localStorage.getItem("masterKempoData");
+                const masterData = localMasterRaw ? JSON.parse(localMasterRaw) : {};
 
-                    // 4. Buka brankas LocalStorage untuk data Firestore
-                    const localMasterRaw = localStorage.getItem("masterKempoData");
-                    const masterData = localMasterRaw ? JSON.parse(localMasterRaw) : {};
-
-                    // 5. Proses Merging (Join) dengan Firestore
-                    const mergedData = drawnParticipants.map(peserta => {
-                        const detailPendaftaran = masterData[peserta.idFirestore];
-
-                        const detailAtlet = detailPendaftaran?.atlet?.map(stringAtlet => {
-                            const parts = stringAtlet.split('|').map(s => s.trim());
-                            return {
-                                namaLengkap: parts[0] || "-",
-                                sabuk: parts[1] || "-",
-                                ttl: parts[2] || "-"
-                            };
-                        }) || [];
-
+                // 5. Join Data Embu & Firestore
+                const mergedData = drawnParticipants.map(peserta => {
+                    const detailPendaftaran = masterData[peserta.idFirestore];
+                    const detailAtlet = detailPendaftaran?.atlet?.map(stringAtlet => {
+                        const parts = stringAtlet.split('|').map(s => s.trim());
                         return {
-                            ...peserta,
-                            komposisiAtlet: detailAtlet,
-                            komposisiWaza: detailPendaftaran?.waza || []
+                            namaLengkap: parts[0] || "-",
+                            sabuk: parts[1] || "-",
+                            ttl: parts[2] || "-"
                         };
-                    });
+                    }) || [];
 
-                    // 6. Sorting
-                    mergedData.sort((a, b) => {
-                        const katA = a.kategori || "";
-                        const katB = b.kategori || "";
-                        if (katA !== katB) return katA.localeCompare(katB);
+                    return {
+                        ...peserta,
+                        komposisiAtlet: detailAtlet,
+                        komposisiWaza: detailPendaftaran?.waza || []
+                    };
+                });
 
-                        const poolA = a.pool || "";
-                        const poolB = b.pool || "";
-                        if (poolA !== poolB) return poolA.localeCompare(poolB);
+                // 6. Pengurutan Data
+                mergedData.sort((a, b) => {
+                    const katA = a.kategori || "";
+                    const katB = b.kategori || "";
+                    if (katA !== katB) return katA.localeCompare(katB);
 
-                        return (a.urut || 0) - (b.urut || 0);
-                    });
+                    const poolA = a.pool || "";
+                    const poolB = b.pool || "";
+                    if (poolA !== poolB) return poolA.localeCompare(poolB);
 
-                    // 7. SUNTIKKAN KEMBALI KE STATE (Agar tabel UI membaca data yang sudah kaya)
-                    setParticipants(mergedData);
-                    setPrintableData(mergedData); // Disimpan untuk layout cetak nanti
+                    return (a.urut || 0) - (b.urut || 0);
+                });
 
-                } catch (error) {
-                    console.error("Error saat fetch dan merge:", error);
-                    setErrorMsg("Terjadi kegagalan saat merakit data.");
-                }
+                setParticipants(mergedData);
+                setPrintableData(mergedData);
+                setErrorMsg("");
                 setLoading(false);
             };
 
-            // Fungsi Tarik Data Master dari Firestore -> Simpan ke LocalStorage
+            // Inisialisasi Sistem Saat Komponen Dimuat
+            useEffect(() => {
+                setLoading(true);
+                initSystem(processTournamentData).then(() => {
+                    fetchAndMergeData();
+                });
+            }, []);
+
+            // Penarikan Data Manual (Fallback & Tombol Refresh)
+            const fetchAndMergeData = async () => {
+                setLoading(true);
+                try {
+                    let turnamenData = null;
+
+                    if (dbRTDB) {
+                        const snapshot = await dbRTDB.ref('turnamen_data').once('value');
+                        if (snapshot.exists()) turnamenData = snapshot.val();
+                    } else if (SYSTEM_MODE === 'local') {
+                        const res = await fetch('/api/data_turnamen');
+                        if (res.ok) turnamenData = await res.json();
+                    }
+
+                    if (!turnamenData) {
+                        const cached = localStorage.getItem('turnamen_data_cache');
+                        if (cached) turnamenData = JSON.parse(cached);
+                    }
+
+                    if (turnamenData) {
+                        processTournamentData(turnamenData);
+                    } else {
+                        setErrorMsg("Data turnamen belum tersedia atau server offline.");
+                    }
+                } catch (error) {
+                    console.error("Gagal refresh data:", error);
+                    setErrorMsg("Terjadi kegagalan saat menyinkronkan data.");
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            // Penarikan Firestore On-Demand (0 Read saat Standby)
             const syncMasterKontingen = async () => {
                 if (!window.confirm("Tarik ulang data Master Pendaftaran dari Firestore?")) return;
 
                 setIsSyncingMaster(true);
                 try {
-                    // PERUBAHAN SINTAKS COMPAT DI SINI
-                    const snapshot = await dbFirestore.collection("pendaftaran_t2").get();
+                    // Validasi instance Firestore terpisah
+                    if (!dbFirestore) {
+                        const app = firebase.apps.find(a => a.name === 'AplikasiPendaftaran');
+                        if (app) dbFirestore = app.firestore();
+                    }
 
+                    if (!dbFirestore) {
+                        alert("Koneksi Firestore tidak aktif. Fitur ini membutuhkan sesi cloud dengan konfigurasi Firestore yang valid.");
+                        setIsSyncingMaster(false);
+                        return;
+                    }
+
+                    const snapshot = await dbFirestore.collection("pendaftaran_t2").get();
                     let masterData = {};
                     snapshot.forEach((doc) => {
                         const data = doc.data();
@@ -710,7 +820,7 @@
                     fetchAndMergeData();
                 } catch (error) {
                     console.error("Gagal tarik Firestore:", error);
-                    alert("Gagal sinkronisasi data master.");
+                    alert("Gagal sinkronisasi data master: " + error.message);
                 } finally {
                     setIsSyncingMaster(false);
                 }
