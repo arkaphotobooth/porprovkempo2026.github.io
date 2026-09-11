@@ -683,6 +683,8 @@
                             applyIncomingData(snapshot.val());
                         }
                     });
+                    window.db = database;
+                    window.fs = firestoreDB;
                     return;
                 } catch (err) {
                     console.error("Gagal inisialisasi Cloud Firebase:", err);
@@ -931,16 +933,24 @@
             }
         }
 
-        let GLOBAL_SETTINGS = {
-            tournamentMode: 'double',
-            finalRandoriMode: 'single',
-            maxPesertaPoolEmbu: 9,
-            embuB2Mode: 'reverse'
-        };
+// =========================================================================
+        // PENGATURAN DEFAULT & JEMBATAN SINKRONISASI MANUAL
+        // =========================================================================
+        // Mengisi nilai bawaan langsung ke dalam objek STATE tanpa mendeklarasikan ulang let
+        if (!STATE.settings.tournamentMode) {
+            Object.assign(STATE.settings, {
+                tournamentMode: 'double',
+                finalRandoriMode: 'single',
+                maxPesertaPoolEmbu: 9,
+                kuotaFinalEmbu: 6,
+                embuB2Mode: 'reverse',
+                minPesertaJuara: 5,
+                eksibisiLangsungFinal: false,
+                embuFormat: 'standard'
+            });
+        }
 
-        // =========================================================================
-        // FUNGSI SINKRONISASI DATA UTAMA (OPTIMIZED PARALLEL FETCH)
-        // =========================================================================
+        // Jembatan pemanggilan initJadwal agar tombol sinkronisasi manual tetap berfungsi
         function initJadwal(isManual = false) {
             const syncBtn = document.getElementById('btn-sync-data');
             const originalBtnText = syncBtn ? syncBtn.innerHTML : '';
@@ -950,50 +960,13 @@
                 syncBtn.disabled = true;
             }
 
-            // Menarik 4 pilar data secara paralel, MENGABAIKAN rundown_state (agar tidak download ganda)
-            return Promise.all([
-                db.ref('turnamen_data/categories').once('value'),
-                db.ref('turnamen_data/participants').once('value'),
-                db.ref('turnamen_data/matches').once('value'),
-                db.ref('turnamen_data/settings').once('value')
-            ]).then(([snapCat, snapPart, snapMatch, snapSet]) => {
-
-                GLOBAL_DATA.categories = snapCat.exists() ? Object.values(snapCat.val()) : [];
-                GLOBAL_DATA.participants = snapPart.exists() ? Object.values(snapPart.val()) : [];
-
-                // --- GHOST PROTOCOL: Basmi Partai BYE & Auto-Win ---
-                let rawMatches = snapMatch.exists() ? Object.values(snapMatch.val()) : [];
-                GLOBAL_DATA.matches = rawMatches.filter(m => {
-                    let p1 = (m.player1 || '').toString().toUpperCase().trim();
-                    let p2 = (m.player2 || '').toString().toUpperCase().trim();
-                    if (p1 === 'BYE' || p2 === 'BYE') return false;
-                    return true;
-                });
-
-                if (snapSet.exists()) {
-                    const settings = snapSet.val();
-                    // Inject ke Global Settings MASS KEMPO
-                    GLOBAL_SETTINGS.tournamentMode = settings.tournamentMode;
-                    GLOBAL_SETTINGS.finalRandoriMode = settings.finalRandoriMode;
-                    GLOBAL_SETTINGS.maxPesertaPoolEmbu = settings.maxPesertaPoolEmbu;
-                    GLOBAL_SETTINGS.kuotaFinalEmbu = settings.kuotaFinalEmbu;
-                    GLOBAL_SETTINGS.embuB2Mode = settings.embuB2Mode;
-                    GLOBAL_SETTINGS.minPesertaJuara = settings.minPesertaJuara;
-                    GLOBAL_SETTINGS.eksibisiLangsungFinal = settings.eksibisiLangsungFinal;
-                    GLOBAL_SETTINGS.embuFormat = settings.embuFormat || 'standard';
-
-                    // Update UI Panel Diagnostik jika fungsinya ada
-                    if (typeof updateSettingsUI === 'function') {
-                        updateSettingsUI(settings);
-                    }
-                }
-
+            return initSystem().then(() => {
                 if (isManual) {
-                    alert("Data (Peserta, Kategori, Aturan) berhasil disinkronkan dengan Firebase terbaru!");
+                    alert("Data berhasil disinkronkan dengan server terbaru!");
                 }
-            }).catch(error => {
-                console.error("Gagal menarik data paralel:", error);
-                if (isManual) alert("Koneksi ke Firebase gagal. Periksa jaringan Anda.");
+            }).catch(err => {
+                console.error("Gagal sinkron:", err);
+                if (isManual) alert("Koneksi gagal. Periksa jaringan Anda.");
             }).finally(() => {
                 if (isManual && syncBtn) {
                     syncBtn.innerHTML = originalBtnText;
@@ -2710,39 +2683,7 @@
             alert("✅ Pengaturan waktu berhasil diterapkan pada jadwal!");
         }
 
-        function simpanDraftKeCloud() {
-            if (!window.MASTER_SCHEDULE || window.MASTER_SCHEDULE.length === 0) {
-                alert("⚠️ Jadwal kosong! Tidak ada yang bisa disimpan.");
-                return;
-            }
-
-            const btnSave = document.getElementById('btn-save-draft');
-            let originalText = btnSave.innerHTML;
-            btnSave.innerHTML = `<i class="fas fa-spinner fa-spin mr-1"></i>Proses...`;
-
-            // KUNCI: Menyelipkan getFullUIConfig() agar Setting Hari & Waktu ikut terbang ke Firebase
-            db.ref('turnamen_data/rundown_state').set({
-                isLiveMode: window.IS_LIVE_MODE || false,
-                schedule: window.MASTER_SCHEDULE,
-                config: getFullUIConfig()
-            }).then(() => {
-                btnSave.classList.replace('from-sky-600', 'from-green-600');
-                btnSave.classList.replace('to-cyan-600', 'to-emerald-600');
-                btnSave.innerHTML = `<i class="fas fa-check mr-1"></i>Tersimpan!`;
-
-                setTimeout(() => {
-                    btnSave.className = btnSave.className.replace(/from-green-600|to-emerald-600/g, '');
-                    btnSave.classList.add('from-sky-600', 'to-cyan-600');
-                    btnSave.innerHTML = originalText;
-                }, 2000);
-            }).catch(error => {
-                console.error("Gagal simpan draft:", error);
-                btnSave.innerHTML = originalText;
-                alert("Gagal menyimpan draft ke database. Periksa koneksi internet Anda.");
-            });
-        }
-
-        // =========================================================================
+                // =========================================================================
         // 1. KONTROL MANUAL (GESER PANAH NAIK/TURUN LINTAS HARI)
         // =========================================================================
         function moveBlock(day, court, idx, direction) {
