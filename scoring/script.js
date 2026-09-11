@@ -8114,37 +8114,43 @@ async function tarikDataPendaftaran() {
             let kyuList = [];
             let umurList = [];
 
-            // 2. Operasi Pemecahan String (NAMA | KYU | TGL)
+            // 2. Operasi Pemecahan String (NAMA | KYU | TGL) dengan Pelindung NaN
             data.atlet.forEach(atletStr => {
                 let parts = atletStr.split('|').map(s => s.trim());
                 if (parts[0]) namaList.push(parts[0]);
                 if (parts[1]) kyuList.push(parts[1]);
+                
+                // Pastikan parts[2] bukan sekadar ada, tetapi menghasilkan tahun yang sah
                 if (parts[2]) {
-                    let birthYear = new Date(parts[2]).getFullYear();
+                    let parsedDate = new Date(parts[2]);
+                    let birthYear = parsedDate.getFullYear();
                     let currentYear = new Date().getFullYear();
-                    umurList.push(currentYear - birthYear);
+                    
+                    if (!isNaN(birthYear) && birthYear > 1900 && birthYear <= currentYear) {
+                        umurList.push(currentYear - birthYear);
+                    }
                 }
             });
 
-            // 3. Jahit nama menjadi satu baris (Arif & Budi & Candra)
+            // 3. Jahit nama & kalkulasi umur dengan jaring pengaman angka sah (Anti-NaN)
             let combinedName = namaList.join(' & ');
-            let combinedKyu = kyuList.length > 0 ? kyuList[0] : ""; // Ambil kyu orang pertama sebagai perwakilan
-            let maxUmur = umurList.length > 0 ? Math.max(...umurList) : 0; // Ambil umur tertua
+            let combinedKyu = kyuList.length > 0 ? kyuList[0] : "";
+            
+            let calculatedUmur = umurList.length > 0 ? Math.max(...umurList) : 0;
+            let maxUmur = (isNaN(calculatedUmur) || calculatedUmur < 0) ? 0 : calculatedUmur;
 
             // --- PIPA NORMALISASI (DATA SANITIZATION) ---
             let catNameRaw = data.kelas;
             let kontingenFinal = data.kontingen;
 
-            // Saringan Regex: Deteksi kurung berisi 1 Huruf, Angka, atau Romawi di UJUNG kalimat
-            // Berlaku untuk: " (A)", " (B)", " (I)", " (1)", dll. Kata "(Putra)" akan kebal.
             const suffixRegex = /\s*\(([a-zA-Z]|[IVX]{1,3}|\d{1,2})\)$/i;
             let matchSuffix = catNameRaw.match(suffixRegex);
 
-            let catName = catNameRaw; // Default jika tidak ada ekor
+            let catName = catNameRaw;
 
             if (matchSuffix) {
-                catName = catNameRaw.replace(suffixRegex, '').trim(); // Potong ekor dari Kategori
-                kontingenFinal = `${data.kontingen} (${matchSuffix[1].toUpperCase()})`; // Pindah ekor ke Kontingen
+                catName = catNameRaw.replace(suffixRegex, '').trim();
+                kontingenFinal = `${data.kontingen} (${matchSuffix[1].toUpperCase()})`;
             }
             // --- AKHIR PIPA NORMALISASI ---
 
@@ -8156,29 +8162,26 @@ async function tarikDataPendaftaran() {
                 STATE.categories.push({
                     id: Date.now() + Math.random(),
                     name: catName,
-                    type: namaList.length, // Otomatis deteksi Format (1, 2, atau 3+)
+                    type: namaList.length,
                     discipline: discipline
                 });
                 addedCategories.add(catName);
             }
 
-            // 5. TEMBAK JITU: Cari berdasarkan idFirestore ATAU pencocokan literal (untuk update data lama)
+            // 5. TEMBAK JITU: Cari berdasarkan idFirestore ATAU pencocokan literal
             let existingIndex = STATE.participants.findIndex(p =>
                 (p.idFirestore === doc.id) ||
                 (!p.idFirestore && p.nama === combinedName && p.kategori === catName && p.kontingen === kontingenFinal)
             );
 
             if (existingIndex > -1) {
-                // DATA DITEMUKAN: Lakukan Precision Update
                 let p = STATE.participants[existingIndex];
                 p.idFirestore = doc.id;
                 p.nama = combinedName;
                 p.kyu = combinedKyu;
                 p.umur = maxUmur;
                 p.kontingen = kontingenFinal;
-                // WAZA DIBUANG DARI SINI: RTDB tetap bersih!
             } else {
-                // DATA BARU: Masukkan sebagai pendaftar fresh
                 newParticipants.push({
                     id: Date.now() + successCount++,
                     idFirestore: doc.id,
@@ -8187,16 +8190,22 @@ async function tarikDataPendaftaran() {
                     kategori: catName,
                     kyu: combinedKyu,
                     umur: maxUmur,
-                    // WAZA DIBUANG DARI SINI: RTDB tetap bersih!
-                    urut: 0, pool: '-', isFinalist: false, urutFinal: 0, losses: 0,
-                    scores: { b1: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 }, b2: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 } },
-                    finalScore: 0, techScore: 0
+                    urut: 0, 
+                    pool: '-', 
+                    isFinalist: false, 
+                    urutFinal: 0, 
+                    losses: 0,
+                    scores: { 
+                        b1: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 }, 
+                        b2: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 } 
+                    },
+                    finalScore: 0, 
+                    techScore: 0
                 });
             }
         });
 
         // 6. Simpan Perubahan ke MASS KEMPO
-        // Karena ada Precision Update (edit data tanpa push baru), kita update jika ada dokumen di snapshot
         if (newParticipants.length > 0 || addedCategories.size > 0 || !snapshot.empty) {
             STATE.participants = STATE.participants.concat(newParticipants);
 
