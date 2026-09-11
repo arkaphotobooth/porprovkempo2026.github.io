@@ -613,50 +613,157 @@
         }
 
         // =========================================================================
-        // ARSITEKTUR DUAL-DATABASE FIREBASE (OFFICIAL CONFIG)
+        // ARSITEKTUR MULTI-MODE JARINGAN (CLOUD SESSION & LOCAL LAN) - MASS KEMPO
         // =========================================================================
-        // Proyek B: Realtime Database (Scoring Utama) -> INSTANCE DEFAULT
-        const firebaseConfigB = {
-            apiKey: "AIzaSyA63UtPlhEdC9qKmmHVpDjGv_4RqWjK47k",
-            authDomain: "mass-pro-turnamen.firebaseapp.com",
-            projectId: "mass-pro-turnamen",
-            databaseURL: "https://mass-pro-turnamen-default-rtdb.asia-southeast1.firebasedatabase.app/",
-            storageBucket: "mass-pro-turnamen.firebasestorage.app",
-            messagingSenderId: "268290671498",
-            appId: "1:268290671498:web:d55e4960e392f7dfc8fe73"
+        let SYSTEM_MODE = 'local'; // 'online' | 'hybrid' | 'local'
+        let database = null;       // Instance Firebase RTDB
+        let firestoreDB = null;    // Instance Firestore Pendaftaran
+        let DEVICE_ROLE = localStorage.getItem('mass_device_role') || 'admin';
+
+        // State Master Tunggal
+        let STATE = {
+            categories: [],
+            participants: [],
+            matches: [],
+            rundown: [],
+            settings: {}
         };
 
-        // Proyek A: Cloud Firestore (Aplikasi Pendaftaran) -> NAMED INSTANCE
-        const firebaseConfigA = {
-            apiKey: "AIzaSyD0MSNQBRpfZBzRgMdz726lnB5YX_TnLpo",
-            authDomain: "integrasi-sistem-kempo.firebaseapp.com",
-            projectId: "integrasi-sistem-kempo",
-            storageBucket: "integrasi-sistem-kempo.firebasestorage.app",
-            messagingSenderId: "255724075177",
-            appId: "1:255724075177:web:c54fa5dee560b66e1611b8"
-        };
-
-        // Inisialisasi Instance B (Default RTDB - Scoring)
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfigB);
-        } else {
-            firebase.app();
-        }
-        const db = firebase.database();
-
-        // Inisialisasi Instance A (Named App - Pendaftaran Firestore)
-        let regApp = firebase.apps.find(app => app.name === "regApp");
-        if (!regApp) {
-            regApp = firebase.initializeApp(firebaseConfigA, "regApp");
-        }
-        const fs = regApp.firestore(); // Jangkar khusus Firestore Project Pendaftaran
-
-        // Objek Cache Lokal untuk menampung pendaftaran mentah
+        // Jembatan Kompatibilitas (Zero-Regression Bridge)
+        // Menjaga seluruh fungsi generator, drag-drop, dan cetak tetap bekerja tanpa rename manual
+        let GLOBAL_DATA = STATE;
+        let GLOBAL_SETTINGS = STATE.settings;
+        window.MASTER_SCHEDULE = STATE.rundown;
         window.DATA_PENDAFTARAN_MENTAH = null;
-
-        let GLOBAL_DATA = { categories: [], participants: [], matches: [] };
         let generatorConfig = { courts: 2, days: 2 };
 
+        function loadSessionData() {
+            try {
+                const raw = localStorage.getItem('mass_kempo_session');
+                if (!raw) return null;
+                const session = JSON.parse(raw);
+                if (session.courtId || session.username) {
+                    DEVICE_ROLE = (session.courtId || session.username).toLowerCase().replace(/\s+/g, '_');
+                }
+                return session;
+            } catch (e) {
+                console.warn("Gagal membaca mass_kempo_session:", e);
+                return null;
+            }
+        }
+
+        const ACTIVE_SESSION = loadSessionData();
+
+        async function initSystem() {
+            const isStaticCloud = window.location.hostname.includes('github.io') || 
+                                  window.location.hostname.includes('netlify.app') || 
+                                  (ACTIVE_SESSION && ACTIVE_SESSION.serverConfig && ACTIVE_SESSION.serverConfig.rtdbConfig);
+
+            // 1. JALUR ONLINE CLOUD (Hosting Statis / Sesi Portal)
+            if (isStaticCloud && ACTIVE_SESSION && ACTIVE_SESSION.serverConfig && ACTIVE_SESSION.serverConfig.rtdbConfig) {
+                SYSTEM_MODE = 'online';
+                const { rtdbConfig, firestoreConfig } = ACTIVE_SESSION.serverConfig;
+
+                try {
+                    if (!firebase.apps.length) firebase.initializeApp(rtdbConfig);
+                    database = firebase.database();
+
+                    // Firestore hanya diinisialisasi jika config tersedia (0 Background Read)
+                    if (firestoreConfig && Object.keys(firestoreConfig).length > 0) {
+                        let appPendaftaran = firebase.apps.find(a => a.name === 'AplikasiPendaftaran');
+                        if (!appPendaftaran) {
+                            appPendaftaran = firebase.initializeApp(firestoreConfig, 'AplikasiPendaftaran');
+                        }
+                        firestoreDB = appPendaftaran.firestore();
+                    }
+
+                    // Listener Realtime RTDB (Hanya bandwidth RTDB, bukan kuota dokumen Firestore)
+                    database.ref('turnamen_data').on('value', (snapshot) => {
+                        if (snapshot.exists()) {
+                            applyIncomingData(snapshot.val());
+                        }
+                    });
+                    return;
+                } catch (err) {
+                    console.error("Gagal inisialisasi Cloud Firebase:", err);
+                }
+            }
+
+            // 2. JALUR LOKAL LAN / HYBRID (Server Node.js)
+            try {
+                const response = await fetch('/api/network');
+                if (!response.ok) throw new Error("Bukan server LAN Node.js");
+                const net = await response.json();
+                SYSTEM_MODE = net.mode || 'local';
+
+                if (net.rtdb_config && Object.keys(net.rtdb_config).length > 0) {
+                    if (!firebase.apps.length) firebase.initializeApp(net.rtdb_config);
+                    database = firebase.database();
+                    database.ref('turnamen_data').on('value', (snapshot) => {
+                        if (snapshot.exists()) applyIncomingData(snapshot.val());
+                    });
+                } else {
+                    const localRes = await fetch('/api/data_turnamen');
+                    if (localRes.ok) {
+                        const localData = await localRes.json();
+                        applyIncomingData(localData);
+                    }
+                }
+            } catch (err) {
+                console.warn("Jaringan server offline, menggunakan cadangan lokal:", err);
+            }
+        }
+
+        function applyIncomingData(data) {
+            if (!data) return;
+
+            STATE.categories = data.categories ? (Array.isArray(data.categories) ? data.categories : Object.values(data.categories)) : [];
+            STATE.participants = data.participants ? (Array.isArray(data.participants) ? data.participants : Object.values(data.participants)) : [];
+
+            let rawMatches = data.matches ? (Array.isArray(data.matches) ? data.matches : Object.values(data.matches)) : [];
+            STATE.matches = rawMatches.filter(m => {
+                let p1 = (m.player1 || '').toString().toUpperCase().trim();
+                let p2 = (m.player2 || '').toString().toUpperCase().trim();
+                return !(p1 === 'BYE' || p2 === 'BYE');
+            });
+
+            if (data.settings) {
+                STATE.settings = data.settings;
+                GLOBAL_SETTINGS = STATE.settings;
+                if (typeof updateSettingsUI === 'function') updateSettingsUI(STATE.settings);
+            }
+
+            // Sinkronisasi Rundown dari server HANYA jika jadwal lokal tidak sedang dalam mode penyusunan draft
+            let incomingSchedule = null;
+            let incomingConfig = null;
+
+            if (data.rundown_state) {
+                incomingSchedule = data.rundown_state.schedule || null;
+                incomingConfig = data.rundown_state.config || null;
+                window.IS_LIVE_MODE = data.rundown_state.isLiveMode || false;
+            } else if (data.rundown) {
+                incomingSchedule = data.rundown;
+            }
+
+            // Jika di memori ada jadwal live atau lokal kosong, terapkan data server
+            if (incomingSchedule && Array.isArray(incomingSchedule) && incomingSchedule.length > 0) {
+                if (window.IS_LIVE_MODE || !window.MASTER_SCHEDULE || window.MASTER_SCHEDULE.length === 0) {
+                    let targetCfg = incomingConfig || (typeof getFullUIConfig === 'function' ? getFullUIConfig() : null);
+                    if (targetCfg && typeof setFullUIConfig === 'function') {
+                        setFullUIConfig(targetCfg).then(() => {
+                            STATE.rundown = (typeof reconcileSchedule === 'function') ? reconcileSchedule(incomingSchedule, targetCfg) : incomingSchedule;
+                            window.MASTER_SCHEDULE = STATE.rundown;
+                            if (typeof recalculateTimeline === 'function') recalculateTimeline();
+                        });
+                    } else {
+                        STATE.rundown = incomingSchedule;
+                        window.MASTER_SCHEDULE = STATE.rundown;
+                        if (typeof recalculateTimeline === 'function') recalculateTimeline();
+                    }
+                }
+            }
+        }
+        
         // =========================================================================
         // FITUR BARU: SISTEM KEAMANAN ADMIN (RBAC) & SESSION DARI PORTAL
         // =========================================================================
@@ -730,10 +837,7 @@
 
         // --- 2. LOGIKA UI & FIREBASE SYNC ---
         document.addEventListener('DOMContentLoaded', () => {
-
-            // =========================================================================
-            // ENGINE SENSOR SENTUH (POLYFILL NATIVE HTML5 DRAG & DROP)
-            // =========================================================================
+            // Sensor Sentuh Mobile Drag & Drop
             try {
                 if (typeof window.MobileDragDrop !== 'undefined') {
                     window.MobileDragDrop.polyfill({
@@ -741,49 +845,44 @@
                         holdToDrag: 0
                     });
                 }
-            } catch (e) { console.warn("Sensor mobile drag-drop gagal dimuat", e); }
+            } catch (e) { console.warn("Sensor mobile drag-drop gagal dimuat:", e); }
 
             window.addEventListener('touchmove', function () { }, { passive: false });
 
             renderDayNameInputs();
             checkAdminState();
 
-            // 1. Tarik Data Master (Peserta, Kategori, Aturan) secara Paralel di background
-            initJadwal().then(() => {
+            // Safe Boot: Utamakan Draft Lokal Bapekel agar pekerjaan tidak hilang saat refresh
+            let localDraft = localStorage.getItem('mass_kempo_draft');
+            if (localDraft) {
+                try {
+                    let parsed = JSON.parse(localDraft);
+                    if (parsed.schedule && parsed.schedule.length > 0) {
+                        STATE.rundown = parsed.schedule;
+                        window.MASTER_SCHEDULE = STATE.rundown;
+                        if (parsed.config) setFullUIConfig(parsed.config);
+                        window.IS_LIVE_MODE = false;
 
-                // 2. CEK BRANKAS LOKAL: Apakah ada DRAFT yang sedang dikerjakan?
-                let localDraft = localStorage.getItem('mass_kempo_draft');
-                if (localDraft) {
-                    try {
-                        let parsed = JSON.parse(localDraft);
-                        if (parsed.schedule && parsed.schedule.length > 0) {
-                            window.MASTER_SCHEDULE = parsed.schedule;
-                            if (parsed.config) setFullUIConfig(parsed.config);
-                            window.IS_LIVE_MODE = false;
+                        document.getElementById('btn-draft').classList.add('hidden');
+                        document.getElementById('btn-lock').classList.remove('hidden');
+                        document.getElementById('btn-delete').classList.remove('hidden');
+                        document.getElementById('btn-save-draft').classList.remove('hidden');
 
-                            // Amankan Tombol
-                            document.getElementById('btn-draft').classList.add('hidden');
-                            document.getElementById('btn-lock').classList.remove('hidden');
-                            document.getElementById('btn-delete').classList.remove('hidden');
-
-                            // Lukis UI Instan dari Draft Lokal
-                            renderJadwal(window.MASTER_SCHEDULE);
-                            console.log("🛡️ Draft lokal dipulihkan. Pekerjaan Anda aman.");
-                        } else {
-                            // Jika brankas lokal ternyata kosong, otomatis tarik dari Cloud
-                            loadScheduleFromFirebase(true); // true = mode silent (tanpa loading screen heboh)
-                        }
-                    } catch (e) {
-                        console.error("Cache lokal rusak");
-                        loadScheduleFromFirebase(true);
+                        renderJadwal(window.MASTER_SCHEDULE);
+                        console.log("🛡️ Safe Boot: Draft lokal berhasil dimuat dari brankas.");
                     }
-                } else {
-                    // Tidak ada draft sama sekali (contoh: di laptop Wasit), tarik dari Cloud
+                } catch (e) { console.error("Cache draft lokal rusak:", e); }
+            }
+
+            // Inisialisasi Jaringan Multi-Mode (Cloud / Local LAN)
+            initSystem().then(() => {
+                // Jika tidak ada draft lokal sama sekali, minta data rundown resmi dari Cloud/Server
+                if (!window.MASTER_SCHEDULE || window.MASTER_SCHEDULE.length === 0) {
                     loadScheduleFromFirebase(true);
                 }
             });
         });
-
+        
         function setRundownOpt(type, value) {
             generatorConfig[type] = value;
             const buttons = document.querySelectorAll(`.rd-opt-${type}`);
@@ -1122,48 +1221,88 @@
             simpanDraftKeCloud();
         }
 
-        function uploadToFirebase() {
+        // =========================================================================
+        // PENGGANTI BLOK 3: MESIN PENYIMPANAN & PENARIKAN (CLOUD & LOCAL LAN)
+        // =========================================================================
+
+        // 1. MESIN UTAMA SIMPAN JADWAL (Mendukung Cloud RTDB, Server LAN Node.js, & Brankas Browser)
+        function saveSchedule() {
             if (!window.MASTER_SCHEDULE || window.MASTER_SCHEDULE.length === 0) {
-                alert("Jadwal kosong! Buat rundown terlebih dahulu.");
+                alert("⚠️ Jadwal kosong! Buat rundown terlebih dahulu.");
                 return;
             }
 
-            const btn = document.getElementById('btn-lock');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> Mengudara...`;
-            btn.disabled = true;
+            const btnSave = document.getElementById('btn-save-draft');
+            const btnLock = document.getElementById('btn-lock');
+            let activeBtn = (btnSave && !btnSave.classList.contains('hidden')) ? btnSave : btnLock;
+            let originalText = activeBtn ? activeBtn.innerHTML : '';
+            if (activeBtn) activeBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-1"></i> Menyimpan...`;
+
+            const isCloud = SYSTEM_MODE === 'online';
+            const isHybrid = SYSTEM_MODE === 'hybrid';
+            const isLocal = SYSTEM_MODE === 'local';
 
             const payload = {
+                isLiveMode: window.IS_LIVE_MODE || false,
                 schedule: window.MASTER_SCHEDULE,
                 config: getFullUIConfig(),
                 last_updated: new Date().toISOString(),
-                is_live: true
+                updatedAt: Date.now()
             };
 
-            // Mengirim ke node 'rundown_state'
-            db.ref('turnamen_data/rundown_state').set(payload)
-                .then(() => {
-                    window.IS_LIVE_MODE = true;
-                    alert("🚀 Jadwal berhasil di-Lock dan disiarkan ke seluruh perangkat (Cloud)!");
+            // A. Simpan ke Brankas Browser Lokal (Pencegah data hilang saat refresh)
+            localStorage.setItem('mass_kempo_draft', JSON.stringify({
+                schedule: window.MASTER_SCHEDULE,
+                config: payload.config
+            }));
 
-                    document.getElementById('btn-lock').classList.add('hidden');
-                    document.getElementById('btn-draft').classList.remove('hidden');
-                })
-                .catch(error => {
-                    console.error("Gagal menyimpan ke Cloud:", error);
-                    alert("Gagal menyimpan ke server. Periksa koneksi internet Anda.");
-                })
-                .finally(() => {
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                });
+            // B. Simpan ke Server Lokal LAN Node.js (Jika berada di jaringan offline/hybrid)
+            if ((isLocal || isHybrid) && !window.location.hostname.includes('github.io') && !window.location.hostname.includes('netlify.app')) {
+                fetch('/api/data_turnamen', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        rundown_state: payload,
+                        rundown: window.MASTER_SCHEDULE
+                    })
+                }).catch(err => console.warn("Gagal simpan ke server LAN Node.js:", err));
+            }
+
+            // C. Simpan ke Firebase RTDB khusus node rundown_state
+            if ((isCloud || isHybrid) && database) {
+                database.ref('turnamen_data/rundown_state').set(payload)
+                    .then(() => {
+                        if (activeBtn) {
+                            activeBtn.innerHTML = `<i class="fas fa-check mr-1"></i> Tersimpan!`;
+                            setTimeout(() => { activeBtn.innerHTML = originalText; }, 2000);
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Gagal simpan ke Firebase:", error);
+                        if (activeBtn) activeBtn.innerHTML = originalText;
+                        alert("Gagal menyimpan ke server Cloud. Periksa koneksi internet Anda.");
+                    });
+            } else {
+                if (activeBtn) {
+                    activeBtn.innerHTML = `<i class="fas fa-check mr-1"></i> Tersimpan Lokal!`;
+                    setTimeout(() => { activeBtn.innerHTML = originalText; }, 2000);
+                }
+            }
         }
 
+        // Bridge alias agar pemanggilan fungsi simpan lama tetap berfungsi
+        function simpanDraftKeCloud() { saveSchedule(); }
+        function uploadToFirebase() { saveSchedule(); }
+        function saveScheduleToFirebase() { saveSchedule(); }
+
+        // 2. MESIN PENARIK JADWAL RESMI DARI SERVER / CLOUD
         function loadScheduleFromFirebase(isSilent = false) {
-            const btn = document.getElementById('btn-tarik-cloud');
-            if (btn && !isSilent) {
-                btn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Menarik...`;
-                btn.disabled = true;
+            // Menggunakan ID tombol yang sesuai dengan HTML: btn-pull-draft
+            const btnPull = document.getElementById('btn-pull-draft');
+            let originalText = btnPull ? btnPull.innerHTML : '';
+
+            if (btnPull && !isSilent) {
+                btnPull.innerHTML = `<i class="fas fa-spinner fa-spin mr-1"></i> Menarik...`;
             }
 
             if (!isSilent) {
@@ -1174,101 +1313,156 @@
                     </div>`;
             }
 
-            db.ref('turnamen_data/rundown_state').once('value')
-                .then(snapshot => {
-                    if (snapshot.exists()) {
-                        const data = snapshot.val();
-                        if (data.schedule && data.schedule.length > 0) {
+            // Jalur Penarikan Firebase RTDB
+            if (database) {
+                database.ref('turnamen_data/rundown_state').once('value')
+                    .then(snapshot => {
+                        if (snapshot.exists()) {
+                            const data = snapshot.val();
+                            if (data.schedule && data.schedule.length > 0) {
+                                // Rekonstruksi metadata agar struktur data-driven tidak patah
+                                window.MASTER_SCHEDULE = data.schedule.map(dayArr =>
+                                    dayArr.map(courtArr =>
+                                        courtArr.map(item => ({
+                                            ...item,
+                                            matchNums: item.matchNums || [],
+                                            isH2H: item.isH2H || false,
+                                            babak: item.babak || ''
+                                        }))
+                                    )
+                                );
+                                STATE.rundown = window.MASTER_SCHEDULE;
 
-                            // 🛡️ REKONSTRUKSI AMAN: Pastikan properti array tidak jadi undefined saat ditarik dari Firebase
-                            window.MASTER_SCHEDULE = data.schedule.map(dayArr =>
-                                dayArr.map(courtArr =>
-                                    courtArr.map(item => ({
-                                        ...item,
-                                        matchNums: item.matchNums || [],
-                                        isH2H: item.isH2H || false,
-                                        babak: item.babak || ''
-                                    }))
-                                )
-                            );
+                                if (data.config) setFullUIConfig(data.config);
+                                window.IS_LIVE_MODE = data.isLiveMode || false;
 
-                            if (data.config) setFullUIConfig(data.config);
-                            window.IS_LIVE_MODE = true;
+                                // Simpan ke brankas lokal browser
+                                localStorage.setItem('mass_kempo_draft', JSON.stringify({
+                                    schedule: window.MASTER_SCHEDULE,
+                                    config: data.config
+                                }));
 
-                            // 🔒 BACKUP LOKAL: Setelah sukses ditarik, simpan ke brankas lokal
-                            // Agar kalau user tidak sengaja refresh, jadwal cloud tidak perlu di-download ulang dari nol
-                            localStorage.setItem('mass_kempo_draft', JSON.stringify({
-                                schedule: window.MASTER_SCHEDULE,
-                                config: data.config
-                            }));
+                                renderJadwal(window.MASTER_SCHEDULE);
 
-                            renderJadwal(window.MASTER_SCHEDULE);
+                                document.getElementById('btn-delete').classList.remove('hidden');
+                                document.getElementById('btn-save-draft').classList.remove('hidden');
 
-                            document.getElementById('btn-draft').classList.remove('hidden');
-                            document.getElementById('btn-lock').classList.add('hidden');
-                            document.getElementById('btn-delete').classList.remove('hidden');
+                                if (window.IS_LIVE_MODE) {
+                                    document.getElementById('btn-draft').classList.add('hidden');
+                                    document.getElementById('btn-lock').classList.add('hidden');
+                                    document.getElementById('btn-unlock').classList.remove('hidden');
+                                    document.getElementById('btn-sync').classList.remove('hidden');
+                                } else {
+                                    document.getElementById('btn-draft').classList.add('hidden');
+                                    document.getElementById('btn-lock').classList.remove('hidden');
+                                }
 
-                            if (!isSilent) alert("Berhasil menarik jadwal resmi dari Cloud!");
+                                if (!isSilent) {
+                                    if (btnPull) {
+                                        btnPull.classList.replace('text-sky-400', 'text-green-400');
+                                        btnPull.innerHTML = `<i class="fas fa-check mr-1"></i> Sukses!`;
+                                        setTimeout(() => {
+                                            btnPull.classList.replace('text-green-400', 'text-sky-400');
+                                            btnPull.innerHTML = originalText;
+                                        }, 2000);
+                                    }
+                                    alert("Berhasil menarik jadwal resmi dari Cloud!");
+                                }
+                            } else {
+                                if (!isSilent) {
+                                    alert("Jadwal di Cloud kosong.");
+                                    document.getElementById('jadwal-list').innerHTML = `<div class="text-center py-10 text-slate-500">Jadwal masih kosong</div>`;
+                                    if (btnPull) btnPull.innerHTML = originalText;
+                                }
+                            }
                         } else {
                             if (!isSilent) {
-                                alert("Jadwal di Cloud kosong.");
-                                document.getElementById('jadwal-list').innerHTML = `<div class="text-center py-10 text-slate-500">Jadwal masih kosong</div>`;
+                                alert("Belum ada jadwal yang tersimpan di Cloud.");
+                                document.getElementById('jadwal-list').innerHTML = `<div class="text-center py-10 text-slate-500">Belum ada jadwal</div>`;
+                                if (btnPull) btnPull.innerHTML = originalText;
                             }
                         }
-                    } else {
+                    })
+                    .catch(error => {
+                        console.error("Gagal menarik data dari Cloud:", error);
                         if (!isSilent) {
-                            alert("Belum ada jadwal yang tersimpan di Cloud.");
-                            document.getElementById('jadwal-list').innerHTML = `<div class="text-center py-10 text-slate-500">Belum ada jadwal</div>`;
+                            alert("Gagal terhubung ke Cloud.");
+                            if (btnPull) btnPull.innerHTML = originalText;
                         }
-                    }
-                })
-                .catch(error => {
-                    console.error("Gagal menarik data dari Cloud:", error);
-                    if (!isSilent) alert("Gagal terhubung ke Cloud.");
-                })
-                .finally(() => {
-                    if (btn && !isSilent) {
-                        btn.innerHTML = `<i class="fas fa-cloud-download-alt mr-2"></i> Tarik dari Cloud`;
-                        btn.disabled = false;
-                    }
-                });
+                    });
+            } 
+            // Jalur Penarikan Server Lokal LAN Node.js
+            else if (SYSTEM_MODE === 'local') {
+                fetch('/api/data_turnamen')
+                    .then(res => res.json())
+                    .then(data => {
+                        applyIncomingData(data);
+                        if (!isSilent && btnPull) {
+                            btnPull.innerHTML = `<i class="fas fa-check mr-1"></i> Sukses!`;
+                            setTimeout(() => { btnPull.innerHTML = originalText; }, 2000);
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Gagal menarik data LAN:", err);
+                        if (!isSilent && btnPull) {
+                            btnPull.innerHTML = originalText;
+                            alert("Gagal terhubung ke Server Lokal LAN.");
+                        }
+                    });
+            }
         }
 
+        // 3. MESIN SINKRONISASI LIVE PERTANDINGAN
         function syncLive() {
             let btn = document.getElementById('btn-sync');
             let originalHTML = btn.innerHTML;
-            btn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Menyinkronkan...`;
+            btn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> Menyinkronkan...`;
 
-            db.ref('turnamen_data').once('value').then((snapshot) => {
-                if (snapshot.exists()) {
-                    const data = snapshot.val();
-                    GLOBAL_DATA.participants = data.participants ? Object.values(data.participants) : [];
+            if (database) {
+                database.ref('turnamen_data').once('value').then((snapshot) => {
+                    if (snapshot.exists()) {
+                        const data = snapshot.val();
+                        STATE.participants = data.participants ? Object.values(data.participants) : [];
+                        GLOBAL_DATA.participants = STATE.participants;
 
-                    // --- GHOST PROTOCOL: Basmi Partai BYE di Live Sync ---
-                    let rawMatches = data.matches ? Object.values(data.matches) : [];
-                    GLOBAL_DATA.matches = rawMatches.filter(m => {
-                        let p1 = (m.player1 || '').toString().toUpperCase().trim();
-                        let p2 = (m.player2 || '').toString().toUpperCase().trim();
-                        if (p1 === 'BYE' || p2 === 'BYE') return false;
-                        return true;
-                    });
+                        // Ghost Protocol: Basmi partai BYE
+                        let rawMatches = data.matches ? Object.values(data.matches) : [];
+                        STATE.matches = rawMatches.filter(m => {
+                            let p1 = (m.player1 || '').toString().toUpperCase().trim();
+                            let p2 = (m.player2 || '').toString().toUpperCase().trim();
+                            return !(p1 === 'BYE' || p2 === 'BYE');
+                        });
+                        GLOBAL_DATA.matches = STATE.matches;
 
-                    recalculateTimeline();
+                        recalculateTimeline();
 
-                    btn.classList.replace('bg-cyan-600', 'bg-green-600');
-                    btn.innerHTML = `<i class="fas fa-check mr-2"></i>Tersinkron!`;
-                    setTimeout(() => {
-                        btn.classList.replace('bg-green-600', 'bg-cyan-600');
+                        btn.classList.replace('bg-cyan-600', 'bg-green-600');
+                        btn.innerHTML = `<i class="fas fa-check mr-2"></i> Tersinkron!`;
+                        setTimeout(() => {
+                            btn.classList.replace('bg-green-600', 'bg-cyan-600');
+                            btn.innerHTML = originalHTML;
+                        }, 2000);
+                    } else {
                         btn.innerHTML = originalHTML;
-                    }, 2000);
-                } else {
+                    }
+                }).catch(e => {
                     btn.innerHTML = originalHTML;
-                }
-            }).catch(e => {
-                btn.innerHTML = originalHTML;
-                console.error("Gagal sinkron:", e);
-                alert("Koneksi gagal! Periksa jaringan Anda.");
-            });
+                    console.error("Gagal sinkron:", e);
+                    alert("Koneksi gagal! Periksa jaringan Anda.");
+                });
+            } else {
+                fetch('/api/data_turnamen')
+                    .then(res => res.json())
+                    .then(data => {
+                        applyIncomingData(data);
+                        btn.innerHTML = `<i class="fas fa-check mr-2"></i> Tersinkron!`;
+                        setTimeout(() => { btn.innerHTML = originalHTML; }, 2000);
+                    })
+                    .catch(() => {
+                        btn.innerHTML = originalHTML;
+                        alert("Gagal sinkron dengan server LAN.");
+                    });
+            }
         }
 
         // --- FUNGSI BUMI HANGUS (HARD RESET) OPTIMIZED ---
