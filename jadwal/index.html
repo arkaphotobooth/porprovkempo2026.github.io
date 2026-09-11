@@ -208,10 +208,16 @@
         <div class="flex items-center gap-3">
             <i class="fas fa-fire text-blue-500 text-2xl"></i>
             <div>
-                <h1 class="text-xl font-black text-white leading-tight">MASS KEMPO</h1>
-                <p class="text-[10px] text-green-400 font-bold tracking-widest"><i
-                        class="fas fa-circle text-[8px] mr-1"></i>ONLINE (FIREBASE)</p>
-            </div>
+    <h1 class="text-xl font-black text-white leading-tight">MASS KEMPO</h1>
+    <div class="flex items-center gap-1.5 flex-wrap">
+        <!-- Judul Event Dinamis -->
+        <span id="header-event-title" class="text-[10px] text-amber-400 font-black uppercase tracking-wider max-w-[160px] sm:max-w-xs md:max-w-sm truncate hidden"></span>
+        <span id="header-event-dot" class="text-[8px] text-slate-500 hidden">•</span>
+        <p id="header-network-status" class="text-[10px] text-green-400 font-bold tracking-widest flex items-center">
+            <i class="fas fa-circle text-[8px] mr-1"></i>ONLINE (FIREBASE)
+        </p>
+    </div>
+</div>
         </div>
         <div class="hidden md:flex gap-4 text-sm font-bold">
             <button id="nav-atlet" onclick="switchView('atlet')"
@@ -717,6 +723,16 @@
         }
 
         function applyIncomingData(data) {
+            // Tampilkan Judul Event di Header
+            let eventName = data.settings?.eventName || data.eventName || ACTIVE_SESSION?.eventName || '';
+            let elTitle = document.getElementById('header-event-title');
+            let elDot = document.getElementById('header-event-dot');
+            if (elTitle && eventName) {
+                elTitle.textContent = eventName;
+                elTitle.classList.remove('hidden');
+                if (elDot) elDot.classList.remove('hidden');
+            }
+            
             if (!data) return;
 
             STATE.categories = data.categories ? (Array.isArray(data.categories) ? data.categories : Object.values(data.categories)) : [];
@@ -1688,38 +1704,58 @@
             let container = document.getElementById('drawing-content');
             if (!katName) { container.innerHTML = `<div class="text-center py-20 text-slate-500"><i class="fas fa-hand-pointer text-4xl mb-3 opacity-30"></i><br>Pilih kategori di atas.</div>`; return; }
 
-            let cat = GLOBAL_DATA.categories.find(c => c.name === katName);
+            let cat = STATE.categories.find(c => c.name === katName) || GLOBAL_DATA.categories.find(c => c.name === katName);
             if (!cat) return;
 
-            if (cat.discipline === 'randori') {
-                let matches = GLOBAL_DATA.matches.filter(m => m.kategori === katName);
+            let isEmbuH2H = cat.discipline === 'embu' && (STATE.settings.embuFormat === 'h2h' || GLOBAL_SETTINGS.embuFormat === 'h2h');
+
+            // Tangani Randori ATAU Embu sistem Double Elimination (H2H)
+            if (cat.discipline === 'randori' || isEmbuH2H) {
+                let matches = (STATE.matches || GLOBAL_DATA.matches || []).filter(m => m.kategori === katName);
                 if (!matches || matches.length === 0) {
                     container.innerHTML = `<div class="text-center py-10 text-slate-500"><i class="fas fa-sitemap text-4xl mb-3 opacity-30"></i><br>Bagan belum dibuat oleh admin Drawing.</div>`;
                     return;
                 }
 
-                // Logika Pembersihan: Sembunyikan partai hantu (BYE/Auto-Win) sesuai Blueprint
+                // Sembunyikan partai BYE / Auto-Win
                 matches = matches.filter(m => m.status !== 'auto-win' && m.merahId !== -1 && m.putihId !== -1);
                 matches.sort((a, b) => a.matchNum - b.matchNum);
 
                 let html = `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">`;
 
                 matches.forEach(m => {
-                    // Logika Modulo 50 sesuai Blueprint
                     let displayNum = m.matchNum % 50 === 0 ? 50 : m.matchNum % 50;
-
-                    // Logika VLOOKUP ke Tabel Participants
-                    let getPlayerName = (pId) => {
-                        if (pId === null || pId === undefined) return '<span class="text-slate-500 italic text-[10px]">Menunggu Pemenang...</span>';
-                        let p = GLOBAL_DATA.participants.find(x => x.id == pId);
-                        return p ? p.nama.toUpperCase() : '<span class="text-red-400">Data Terhapus</span>';
-                    };
-
-                    let merahName = getPlayerName(m.merahId);
-                    let putihName = getPlayerName(m.putihId);
                     let babak = m.babak || 'Penyisihan';
                     let poolLabel = m.pool && m.pool !== '-' ? ` <span class="bg-blue-900/50 text-blue-300 text-[8px] px-1.5 py-0.5 rounded border border-blue-700/50 ml-1">POOL ${m.pool}</span>` : '';
                     let statusBadge = (m.status === 'done' || m.status === 'completed') ? `<span class="bg-emerald-900/50 text-emerald-400 text-[9px] px-2 py-0.5 rounded border border-emerald-700/50 font-bold uppercase tracking-widest shadow-[0_0_5px_rgba(16,185,129,0.2)]">SELESAI</span>` : `<span class="bg-amber-900/20 text-amber-500/50 text-[9px] px-2 py-0.5 rounded border border-amber-700/30 uppercase tracking-widest">Tunggu</span>`;
+
+                    // Helper Card Atlet Responsif HP (Format 2 Baris Vertikal)
+                    let renderPlayerSlot = (pId, borderClass) => {
+                        if (pId === null || pId === undefined || pId === -1) {
+                            return `
+                            <div class="flex items-center bg-slate-900/80 rounded border border-slate-700/50 px-3 py-2 ${borderClass} min-h-[44px]">
+                                <span class="text-[10px] text-slate-500 italic truncate">Menunggu Pemenang...</span>
+                            </div>`;
+                        }
+                        let p = STATE.participants?.find(x => x.id == pId) || GLOBAL_DATA.participants?.find(x => x.id == pId);
+                        if (!p) {
+                            return `
+                            <div class="flex items-center bg-slate-900/80 rounded border border-slate-700/50 px-3 py-2 ${borderClass} min-h-[44px]">
+                                <span class="text-[10px] text-red-400 font-bold truncate">Data Terhapus</span>
+                            </div>`;
+                        }
+                        let nama = p.nama ? p.nama.toUpperCase() : 'UNKNOWN';
+                        let kontingen = p.kontingen ? p.kontingen.toUpperCase() : 'TANPA KONTINGEN';
+
+                        return `
+                        <div class="flex flex-col justify-center bg-slate-900/80 rounded border border-slate-700/50 px-3 py-1.5 ${borderClass} min-h-[44px]">
+                            <div class="text-[11px] font-bold text-slate-100 truncate leading-tight" title="${nama}">${nama}</div>
+                            <div class="text-[9px] font-black text-amber-400 uppercase tracking-wider flex items-center gap-1 mt-0.5 truncate leading-tight" title="${kontingen}">
+                                <i class="fa-solid fa-shield-halved text-[8px] text-amber-400/80 flex-shrink-0"></i>
+                                <span class="truncate">${kontingen}</span>
+                            </div>
+                        </div>`;
+                    };
 
                     html += `
                     <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-3.5 hover:border-blue-500/50 transition-all hover:shadow-lg hover:shadow-blue-900/10 hover:-translate-y-0.5 relative group">
@@ -1731,12 +1767,8 @@
                             ${statusBadge}
                         </div>
                         <div class="flex flex-col gap-2">
-                            <div class="flex items-center bg-slate-900/80 rounded border border-slate-700/50 px-3 py-2 border-l-4 border-l-red-500">
-                                <span class="text-[11px] font-bold text-slate-200 truncate" title="${merahName.replace(/<[^>]*>?/gm, '')}">${merahName}</span>
-                            </div>
-                            <div class="flex items-center bg-slate-900/80 rounded border border-slate-700/50 px-3 py-2 border-l-4 border-l-white">
-                                <span class="text-[11px] font-bold text-slate-200 truncate" title="${putihName.replace(/<[^>]*>?/gm, '')}">${putihName}</span>
-                            </div>
+                            ${renderPlayerSlot(m.merahId, 'border-l-4 border-l-red-500')}
+                            ${renderPlayerSlot(m.putihId, 'border-l-4 border-l-white')}
                         </div>
                         <div class="absolute inset-0 border border-blue-400/0 group-hover:border-blue-400/20 rounded-xl pointer-events-none transition-all"></div>
                     </div>`;
