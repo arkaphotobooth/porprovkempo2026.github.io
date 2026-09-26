@@ -8093,72 +8093,70 @@ async function generateBaganExcel(event) {
 // =========================================================
 // MESIN SINKRONISASI DATA PENDAFTARAN (FIRESTORE TO RTDB)
 // =========================================================
+// Variable temporary untuk menampung atlet yang tidak ada lagi di Firestore
+let PENDING_ORPHAN_ATHLETES = [];
+let PENDING_SYNC_SUMMARY = { newCount: 0, catCount: 0 };
+
 async function tarikDataPendaftaran() {
     if (!confirm("🚀 TARIK DATA PENDAFTARAN?\n\nSistem akan menyedot data dari server Pendaftaran (Firestore) dan memasukkannya ke dalam MASS KEMPO.\nData yang sudah ada tidak akan diduplikasi.\n\nLanjutkan?")) return;
 
     try {
         document.body.style.cursor = 'wait';
 
-        // 1. Sedot data dari koleksi 'pendaftaran_t2'
+        // 1. Sedot data master dari koleksi 'pendaftaran_t2'
         const snapshot = await firestoreDB.collection('pendaftaran_t2').get();
 
         let newParticipants = [];
         let addedCategories = new Set();
         let successCount = 0;
+        let activeFirestoreIds = new Set(); // Himpunan ID Firestore yang masih eksis
 
         snapshot.forEach(doc => {
+            activeFirestoreIds.add(doc.id);
+
             const data = doc.data();
-            if (!data.kelas || !data.atlet || !data.kontingen) return; // Skip jika data cacat
+            if (!data.kelas || !data.atlet || !data.kontingen) return;
 
             let namaList = [];
             let kyuList = [];
             let umurList = [];
 
-            // 2. Operasi Pemecahan String (NAMA | KYU | TGL) dengan Pelindung NaN
+            // 2. Pemecahan String dengan Proteksi NaN
             data.atlet.forEach(atletStr => {
                 let parts = atletStr.split('|').map(s => s.trim());
                 if (parts[0]) namaList.push(parts[0]);
                 if (parts[1]) kyuList.push(parts[1]);
-                
-                // Pastikan parts[2] bukan sekadar ada, tetapi menghasilkan tahun yang sah
                 if (parts[2]) {
                     let parsedDate = new Date(parts[2]);
                     let birthYear = parsedDate.getFullYear();
                     let currentYear = new Date().getFullYear();
-                    
                     if (!isNaN(birthYear) && birthYear > 1900 && birthYear <= currentYear) {
                         umurList.push(currentYear - birthYear);
                     }
                 }
             });
 
-            // 3. Jahit nama & kalkulasi umur dengan jaring pengaman angka sah (Anti-NaN)
             let combinedName = namaList.join(' & ');
             let combinedKyu = kyuList.length > 0 ? kyuList[0] : "";
-            
             let calculatedUmur = umurList.length > 0 ? Math.max(...umurList) : 0;
             let maxUmur = (isNaN(calculatedUmur) || calculatedUmur < 0) ? 0 : calculatedUmur;
 
-            // --- PIPA NORMALISASI (DATA SANITIZATION) ---
+            // Normalisasi Suffix Kategori & Kontingen
             let catNameRaw = data.kelas;
             let kontingenFinal = data.kontingen;
-
-            const suffixRegex = /\s*\(([a-zA-Z]|[IVX]{1,3}|\d{1,2})\)$/i;
+            const suffixRegex = /\s*\(([a-zA-Z]\vert{}[IVX]{1,3}\vert{}\d{1,2})\)$/i;
             let matchSuffix = catNameRaw.match(suffixRegex);
-
             let catName = catNameRaw;
 
             if (matchSuffix) {
                 catName = catNameRaw.replace(suffixRegex, '').trim();
                 kontingenFinal = `${data.kontingen} (${matchSuffix[1].toUpperCase()})`;
             }
-            // --- AKHIR PIPA NORMALISASI ---
 
-            // 4. Auto-Create Kategori (Jika belum ada di MASS KEMPO)
+            // Auto-Create Kategori Baru jika belum ada
             if (!STATE.categories.some(c => c.name === catName)) {
                 let discRaw = catName.toLowerCase();
                 let discipline = discRaw.includes('randori') ? 'randori' : (discRaw.includes('festival') ? 'festival' : 'embu');
-
                 STATE.categories.push({
                     id: Date.now() + Math.random(),
                     name: catName,
@@ -8168,7 +8166,7 @@ async function tarikDataPendaftaran() {
                 addedCategories.add(catName);
             }
 
-            // 5. TEMBAK JITU: Cari berdasarkan idFirestore ATAU pencocokan literal
+            // Tembak Jitu (Update jika sudah ada)
             let existingIndex = STATE.participants.findIndex(p =>
                 (p.idFirestore === doc.id) ||
                 (!p.idFirestore && p.nama === combinedName && p.kategori === catName && p.kontingen === kontingenFinal)
@@ -8190,42 +8188,98 @@ async function tarikDataPendaftaran() {
                     kategori: catName,
                     kyu: combinedKyu,
                     umur: maxUmur,
-                    urut: 0, 
-                    pool: '-', 
-                    isFinalist: false, 
-                    urutFinal: 0, 
-                    losses: 0,
-                    scores: { 
-                        b1: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 }, 
-                        b2: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 } 
-                    },
-                    finalScore: 0, 
-                    techScore: 0
+                    urut: 0, pool: '-', isFinalist: false, urutFinal: 0, losses: 0,
+                    scores: { b1: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 }, b2: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 } },
+                    finalScore: 0, techScore: 0
                 });
             }
         });
 
-        // 6. Simpan Perubahan ke MASS KEMPO
-        if (newParticipants.length > 0 || addedCategories.size > 0 || !snapshot.empty) {
+        // 3. Masukkan data baru ke STATE
+        if (newParticipants.length > 0) {
             STATE.participants = STATE.participants.concat(newParticipants);
+        }
 
-            let updates = {};
-            updates['turnamen_data/categories'] = STATE.categories;
-            updates['turnamen_data/participants'] = STATE.participants;
+        // 4. DETEKSI ATLET MUNDUR / HAPUS (Hanya berlaku untuk data asal Firestore)
+        PENDING_ORPHAN_ATHLETES = STATE.participants.filter(p => p.idFirestore && !activeFirestoreIds.has(p.idFirestore));
+        PENDING_SYNC_SUMMARY = { newCount: newParticipants.length, catCount: addedCategories.size };
 
-            await database.ref().update(updates);
-            refreshAllData();
+        document.body.style.cursor = 'default';
 
-            alert(`✅ SINKRONISASI TEMBAK JITU SUKSES!\n\n- Menarik ${newParticipants.length} Peserta Baru.\n- Memperbarui otomatis jika ada nama/typo yang direvisi.\n- Termasuk ${addedCategories.size} Nomor Kelas baru.`);
+        // Jika ditemukan atlet mundur, munculkan pop-up pilihan
+        if (PENDING_ORPHAN_ATHLETES.length > 0) {
+            const modalEl = document.getElementById('modal-orphan-athletes');
+            const countEl = document.getElementById('orphan-count');
+            const listEl = document.getElementById('orphan-athletes-list');
+
+            if (countEl) countEl.innerText = PENDING_ORPHAN_ATHLETES.length;
+            if (listEl) {
+                listEl.innerHTML = PENDING_ORPHAN_ATHLETES.map(p => `
+                    <div class="flex items-center justify-between p-2 rounded-lg bg-slate-800/80 border border-slate-700">
+                        <div class="min-w-0 pr-2">
+                            <div class="font-bold text-white truncate">${p.nama}</div>
+                            <div class="text-[10px] text-slate-400 uppercase tracking-wider">${p.kategori} • ${p.kontingen}</div>
+                        </div>
+                        <span class="text-[9px] bg-red-950 text-red-400 border border-red-800 px-2 py-0.5 rounded font-black whitespace-nowrap">TIDAK ADA DI PUSAT</span>
+                    </div>
+                `).join('');
+            }
+            if (modalEl) modalEl.classList.remove('hidden');
         } else {
-            alert("Sistem Anda sudah Up-To-Date. Tidak ada data pendaftar sama sekali.");
+            // Jika tidak ada atlet orphan, langsung finalisasi simpan
+            await finalizeSyncToRTDB();
         }
 
     } catch (error) {
+        document.body.style.cursor = 'default';
         console.error("Gagal Tarik Data:", error);
         alert("Terjadi kesalahan saat menyedot data: " + error.message);
-    } finally {
-        document.body.style.cursor = 'default';
+    }
+}
+
+// Fungsi eksekusi dari tombol pop-up
+async function resolveOrphanAthletes(action) {
+    const modalEl = document.getElementById('modal-orphan-athletes');
+    if (modalEl) modalEl.classList.add('hidden');
+
+    if (action === 'HAPUS') {
+        const orphanIds = new Set(PENDING_ORPHAN_ATHLETES.map(p => p.id));
+        // Hapus dari STATE.participants
+        STATE.participants = STATE.participants.filter(p => !orphanIds.has(p.id));
+    }
+
+    PENDING_ORPHAN_ATHLETES = [];
+    document.body.style.cursor = 'wait';
+    await finalizeSyncToRTDB(action);
+    document.body.style.cursor = 'default';
+}
+
+// Fungsi finalisasi update ke Firebase RTDB
+async function finalizeSyncToRTDB(actionType = null) {
+    try {
+        let updates = {};
+        updates['turnamen_data/categories'] = STATE.categories;
+        updates['turnamen_data/participants'] = STATE.participants;
+
+        if (database) {
+            await database.ref().update(updates);
+        } else {
+            saveToLocalStorage();
+        }
+
+        refreshAllData();
+
+        let actionMsg = "";
+        if (actionType === 'HAPUS') {
+            actionMsg = "\n- Atlet yang mundur berhasil dibersihkan dari sistem.";
+        } else if (actionType === 'PERTAHANKAN') {
+            actionMsg = "\n- Data atlet yang tidak ada di pusat tetap dipertahankan.";
+        }
+
+        alert(`✅ SINKRONISASI SUKSES!\n\n- Menarik ${PENDING_SYNC_SUMMARY.newCount} Peserta Baru.\n- Memperbarui otomatis data terevisi.\n- Termasuk ${PENDING_SYNC_SUMMARY.catCount} Nomor Kelas baru.${actionMsg}`);
+    } catch (e) {
+        console.error("Gagal finalisasi sync RTDB:", e);
+        alert("Gagal menyimpan pembaruan ke Realtime Database: " + e.message);
     }
 }
 
