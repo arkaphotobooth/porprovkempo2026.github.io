@@ -2083,6 +2083,48 @@
     </div>
 </div>
 
+    <!-- ========================================================= -->
+<!-- 🔍 MODAL REKONSILIASI ATLET MUNDUR / HAPUS (SYNC CHECK)  -->
+<!-- ========================================================= -->
+<div id="modal-orphan-athletes" class="fixed inset-0 z-[125] bg-slate-950/90 backdrop-blur-md hidden flex items-center justify-center p-4 animate-fade-in">
+    <div class="bg-dark-card border border-amber-500/40 rounded-2xl max-w-lg w-full p-6 shadow-2xl flex flex-col gap-4 text-white">
+        
+        <!-- Header -->
+        <div class="flex items-center gap-3 border-b border-slate-700 pb-3">
+            <div class="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
+                <i class="fas fa-user-times text-lg"></i>
+            </div>
+            <div>
+                <h3 class="text-sm font-black uppercase tracking-wider text-amber-400">Deteksi Atlet Mengundurkan Diri</h3>
+                <p class="text-xs text-slate-400">Data di bawah ini tidak lagi ditemukan di server Pendaftaran</p>
+            </div>
+        </div>
+
+        <!-- Deskripsi -->
+        <p class="text-xs text-slate-300 leading-relaxed">
+            Sistem mendeteksi ada <b id="orphan-count" class="text-amber-400">0</b> atlet di memori lokal yang sudah dihapus/batal di database pusat Firestore. Tentukan tindakan untuk data ini:
+        </p>
+
+        <!-- Daftar Atlet Orphan -->
+        <div id="orphan-athletes-list" class="max-h-48 overflow-y-auto space-y-2 bg-slate-900/80 p-3 rounded-xl border border-slate-700/80 text-xs custom-scrollbar">
+            <!-- Diisi otomatis oleh JavaScript -->
+        </div>
+
+        <!-- Tombol Pilihan Tindakan -->
+        <div class="grid grid-cols-2 gap-3 pt-2 border-t border-slate-700">
+            <button onclick="resolveOrphanAthletes('PERTAHANKAN')" type="button"
+                class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-bold py-3 px-4 rounded-xl text-xs transition-colors flex items-center justify-center gap-2">
+                <i class="fas fa-shield-alt text-blue-400"></i> PERTAHANKAN DATA
+            </button>
+            <button onclick="resolveOrphanAthletes('HAPUS')" type="button"
+                class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-4 rounded-xl text-xs transition-transform hover:scale-[1.02] shadow-lg flex items-center justify-center gap-2">
+                <i class="fas fa-trash-alt"></i> HAPUS DARI SISTEM
+            </button>
+        </div>
+
+    </div>
+</div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
