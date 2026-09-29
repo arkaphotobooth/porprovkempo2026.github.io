@@ -4862,6 +4862,22 @@ setJudges = function (n) {
 // =========================================================
 // 🌟 GENERATOR QR PENUGASAN WASIT (SMART ADAPTIVE URL)
 // =========================================================
+// Helper untuk mendapatkan token server ringkas dari sesi aktif
+function getActiveServerToken() {
+    if (SYSTEM_MODE === 'online' && ACTIVE_SESSION && ACTIVE_SESSION.serverConfig && ACTIVE_SESSION.serverConfig.rtdbConfig) {
+        const dbUrl = ACTIVE_SESSION.serverConfig.rtdbConfig.databaseURL || "";
+        // Ekstrak nama instance jika pola URL default Firebase (hemat karakter)
+        const match = dbUrl.match(/https:\/\/([a-zA-Z0-9-]+)\.(firebasedatabase\.app|firebaseio\.com)/);
+        if (match) {
+            return match[1]; // Hanya ambil nama database (misal: "porprov2026-default-rtdb")
+        }
+        // Fallback: encode base64 ringkas jika URL kustom
+        return btoa(dbUrl).replace(/=/g, '');
+    }
+    // Jika mode lokal LAN
+    return "local";
+}
+
 async function openQRTugasModal() {
     let numJudges = parseInt(localStorage.getItem('local_judges')) || 5;
     let selectedNames = [];
@@ -4951,7 +4967,8 @@ async function openQRTugasModal() {
     if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
     const fullTargetUrl = `${baseUrl}${pathUrl}`;
     const separator = fullTargetUrl.includes('?') ? '&' : '?';
-    const qrString = `${fullTargetUrl}${separator}court=${safeCourtId}&${selectedNames.join('&')}`;
+   const serverToken = getActiveServerToken();
+const qrString = `${fullTargetUrl}${separator}court=${safeCourtId}&srv=${serverToken}&${selectedNames.join('&')}`;
 
     // 6. Render Canvas QR Code
     const qrCanvas = document.getElementById("qr-tugas-canvas");
@@ -8985,7 +9002,7 @@ switchTab = function (targetTab) {
     }
 };
 
-// Fungsi Buka Pop-up & Gambar QR Setup (Berisi JSON)
+// Fungsi Buka Pop-up & Gambar QR Setup (Berisi JSON + Identitas Server Event)
 async function openQrOperatorModal() {
     if (DEVICE_ROLE === 'admin') {
         alert("Perangkat Anda berstatus 'Admin'. QR Code ini dirancang khusus untuk memanggil Scanner Court (Court 1/2/3).");
@@ -8996,7 +9013,7 @@ async function openQrOperatorModal() {
     document.getElementById("qr-code-canvas").innerHTML = "";
     document.getElementById('qr-operator-modal').classList.remove('hidden');
 
-    // 2. Tarik IP dinamis dari Node.js (Metode Async)
+    // 2. Tarik IP dinamis dari Node.js (Metode Async untuk mode LAN)
     let serverIp = "127.0.0.1";
     try {
         const response = await fetch('/api/server-ip');
@@ -9006,11 +9023,14 @@ async function openQrOperatorModal() {
         console.error("Gagal mendeteksi IP LAN:", error);
     }
 
-    // 3. RAKIT PAYLOAD JSON MURNI
+    // 🌟 3. RAKIT PAYLOAD DENGAN MENAMBAHKAN TOKEN SERVER EVENT (srv)
+    const serverToken = typeof getActiveServerToken === 'function' ? getActiveServerToken() : 'default';
+
     const payloadData = {
         court: DEVICE_ROLE,
         mode: SYSTEM_MODE.toLowerCase(),
-        ip: serverIp
+        ip: serverIp,
+        srv: serverToken // 👈 Disematkan di sini (Hanya menambah ~15-20 karakter)
     };
 
     // Ubah Objek JS menjadi String JSON baku
@@ -9019,11 +9039,11 @@ async function openQrOperatorModal() {
     // 4. Gambar QR Code Baru dengan isi JSON
     new QRCode(document.getElementById("qr-code-canvas"), {
         text: jsonString,
-        width: 190, // Ukuran pas untuk kotak putih
+        width: 190,
         height: 190,
-        colorDark: "#0f172a", // Hitam kebiruan elegan (Slate-950)
+        colorDark: "#0f172a",
         colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.L // Level akurasi rendah (Cukup karena isi JSON pendek)
+        correctLevel: QRCode.CorrectLevel.L // Tetap renggang dan cepat dibaca
     });
 
     // 5. Update Teks UI
