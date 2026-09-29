@@ -8835,33 +8835,52 @@ function handleScanSuccess(url) {
 // LOGIKA KHUSUS SETUP QR SCANNER ADMIN (PAIRING MODE)
 // ==============================================================
 async function openAdminQrSetupModal() {
-    // 1. Bersihkan QR Lama dan tampilkan modal (Kita pakai ulang modal Operator)
-    document.getElementById("qr-code-canvas").innerHTML = "";
-    document.getElementById('qr-operator-modal').classList.remove('hidden');
+    // 1. Bersihkan QR Lama dan tampilkan modal
+    const qrCanvas = document.getElementById("qr-code-canvas");
+    if (qrCanvas) qrCanvas.innerHTML = "";
+    const modalEl = document.getElementById('qr-operator-modal');
+    if (modalEl) modalEl.classList.remove('hidden');
 
-    // 2. Tarik IP dinamis dari LAN Laptop
-    let serverIp = "127.0.0.1";
-    try {
-        const response = await fetch('/api/server-ip');
-        const data = await response.json();
-        serverIp = data.ip;
-    } catch (error) {
-        console.error("Gagal mendeteksi IP LAN:", error);
+    // 2. Tentukan Base URL Scanner (Prioritas: Input Setting Admin -> Cloud Netlify -> LAN IP -> Origin)
+    const inputScannerUrl = document.getElementById('setting-scanner-url') ? document.getElementById('setting-scanner-url').value.trim() : "";
+    const savedScannerUrl = (STATE.settings && (STATE.settings.scannerUrl || STATE.settings.scannerBaseUrl)) ? (STATE.settings.scannerUrl || STATE.settings.scannerBaseUrl).trim() : "";
+    const localSavedScannerUrl = (localStorage.getItem('mass_scanner_url') || "").trim();
+
+    let baseUrl = inputScannerUrl || savedScannerUrl || localSavedScannerUrl;
+
+    if (!baseUrl) {
+        if (SYSTEM_MODE.toLowerCase() === 'local' || SYSTEM_MODE.toLowerCase() === 'lokal') {
+            // Mode Lokal LAN (Node.js)
+            let serverIp = "127.0.0.1";
+            try {
+                const response = await fetch('/api/server-ip');
+                const data = await response.json();
+                serverIp = data.ip;
+            } catch (error) {
+                console.error("Gagal mendeteksi IP LAN:", error);
+            }
+            const port = window.location.port ? `:${window.location.port}` : ':3000';
+            baseUrl = `http://${serverIp}${port}/scanner-mobile.html`;
+        } else {
+            // Mode Cloud / Fallback Default Netlify
+            baseUrl = "https://portable-scanner.netlify.app";
+        }
     }
 
-    // 3. RAKIT PAYLOAD JSON KHUSUS ADMIN
-    // Perhatikan court diatur permanen ke 'admin'
-    const payloadData = {
-        court: 'admin',
-        mode: SYSTEM_MODE.toLowerCase(),
-        ip: serverIp
-    };
+    // Bersihkan trailing slash jika ada
+    if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
 
-    const jsonString = JSON.stringify(payloadData);
+    // 3. Ambil Token Server Database Event Aktif
+    const serverToken = typeof getActiveServerToken === 'function' ? getActiveServerToken() : 'default';
 
-    // 4. Gambar QR Code JSON
+    // 4. Rakit URL Web Lengkap (Format Link Tautan yang Bisa Diklik Kamera HP)
+    // Parameter court diseragamkan ke 'admin' agar cocok dengan dropdown scanner
+    const separator = baseUrl.includes('?') ? '&' : '?';
+    const targetUrl = `${baseUrl}${separator}court=admin&srv=${encodeURIComponent(serverToken)}`;
+
+    // 5. Gambar QR Code Berupa Tautan Web
     new QRCode(document.getElementById("qr-code-canvas"), {
-        text: jsonString,
+        text: targetUrl,
         width: 190,
         height: 190,
         colorDark: "#0f172a",
@@ -8869,8 +8888,9 @@ async function openAdminQrSetupModal() {
         correctLevel: QRCode.CorrectLevel.L
     });
 
-    // 5. Update Teks Judul di dalam Modal
-    document.getElementById('qr-target-court').innerText = "ADMIN (PAIRING)";
+    // 6. Update Teks Judul Modal
+    const titleEl = document.getElementById('qr-target-court');
+    if (titleEl) titleEl.innerText = "ADMIN (PAIRING)";
 }
 
 function refreshVerifikatorUI(match) {
